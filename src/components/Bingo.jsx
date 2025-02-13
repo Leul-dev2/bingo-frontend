@@ -59,7 +59,7 @@ const Bingo = () => {
           <button
             key={num}
             onClick={() => handleNumberClick(num)}
-            className={`w-10 h-8 flex items-center justify-center rounded-md border border-gray-300 font-bold cursor-pointer transition-all duration-200 text-xs ${
+            className={`w-8 h-8 flex items-center justify-center rounded-md border border-gray-300 font-bold cursor-pointer transition-all duration-200 text-xs ${
               selectedNumber === num ? "bg-green-500 text-white" : "bg-purple-100 text-black"
             }`}
           >
