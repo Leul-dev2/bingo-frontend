@@ -16,19 +16,19 @@ const Bingo = () => {
   const [selectedNumber, setSelectedNumber] = useState(null);
   const [cartela, setCartela] = useState([]);
   const navigate = useNavigate();
-  const [gameStatus, setGameStatus] = useState(""); // ✅ Empty initially
+  const [gameStatus, setGameStatus] = useState("");
   const numbers = Array.from({ length: 130 }, (_, i) => i + 1);
 
   const handleNumberClick = (number) => {
     setSelectedNumber(number);
     setCartela(generateCartela(number));
-    setGameStatus("Ready to Start"); // ✅ Update message
+    setGameStatus("Ready to Start");
   };
 
   const resetGame = () => {
     setSelectedNumber(null);
     setCartela([]);
-    setGameStatus(""); // ✅ Reset to empty
+    setGameStatus("");
   };
 
   const startGame = () => {
@@ -36,31 +36,31 @@ const Bingo = () => {
   };
 
   return (
-    <div className="flex flex-col items-center p-4 min-h-screen bg-purple-400 text-white">
-      <h1 className="text-2xl font-bold mb-4">Go Bingo</h1>
+    <div className="flex flex-col items-center p-5 min-h-screen bg-purple-400 text-white w-full overflow-hidden">
+    
 
       {/* Game Info */}
-      <div className="flex justify-around w-full max-w-lg mb-4">
-        <div className="bg-white text-black px-4 py-2 rounded-lg text-center">
+      <div className="flex justify-around w-full max-w-lg mb-2">
+        <div className="bg-white text-purple-400 px-10 py-1 rounded-3xl text-center font-bold text-sm">
           Wallet<br /><span className="font-bold">0</span>
         </div>
-        <div className="bg-white text-black px-4 py-2 rounded-lg text-center">
+        <div className="bg-white text-purple-400 px-3 py-1 rounded-3xl text-center font-bold text-sm">
           Game Started<br />
-          <span className="font-bold">{gameStatus}</span> {/* ✅ Starts empty */}
+          <span className="font-bold">{gameStatus}</span>
         </div>
-        <div className="bg-white text-black px-4 py-2 rounded-lg text-center">
+        <div className="bg-white text-purple-400 px-10 py-1 rounded-3xl text-center text-sm font-bold">
           Stake<br /><span className="font-bold">10</span>
         </div>
       </div>
 
       {/* Number Selection */}
-      <div className="grid grid-cols-10 gap-2 p-2 max-w-lg w-full">
+      <div className="grid grid-cols-10 gap-1 p-2 max-w-lg w-full text-xs">
         {numbers.map((num) => (
           <button
             key={num}
             onClick={() => handleNumberClick(num)}
-            className={`w-8 h-8 text-sm flex items-center justify-center rounded-md border border-gray-300 cursor-pointer transition-all duration-200 ${
-              selectedNumber === num ? "bg-green-500 text-white" : "bg-transparent border-white"
+            className={`w-10 h-8 flex items-center justify-center rounded-md border border-gray-300 font-bold cursor-pointer transition-all duration-200 text-xs ${
+              selectedNumber === num ? "bg-green-500 text-white" : "bg-purple-50 text-black"
             }`}
           >
             {num}
@@ -68,15 +68,14 @@ const Bingo = () => {
         ))}
       </div>
 
-      {/* Cartela Display */}
+      {/* 5x5 Grid Display */}
       {cartela.length > 0 && (
-        <div className="mt-6">
-          <h2 className="text-xl font-semibold mb-2">Your Cartela</h2>
-          <div className="grid grid-cols-5 gap-2 p-4 bg-transparent text-white">
+        <div className="">
+          <div className="grid grid-cols-5 gap-1 p-2 bg-transparent text-white ">
             {cartela.map((num, index) => (
               <div
                 key={index}
-                className="w-12 h-12 flex items-center justify-center border border-white rounded-lg text-lg font-bold"
+                className="w-10 h-10 flex items-center justify-center border border-white rounded-lg text-xs font-bold bg-purple-50 text-black"
               >
                 {num}
               </div>
@@ -86,16 +85,16 @@ const Bingo = () => {
       )}
 
       {/* Buttons */}
-      <div className="flex gap-4 mt-6">
+      <div className="flex gap-2 mt-3">
         <button
           onClick={resetGame}
-          className="bg-blue-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-600"
+          className="bg-blue-500 text-white px-3 py-1 rounded-lg shadow-md text-sm"
         >
           Refresh
         </button>
         <button
           onClick={startGame}
-          className="bg-orange-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-orange-600"
+          className="bg-orange-500 text-white px-3 py-1 rounded-lg shadow-md text-sm"
           disabled={!selectedNumber}
         >
           Start Game
