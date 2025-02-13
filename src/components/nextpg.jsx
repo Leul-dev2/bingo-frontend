@@ -4,33 +4,33 @@ import { useLocation, useNavigate } from "react-router-dom";
 const BingoGame = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { cartela, selectedNumber } = location.state || {};
+  const { cartela, selectedNumber } = location.state || {}; // Get the passed state
 
-  // Game state variables
-  const [gameId] = useState("100311389"); // Example game ID
+  // Individual states for game info buttons
+  const [gameId] = useState("Game ID");
   const [player] = useState("Derash");
   const [bonus] = useState("Bonus");
   const [players] = useState("Players");
   const [bet] = useState("Bet");
-  const [countdown] = useState(29); // Example countdown timer
-  const [currentCall] = useState(74); // Example current call
 
-  const bingoColors = ["bg-orange-500", "bg-green-500", "bg-blue-500", "bg-yellow-500", "bg-red-500"];
+  // Define colors for BINGO blocks
+  const bingoColors = ["bg-red-500", "bg-blue-500", "bg-green-500", "bg-yellow-500", "bg-pink-500"];
 
   return (
     <div className="bg-purple-400 min-h-screen flex flex-col items-center p-4">
-      {/* Top Section - Game Info */}
+      
+      {/* Game Info Buttons */}
       <div className="grid grid-cols-5 gap-2 mt-2">
-        <button className="bg-white p-2 rounded">Game {gameId}</button>
+        <button className="bg-white p-2 rounded">{gameId}</button>
         <button className="bg-white p-2 rounded">{player}</button>
         <button className="bg-white p-2 rounded">{bonus}</button>
         <button className="bg-white p-2 rounded">{players}</button>
         <button className="bg-white p-2 rounded">{bet}</button>
       </div>
 
-      {/* Main Grid Layout */}
-      <div className="flex gap-6 mt-10">
-        {/* Bingo Grid */}
+      {/* Main Grid */}
+      <div className="flex gap-2 mt-10 ">
+        {/* Bingo Board */}
         <div className="grid grid-cols-5 gap-2 bg-purple-300 p-2 rounded-lg">
           {["B", "I", "N", "G", "O"].map((letter, i) => (
             <div key={i} className={`text-white text-center p-4 text-lg font-bold rounded ${bingoColors[i]}`}>
@@ -44,18 +44,16 @@ const BingoGame = () => {
           ))}
         </div>
 
-        {/* Right Panel - Countdown & Current Call */}
+        {/* Right Panel */}
         <div className="flex flex-col gap-4">
           <div className="bg-gray-300 p-4 rounded-lg text-center">
             <p>Countdown</p>
-            <p className="text-3xl font-bold">{countdown}</p>
+            <p className="text-3xl font-bold">29</p>
           </div>
           <div className="bg-purple-600 p-4 rounded-lg text-white relative">
             <p className="font-bold">Current Call</p>
-            <div className="absolute top-0 right-0 w-10 h-10 bg-orange-500 rounded-full"></div>
+            <div className="absolute top-0 right-0 w-16 h-16 bg-orange-500 rounded-full"></div>
           </div>
-          
-          {/* Player's Bingo Board */}
           <div className="bg-purple-300 p-4 rounded-lg">
             <div className="grid grid-cols-5 gap-2">
               {["B", "I", "N", "G", "O"].map((letter, i) => (
@@ -63,16 +61,19 @@ const BingoGame = () => {
                   {letter}
                 </div>
               ))}
-              {[...Array(25)].map((_, i) => (
-                <div
-                  key={i}
-                  className={`text-center p-2 text-lg rounded ${i + 1 === currentCall ? "bg-green-500" : "bg-gray-200"}`}
-                >
-                  {i + 1}
-                </div>
-              ))}
+              {cartela &&
+                cartela.map((num, i) => (
+                  <div
+                    key={i}
+                    className={`text-center p-2 text-lg rounded ${
+                      num === selectedNumber ? "bg-green-500" : "bg-gray-200"
+                    }`}
+                  >
+                    {num}
+                  </div>
+                ))}
             </div>
-            <p className="text-center mt-2">Board number {currentCall}</p>
+            <p className="text-center mt-2">Board number {selectedNumber}</p>
           </div>
         </div>
       </div>
