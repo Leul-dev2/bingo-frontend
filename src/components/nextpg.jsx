@@ -7,7 +7,7 @@ const BingoGame = () => {
   const { cartela, selectedNumber } = location.state || {}; // Get the passed state
 
   // Individual states for game info buttons
-  const [gameId] = useState("Game 100311389");
+  const [gameId] = useState("Game ID");
   const [player] = useState("Derash");
   const [bonus] = useState("Bonus");
   const [players] = useState("Players");
@@ -29,7 +29,7 @@ const BingoGame = () => {
       </div>
 
       {/* Main Grid */}
-      <div className="flex gap-3 mt-10 ">
+      <div className="flex gap-1 mt-10 ">
         {/* Bingo Board */}
         <div className="grid grid-cols-5 gap-2 bg-purple-300 p-2 rounded-lg">
           {["B", "I", "N", "G", "O"].map((letter, i) => (
