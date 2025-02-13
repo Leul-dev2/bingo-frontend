@@ -45,7 +45,7 @@ const BingoGame = () => {
         </div>
 
         {/* Right Panel */}
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
           <div className="bg-gray-300 p-4 rounded-lg text-center">
             <p>Countdown</p>
             <p className="text-3xl font-bold">29</p>
