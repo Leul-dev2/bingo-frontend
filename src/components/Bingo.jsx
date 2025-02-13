@@ -60,7 +60,7 @@ const Bingo = () => {
             key={num}
             onClick={() => handleNumberClick(num)}
             className={`w-10 h-8 flex items-center justify-center rounded-md border border-gray-300 font-bold cursor-pointer transition-all duration-200 text-xs ${
-              selectedNumber === num ? "bg-green-500 text-white" : "bg-purple-50 text-black"
+              selectedNumber === num ? "bg-green-500 text-white" : "bg-purple-100 text-black"
             }`}
           >
             {num}
@@ -75,7 +75,7 @@ const Bingo = () => {
             {cartela.map((num, index) => (
               <div
                 key={index}
-                className="w-10 h-10 flex items-center justify-center border border-white rounded-lg text-xs font-bold bg-purple-50 text-black"
+                className="w-10 h-10 flex items-center justify-center border border-white rounded-lg text-xs font-bold bg-purple-100 text-black"
               >
                 {num}
               </div>
