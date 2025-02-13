@@ -31,7 +31,7 @@ const BingoGame = () => {
       {/* Main Grid */}
       <div className="flex gap-6 mt-10 ">
         {/* Bingo Board */}
-        <div className="grid grid-cols-5 gap-3 bg-purple-300 p-4 rounded-lg">
+        <div className="grid grid-cols-5 gap-2 bg-purple-300 p-2 rounded-lg">
           {["B", "I", "N", "G", "O"].map((letter, i) => (
             <div key={i} className={`text-white text-center p-4 text-lg font-bold rounded ${bingoColors[i]}`}>
               {letter}
