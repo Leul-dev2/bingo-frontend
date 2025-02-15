@@ -5,6 +5,7 @@ const BingoGame = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { cartela } = location.state || {};
+  
 
   const bingoColors = {
     B: "bg-yellow-500",
@@ -13,42 +14,69 @@ const BingoGame = () => {
     G: "bg-red-500",
     O: "bg-purple-500",
   };
-  
+
   const [allCalledNumbers, setAllCalledNumbers] = useState([]);
   const [calledNumbers, setCalledNumbers] = useState([]);
   const [currentCall, setCurrentCall] = useState(null);
   const [selectedNumbers, setSelectedNumbers] = useState(new Set());
   const [countdown, setCountdown] = useState(15);
-  
+  const [calledSet, setCalledSet] = useState(new Set()); // Track called numbers
+
   useEffect(() => {
-     if (countdown > 0) {
-        const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-        return () => clearTimeout(timer);
-      } else {
-        const interval = setInterval(() => {
-          const letterIndex = Math.floor(Math.random() * 5);
-          const number = Math.floor(Math.random() * 15) + letterIndex * 15 + 1;
-          const newCall = `${["B", "I", "N", "G", "O"][letterIndex]}-${number}`;
-  
-          setCurrentCall(newCall);
-          
-          setAllCalledNumbers((prev) => [...prev, newCall]);
-          
-          setCalledNumbers((prev) => 
-            prev.length < 5 ? [...prev, newCall] : [...prev.slice(1), newCall]
-          );
-        }, 3000);
-  
-        return () => clearInterval(interval);
-      }
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
+      return () => clearTimeout(timer);
+    } else {
+      callNewNumber(); // Call first number immediately after countdown
+      const interval = setInterval(callNewNumber, 3000);
+      return () => clearInterval(interval);
+    }
   }, [countdown]);
-  
-  const isNumberCalled = (letter, number) => {
-    return allCalledNumbers.includes(`${letter}-${number}`);
+
+  const callNewNumber = () => {
+    if (calledSet.size >= 75) return; // Stop calling after all numbers are used
+
+    let newCall;
+    do {
+      const letterIndex = Math.floor(Math.random() * 5);
+      const number = Math.floor(Math.random() * 15) + letterIndex * 15 + 1;
+      newCall = `${["B", "I", "N", "G", "O"][letterIndex]}-${number}`;
+    } while (calledSet.has(newCall)); // Ensure unique number
+
+    setCurrentCall(newCall);
+    setCalledSet((prev) => new Set(prev).add(newCall));
+    setAllCalledNumbers((prev) => [...prev, newCall]);
+    setCalledNumbers((prev) =>
+      prev.length < 5 ? [...prev, newCall] : [...prev.slice(1), newCall]
+    );
   };
 
   const handleCartelaClick = (num) => {
-    setSelectedNumbers((prev) => new Set(prev).add(num));
+    setSelectedNumbers((prev) => {
+      const newSelection = new Set(prev);
+  
+      if (newSelection.has(num)) {
+        newSelection.delete(num); // Deselect if already selected
+      } else {
+        newSelection.add(num); // Select if not already selected
+      }
+
+      localStorage.setItem("selectedNumbers", JSON.stringify([...newSelection]));
+      return newSelection;
+    });
+  };
+
+  const checkForWin = () => {
+    if (selectedNumbers.size >= 5) {
+      navigate("/win", {
+        state: {
+          winnerName: "Aki",
+          prizeAmount: 40,
+          board: cartela.map((num) => ({ value: num, selected: selectedNumbers.has(num) })),
+          boardNumber: 74,
+        },
+      });
+    }
   };
 
   return (
@@ -79,7 +107,7 @@ const BingoGame = () => {
                     className={`text-center p-1 rounded ${
                       currentCall === bingoNumber
                         ? "bg-orange-500"
-                        : allCalledNumbers.includes(bingoNumber)
+                        : calledSet.has(bingoNumber)
                         ? "bg-yellow-500"
                         : "bg-gray-200"
                     }`}
@@ -140,13 +168,11 @@ const BingoGame = () => {
                 ))}
             </div>
           </div>
+        </div>
+      </div>
 
-                </div> {/* <-- This closes the right panel properly */}
-      </div> {/* <-- This closes the flex container properly */}
-
-      {/* Bottom Buttons - Moved Outside */}
       <div className="w-full flex flex-col items-center gap-2 mt-4">
-        <button className="w-full bg-orange-500 px-4 py-2 text-white rounded-lg text-lg">
+        <button onClick={checkForWin} className="w-full bg-orange-500 px-4 py-2 text-white rounded-lg text-lg">
           Bingo!
         </button>
         <div className="w-full flex gap-2">
@@ -158,8 +184,7 @@ const BingoGame = () => {
           </button>
         </div>
       </div>
-    </div> 
-
+    </div>
   );
 };
 

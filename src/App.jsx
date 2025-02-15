@@ -20,6 +20,7 @@ const App = () => {
           path="/game"
           element={<BingoGame cartela={cartela} selectedNumber={selectedNumber} />}
         />
+
       </Routes>
     </Router>
   );
