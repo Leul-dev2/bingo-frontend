@@ -13,13 +13,13 @@ const App = () => {
     <Router>
       <Routes>
 
-      <Route
+      {/* <Route
           path="/"
           element={<JoinGame />}
-        />
+        /> */}
         {/* Home Page (Bingo Number Selection) */}
         <Route
-          path="/cartela"
+          path="/"
           element={<Bingo setCartela={setCartela} setSelectedNumber={setSelectedNumber} />}
         />
         {/* Game Page (Actual Bingo Game) */}
