@@ -1,38 +1,40 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import bingoCards from "../assets/bingoCards.json"; // Import the JSON file
 
-const generateCartela = (selectedNumber) => {
-  let numbers = new Set();
-  while (numbers.size < 24) {
-    let num = Math.floor(Math.random() * 130) + 1;
-    if (num !== selectedNumber) numbers.add(num);
-  }
-  let cartela = Array.from(numbers);
-  cartela.splice(12, 0, "*"); // Insert Free Space
-  return cartela;
-};
 
 const Bingo = () => {
-  const [selectedNumber, setSelectedNumber] = useState(null);
+  const [cartelaId, setCartelaId] = useState(null);
   const [cartela, setCartela] = useState([]);
   const navigate = useNavigate();
   const [gameStatus, setGameStatus] = useState("");
   const numbers = Array.from({ length: 130 }, (_, i) => i + 1);
+  //const bingoNumbers = Object.keys(bingoCards); // Get available card IDs
 
   const handleNumberClick = (number) => {
-    setSelectedNumber(number);
-    setCartela(generateCartela(number));
-    setGameStatus("Ready to Start");
+    console.log("clicked");
+  
+    // Find the card with the matching ID
+    const selectedCard = bingoCards.find(card => card.id === number);
+  
+    if (selectedCard) {
+      setCartela(selectedCard.card); // Store the card grid
+      setCartelaId(number);
+      setGameStatus("Ready to Start");
+    } else {
+      console.error("Card not found for ID:", number);
+    }
   };
+  
 
   const resetGame = () => {
-    setSelectedNumber(null);
+    setCartelaId(null);
     setCartela([]);
     setGameStatus("");
   };
 
   const startGame = () => {
-    navigate("/game", { state: { cartela, selectedNumber } });
+    navigate("/game", { state: { cartela, cartelaId } });
   };
 
   return (
@@ -60,7 +62,7 @@ const Bingo = () => {
             key={num}
             onClick={() => handleNumberClick(num)}
             className={`w-8 h-8 flex items-center justify-center rounded-md border border-gray-300 font-bold cursor-pointer transition-all duration-200 text-xs ${
-              selectedNumber === num ? "bg-green-500 text-white" : "bg-purple-100 text-black"
+              cartelaId === num ? "bg-green-500 text-white" : "bg-purple-100 text-black"
             }`}
           >
             {num}
@@ -69,10 +71,9 @@ const Bingo = () => {
       </div>
 
       {/* 5x5 Grid Display */}
-      {cartela.length > 0 && (
-        <div className="">
-          <div className="grid grid-cols-5 gap-1 p-2 bg-transparent text-white ">
-            {cartela.map((num, index) => (
+        {cartela.length > 0 && (
+          <div className="grid grid-cols-5 gap-1 p-2 bg-transparent text-white">
+            {cartela.flat().map((num, index) => (
               <div
                 key={index}
                 className="w-10 h-10 flex items-center justify-center border border-white rounded-lg text-xs font-bold bg-purple-100 text-black"
@@ -81,8 +82,7 @@ const Bingo = () => {
               </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
 
       {/* Buttons */}
       <div className="flex gap-2 mt-3">
@@ -95,7 +95,7 @@ const Bingo = () => {
         <button
           onClick={startGame}
           className="bg-orange-500 text-white px-3 py-1 rounded-lg shadow-md text-sm"
-          disabled={!selectedNumber}
+          disabled={!cartelaId}
         >
           Start Game
         </button>
