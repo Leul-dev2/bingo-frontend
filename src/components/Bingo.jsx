@@ -36,21 +36,30 @@ const Bingo = () => {
   };
 
   useEffect(() => {
+    const storedGameId = localStorage.getItem("gameId"); // Retrieve stored gameId
+
+    if (!storedGameId) {
+        console.error("Game ID is missing!");
+        return;
+    }
+
     const checkGameStatus = async () => {
-      try {
-        const response = await fetch(`https://bingobot-backend.onrender.com/api/games/status?gameId=${gameChoice}`);
-        const data = await response.json();
-        if (data.gameStatus === "active") {
-          navigate("/game", { state: { cartela, cartelaId } });
+        try {
+            const response = await fetch(`https://bingobot-backend.onrender.com/api/games/status?gameId=${storedGameId}`);
+            const data = await response.json();
+
+            if (response.ok && data.gameStatus === "active") {
+                navigate("/game", { state: { cartela, cartelaId, gameId: storedGameId } });
+            }
+        } catch (error) {
+            console.error("Error checking game status:", error);
         }
-      } catch (error) {
-        console.error("Error checking game status:", error);
-      }
     };
-  
-    const interval = setInterval(checkGameStatus, 3000); // Check every 3 sec
+
+    const interval = setInterval(checkGameStatus, 3000);
     return () => clearInterval(interval);
-  }, []);
+}, []);
+
   
 
 
@@ -74,43 +83,50 @@ const Bingo = () => {
   };
 
   const startGame = async () => {
-    if (userBalance >= gameChoice) {
-      try {
-        // Send the request to join the game and deduct the balance
-        const response = await fetch("https://bingobot-backend.onrender.com/api/games/join", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            telegramId,
-            gameId: gameChoice,  // You can replace this with the actual game ID
-            betAmount: gameChoice,  // The bet amount is the same as the game choice
-          }),
-        });
-  
-        const data = await response.json();
-        
-        if (response.ok) {
-          // Handle successful join
-          setUserBalance(data.newBalance); // Update the user's balance
-          setGameStatus(data.gameStatus);
-          navigate("/game", { state: { cartela, cartelaId } }); // Proceed to the game page
-        } else {
-          // Handle errors
-          setAlertMessage(data.error || "An error occurred while joining the game");
-          setTimeout(() => setAlertMessage(""), 3000); // Remove the alert after 3 seconds
-        }
-      } catch (error) {
-        console.error("Error joining game:", error);
-        setAlertMessage("An error occurred while processing your request.");
-        setTimeout(() => setAlertMessage(""), 3000); // Remove the alert after 3 seconds
-      }
-    } else {
-      setAlertMessage("Your balance is insufficient!");
-      setTimeout(() => setAlertMessage(""), 3000); // Remove the alert after 3 seconds
+    if (!gameChoice) {
+        setAlertMessage("Game ID is missing!");
+        return;
     }
-  };
+
+    if (userBalance >= gameChoice) {
+        try {
+            const response = await fetch("https://bingobot-backend.onrender.com/api/games/join", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    telegramId,
+                    gameId: gameChoice,  // Ensure this is a valid ID
+                    betAmount: gameChoice,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                setUserBalance(data.newBalance);
+                setGameStatus(data.gameStatus);
+
+                // Ensure gameId is correctly stored
+                localStorage.setItem("gameId", data.gameId);
+
+                navigate("/game", { state: { gameId: data.gameId, cartela, cartelaId } });
+            } else {
+                setAlertMessage(data.error || "An error occurred while joining the game");
+                setTimeout(() => setAlertMessage(""), 3000);
+            }
+        } catch (error) {
+            console.error("Error joining game:", error);
+            setAlertMessage("An error occurred while processing your request.");
+            setTimeout(() => setAlertMessage(""), 3000);
+        }
+    } else {
+        setAlertMessage("Your balance is insufficient!");
+        setTimeout(() => setAlertMessage(""), 3000);
+    }
+};
+
   
 
   return (
