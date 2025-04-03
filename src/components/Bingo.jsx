@@ -83,7 +83,9 @@ const Bingo = () => {
   };
 
   const startGame = async () => {
-    if (!gameChoice) {
+    console.log("Game choice:", gameChoice); // Debugging: Check gameChoice value
+
+    if (!gameChoice || gameChoice === null) {
         setAlertMessage("Game ID is missing!");
         return;
     }
@@ -97,19 +99,24 @@ const Bingo = () => {
                 },
                 body: JSON.stringify({
                     telegramId,
-                    gameId: gameChoice,  // Ensure this is a valid ID
-                    betAmount: gameChoice,
+                    gameId: Number(gameChoice),  // Ensure it's a valid number
+                    betAmount: Number(gameChoice),
                 }),
             });
 
             const data = await response.json();
+            console.log("Server response:", data); // Debugging: Check server response
 
             if (response.ok) {
                 setUserBalance(data.newBalance);
                 setGameStatus(data.gameStatus);
 
-                // Ensure gameId is correctly stored
-                localStorage.setItem("gameId", data.gameId);
+                // Ensure gameId is correctly stored and retrieved
+                if (data.gameId) {
+                    localStorage.setItem("gameId", data.gameId);
+                } else {
+                    console.error("gameId missing in response!");
+                }
 
                 navigate("/game", { state: { gameId: data.gameId, cartela, cartelaId } });
             } else {
@@ -126,6 +133,7 @@ const Bingo = () => {
         setTimeout(() => setAlertMessage(""), 3000);
     }
 };
+
 
   
 
