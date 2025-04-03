@@ -57,7 +57,7 @@ const Bingo = () => {
     if (userBalance >= gameChoice) {
       try {
         // Send the request to join the game and deduct the balance
-        const response = await fetch("https://bingobot-backend.onrender.com/api/game/join", {
+        const response = await fetch("https://bingobot-backend.onrender.com/api/games/join", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
