@@ -272,9 +272,10 @@ const declareWinner = (winnerPattern) => {
             <p className="text-lg font-bold">{countdown > 0 ? countdown : "Game Started"}</p>
           </div>
 
-          <div className="bg-purple-600 p-4 rounded-lg text-white flex flex-col items-center w-[90%]">
-  <p className="font-bold text-sm mb-2">Last 4 Calls</p>
-  <div className="flex space-x-4">
+          <div className="bg-purple-600 p-4 rounded-lg text-white flex flex-col items-center w-full max-w-md mx-auto">
+  <p className="font-bold text-sm sm:text-base mb-2">Last 4 Calls</p>
+  
+  <div className="flex justify-center gap-2 sm:gap-4">
     {randomNumber.slice(-4).map((num, index) => {
       // Define an array of colors for the backgrounds
       const colors = [
@@ -287,14 +288,17 @@ const declareWinner = (winnerPattern) => {
       return (
         <div
           key={index}
-          className={`w-16 h-16 flex items-center justify-center text-lg font-extrabold rounded-full shadow-xl ${colors[index] || "bg-gray-500"}`}
+          className={`w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 flex items-center justify-center 
+                      text-base sm:text-lg md:text-xl font-extrabold rounded-full shadow-xl 
+                      ${colors[index] || "bg-gray-500"}`}
         >
           {num}
         </div>
       );
     })}
   </div>
-          </div>
+</div>
+
 
 
 
@@ -323,7 +327,7 @@ const declareWinner = (winnerPattern) => {
       {["B", "I", "N", "G", "O"].map((letter, i) => (
         <div
           key={i}
-          className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center font-bold text-white text-base sm:text-lg bg-purple-700 rounded-lg shadow-md"
+          className="md:w-10 md:h-10 w-5 h-5 sm:w-12 sm:h-12 flex items-center justify-center font-bold text-white text-base sm:text-lg bg-purple-700 rounded-lg shadow-md"
         >
           {letter}
         </div>
@@ -341,7 +345,7 @@ const declareWinner = (winnerPattern) => {
             <div
               key={`${rowIndex}-${colIndex}`}
               onClick={() => handleCartelaClick(num)} // Click to mark
-              className={`w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center font-bold text-base sm:text-lg border rounded-lg shadow-md cursor-pointer transition
+              className={`md:w-10 md:h-10 w-5 h-5 sm:w-12 sm:h-12 flex items-center justify-center font-bold text-base sm:text-lg border rounded-lg shadow-md cursor-pointer transition
                 ${
                   isFreeSpace
                     ? "bg-green-500 text-white" // Free space
