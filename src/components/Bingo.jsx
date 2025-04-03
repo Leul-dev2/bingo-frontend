@@ -37,23 +37,28 @@ const Bingo = () => {
 
   const [countdown, setCountdown] = useState(null);
 
-  useEffect(() => {
-      const interval = setInterval(() => {
-          fetch(`https://bingobot-backend.onrender.com/api/games/countdown/${gameId}`)
-              .then(res => res.json())
-              .then(data => {
-                  if (data.countdown !== undefined) {
-                      setCountdown(data.countdown);
-                  } else {
-                      setCountdown(null);
-                      clearInterval(interval);
-                  }
-              })
-              .catch(() => setCountdown(null));
-      }, 1000);
+ // Update useEffect to check for valid gameChoice
+useEffect(() => {
+  if (gameChoice) {  // Ensure gameChoice is not null or undefined
+    const interval = setInterval(() => {
+      fetch(`https://bingobot-backend.onrender.com/api/games/countdown/${gameChoice}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.countdown !== undefined) {
+            setCountdown(data.countdown); // Update countdown value
+          } else {
+            setCountdown(null);
+            clearInterval(interval); // Stop the interval if no countdown is available
+          }
+        })
+        .catch(() => setCountdown(null));
+    }, 1000);
 
-      return () => clearInterval(interval);
-  }, [gameId]);
+    return () => clearInterval(interval); // Cleanup interval on component unmount
+  }
+}, [gameChoice]); // Only re-run when gameChoice changes
+
+
 
 
   const handleNumberClick = (number) => {
@@ -143,8 +148,8 @@ const Bingo = () => {
           <span className="font-bold">{gameChoice} </span>
         </div>
         <div className="bg-white text-purple-400 px-10 py-1 rounded-3xl text-center text-sm font-bold">
-          Game satrts in<br />
-          <span className="font-bold">{countdown} </span>
+        Countdown:<br />
+          <span className="font-bold"> {countdown !== null ? countdown : "Waiting for players..."}</span>
         </div>
       </div>
 
