@@ -35,6 +35,24 @@ const Bingo = () => {
     }
   };
 
+  useEffect(() => {
+    const checkGameStatus = async () => {
+      try {
+        const response = await fetch(`https://bingobot-backend.onrender.com/api/games/status?gameId=${gameChoice}`);
+        const data = await response.json();
+        if (data.gameStatus === "active") {
+          navigate("/game", { state: { cartela, cartelaId } });
+        }
+      } catch (error) {
+        console.error("Error checking game status:", error);
+      }
+    };
+  
+    const interval = setInterval(checkGameStatus, 3000); // Check every 3 sec
+    return () => clearInterval(interval);
+  }, []);
+  
+
 
 
   const handleNumberClick = (number) => {
