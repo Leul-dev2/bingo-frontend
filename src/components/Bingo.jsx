@@ -13,6 +13,7 @@ const Bingo = () => {
   const [gameStatus, setGameStatus] = useState("");
   const [userBalance, setUserBalance] = useState(null);
   const numbers = Array.from({ length: 130 }, (_, i) => i + 1);
+  const [alertMessage, setAlertMessage] = useState(""); // State for alert message
 
   // Fetch user data from backend
   useEffect(() => {
