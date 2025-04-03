@@ -299,63 +299,65 @@ const declareWinner = (winnerPattern) => {
 
 
 
-          <div className="bg-gray-100 p-2 rounded-lg w-[90%]">
-            <p className="text-center font-bold text-sm">Called Numbers</p>
-            <div className="grid grid-cols-5 gap-1 mt-1 text-xs">
-              {calledNumbers.map((num, i) => {
-                const letter = num.charAt(0);
-                return (
-                  <div key={i} className={`p-1 text-xs text-center rounded text-white ${bingoColors[letter]}`}>
-                    {num}
-                  </div>
-                );
-              })}
+       {/* Called Numbers Section */}
+<div className="bg-gray-100 p-2 rounded-lg w-full max-w-md mx-auto">
+  <p className="text-center font-bold text-xs sm:text-sm md:text-base">Called Numbers</p>
+  <div className="grid grid-cols-5 gap-1 mt-2 text-xs sm:text-sm">
+    {calledNumbers.map((num, i) => {
+      const letter = num.charAt(0);
+      return (
+        <div key={i} className={`p-2 text-center rounded text-white ${bingoColors[letter]} text-xs sm:text-sm`}>
+          {num}
+        </div>
+      );
+    })}
+  </div>
+</div>
+
+{/* Bingo Card */}
+{cartela.length > 0 && (
+  <div className="bg-purple-300 p-4 rounded-lg w-full max-w-md mx-auto">
+    
+    {/* BINGO Header */}
+    <div className="grid grid-cols-5 gap-1 mb-2">
+      {["B", "I", "N", "G", "O"].map((letter, i) => (
+        <div
+          key={i}
+          className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center font-bold text-white text-base sm:text-lg bg-purple-700 rounded-lg shadow-md"
+        >
+          {letter}
+        </div>
+      ))}
+    </div>
+
+    {/* Bingo Numbers Grid */}
+    <div className="grid grid-cols-5 gap-1">
+      {cartela.map((row, rowIndex) =>
+        row.map((num, colIndex) => {
+          const isFreeSpace = rowIndex === 2 && colIndex === 2; // Middle space (FREE)
+          const isSelected = selectedNumbers.has(num); // Check if number is marked
+
+          return (
+            <div
+              key={`${rowIndex}-${colIndex}`}
+              onClick={() => handleCartelaClick(num)} // Click to mark
+              className={`w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center font-bold text-base sm:text-lg border rounded-lg shadow-md cursor-pointer transition
+                ${
+                  isFreeSpace
+                    ? "bg-green-500 text-white" // Free space
+                    : isSelected
+                    ? "bg-green-500 text-white" // Marked number
+                    : "bg-white text-black border-gray-400"
+                }`}
+            >
+              {isFreeSpace ? "FREE" : num}
             </div>
-          </div>
-
-          {/* 5x5 Bingo Card */}
-          {cartela.length > 0 && (
-            <div className="bg-purple-300 p-4 rounded-lg w-[90%] mx-auto">
-              {/* BINGO Header */}
-              <div className="grid grid-cols-5 gap-1 mb-2">
-                {["B", "I", "N", "G", "O"].map((letter, i) => (
-                  <div
-                    key={i}
-                    className="w-12 h-12 flex items-center justify-center font-bold text-white text-lg bg-purple-700 rounded-lg shadow-md"
-                  >
-                    {letter}
-                  </div>
-                ))}
-              </div>
-
-              {/* Bingo Numbers (Row-wise Mapping) */}
-              <div className="grid grid-cols-5 gap-1">
-                {cartela.map((row, rowIndex) =>
-                  row.map((num, colIndex) => {
-                    const isFreeSpace = rowIndex === 2 && colIndex === 2; // Middle space (FREE)
-                    const isSelected = selectedNumbers.has(num); // Check if number is marked
-
-                    return (
-                      <div
-                        key={`${rowIndex}-${colIndex}`}
-                        onClick={() => handleCartelaClick(num)} // Click to mark
-                        className={`w-12 h-12 flex items-center justify-center font-bold text-lg border rounded-lg shadow-md cursor-pointer 
-                          ${
-                            isFreeSpace
-                              ? "bg-green-500 text-white" // Free space
-                              : isSelected
-                              ? "bg-green-500 text-white" // Marked number
-                              : "bg-white text-black border-gray-400"
-                          }`}
-                      >
-                        {isFreeSpace ? "FREE" : num}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          )}
+          );
+        })
+      )}
+    </div>
+  </div>
+)}
 
 
 
