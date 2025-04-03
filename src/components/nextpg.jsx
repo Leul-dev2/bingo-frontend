@@ -345,7 +345,7 @@ const declareWinner = (winnerPattern) => {
             <div
               key={`${rowIndex}-${colIndex}`}
               onClick={() => handleCartelaClick(num)} // Click to mark
-              className={`md:w-10 md:h-10 w-5 h-5 sm:w-12 sm:h-12 flex items-center justify-center font-bold text-base sm:text-lg border rounded-lg shadow-md cursor-pointer transition
+              className={`md:w-10 md:h-10 w-5 h-5 p-2 sm:w-12 sm:h-12 flex items-center justify-center font-bold text-base sm:text-lg border rounded-lg shadow-md cursor-pointer transition
                 ${
                   isFreeSpace
                     ? "bg-green-500 text-white" // Free space
@@ -354,7 +354,7 @@ const declareWinner = (winnerPattern) => {
                     : "bg-white text-black border-gray-400"
                 }`}
             >
-              {isFreeSpace ? "FREE" : num}
+              {isFreeSpace ? "*" : num}
             </div>
           );
         })
