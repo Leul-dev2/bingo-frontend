@@ -64,11 +64,19 @@ const Bingo = () => {
 
   return (
     <div className="flex flex-col items-center p-5 min-h-screen bg-purple-400 text-white w-full overflow-hidden">
-    {alertMessage && (
-        <div className="bg-red-500 text-white p-2 rounded-md mb-4">
-          {alertMessage}
-        </div>
-      )}
+         {alertMessage && (
+            <div className="fixed top-0 left-0 w-full flex justify-center z-50">
+              <div className="flex items-center max-w-sm w-full p-3 m-2 bg-red-100 border-l-4 border-red-500 text-red-700 rounded-md shadow-lg">
+                <svg className="w-5 h-5 mr-2 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10c0 4.418-3.582 8-8 8s-8-3.582-8-8 3.582-8 8-8 8 3.582 8 8zM9 7a1 1 0 012 0v3a1 1 0 01-2 0V7zm1 6a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" />
+                </svg>
+                <span className="flex-1 text-sm">{alertMessage}</span>
+                <button className="text-gray-500 hover:text-gray-700" onClick={() => setAlertMessage("")}>
+                  ✕
+                </button>
+              </div>
+            </div>
+          )}
       <div className="flex justify-around w-full max-w-lg mb-2">
         <div className="bg-white text-purple-400 px-10 py-1 rounded-3xl text-center font-bold text-sm">
           Balance<br />
