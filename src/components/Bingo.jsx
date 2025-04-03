@@ -53,14 +53,44 @@ const Bingo = () => {
     setGameStatus("");
   };
 
-  const startGame = () => {
+  const startGame = async () => {
     if (userBalance >= gameChoice) {
-      navigate("/game", { state: { cartela, cartelaId } });
+      try {
+        // Send the request to join the game and deduct the balance
+        const response = await fetch("https://bingobot-backend.onrender.com/api/game/join", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            telegramId,
+            gameId: gameChoice,  // You can replace this with the actual game ID
+            betAmount: gameChoice,  // The bet amount is the same as the game choice
+          }),
+        });
+  
+        const data = await response.json();
+        
+        if (response.ok) {
+          // Handle successful join
+          setUserBalance(data.newBalance); // Update the user's balance
+          navigate("/game", { state: { cartela, cartelaId } }); // Proceed to the game page
+        } else {
+          // Handle errors
+          setAlertMessage(data.error || "An error occurred while joining the game");
+          setTimeout(() => setAlertMessage(""), 3000); // Remove the alert after 3 seconds
+        }
+      } catch (error) {
+        console.error("Error joining game:", error);
+        setAlertMessage("An error occurred while processing your request.");
+        setTimeout(() => setAlertMessage(""), 3000); // Remove the alert after 3 seconds
+      }
     } else {
       setAlertMessage("Your balance is insufficient!");
       setTimeout(() => setAlertMessage(""), 3000); // Remove the alert after 3 seconds
     }
   };
+  
 
   return (
     <div className="flex flex-col items-center p-5 min-h-screen bg-purple-400 text-white w-full overflow-hidden">
