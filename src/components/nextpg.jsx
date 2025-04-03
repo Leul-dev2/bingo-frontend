@@ -276,7 +276,7 @@ const declareWinner = (winnerPattern) => {
   <p className="font-bold text-sm sm:text-base mb-2">Last 4 Calls</p>
   
   <div className="flex justify-center gap-2 sm:gap-4">
-    {randomNumber.slice(-4).map((num, index) => {
+    {randomNumber.slice(-3).map((num, index) => {
       // Define an array of colors for the backgrounds
       const colors = [
         "bg-red-500", // Red
