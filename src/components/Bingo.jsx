@@ -53,11 +53,21 @@ const Bingo = () => {
   };
 
   const startGame = () => {
-    navigate("/game", { state: { cartela, cartelaId } });
+    if (userBalance >= gameChoice) {
+      navigate("/game", { state: { cartela, cartelaId } });
+    } else {
+      setAlertMessage("Your balance is insufficient!");
+      setTimeout(() => setAlertMessage(""), 3000); // Remove the alert after 3 seconds
+    }
   };
 
   return (
     <div className="flex flex-col items-center p-5 min-h-screen bg-purple-400 text-white w-full overflow-hidden">
+    {alertMessage && (
+        <div className="bg-red-500 text-white p-2 rounded-md mb-4">
+          {alertMessage}
+        </div>
+      )}
       <div className="flex justify-around w-full max-w-lg mb-2">
         <div className="bg-white text-purple-400 px-10 py-1 rounded-3xl text-center font-bold text-sm">
           Balance<br />
