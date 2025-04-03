@@ -327,7 +327,7 @@ const declareWinner = (winnerPattern) => {
       {["B", "I", "N", "G", "O"].map((letter, i) => (
         <div
           key={i}
-          className="md:w-10 md:h-10 w-5 h-5 sm:w-12 sm:h-12 flex items-center justify-center font-bold text-white text-base sm:text-lg bg-purple-700 rounded-lg shadow-md"
+          className="md:w-10 md:h-10 w-8 h-8 sm:w-12 sm:h-12 flex items-center justify-center font-bold text-white text-base sm:text-lg bg-purple-700 rounded-lg shadow-md"
         >
           {letter}
         </div>
@@ -345,7 +345,7 @@ const declareWinner = (winnerPattern) => {
             <div
               key={`${rowIndex}-${colIndex}`}
               onClick={() => handleCartelaClick(num)} // Click to mark
-              className={`md:w-10 md:h-10 w-7 h-7 sm:w-12 sm:h-12 flex items-center justify-center font-bold text-sm sm:text-lg border rounded-lg shadow-md cursor-pointer transition
+              className={`md:w-10 md:h-10 w-8 h-8 sm:w-12 sm:h-12 flex items-center justify-center font-bold text-sm sm:text-lg border rounded-lg shadow-md cursor-pointer transition
                 ${
                   isFreeSpace
                     ? "bg-green-500 text-white" // Free space
