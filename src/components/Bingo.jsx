@@ -13,7 +13,7 @@ const Bingo = () => {
   const [gameStatus, setGameStatus] = useState("");
   const [userBalance, setUserBalance] = useState(null);
   const numbers = Array.from({ length: 130 }, (_, i) => i + 1);
-  const [alertMessage, setAlertMessage] = useState(""); // State for alert message
+  const [alertMessage, setAlertMessage] = useState("waiting"); // State for alert message
 
   // Fetch user data from backend
   useEffect(() => {
@@ -74,6 +74,7 @@ const Bingo = () => {
         if (response.ok) {
           // Handle successful join
           setUserBalance(data.newBalance); // Update the user's balance
+          setGameStatus(data.gameStatus);
           navigate("/game", { state: { cartela, cartelaId } }); // Proceed to the game page
         } else {
           // Handle errors
