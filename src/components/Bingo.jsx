@@ -35,6 +35,27 @@ const Bingo = () => {
     }
   };
 
+  const [countdown, setCountdown] = useState(null);
+
+  useEffect(() => {
+      const interval = setInterval(() => {
+          fetch(`https://bingobot-backend.onrender.com/api/games/countdown/${gameId}`)
+              .then(res => res.json())
+              .then(data => {
+                  if (data.countdown !== undefined) {
+                      setCountdown(data.countdown);
+                  } else {
+                      setCountdown(null);
+                      clearInterval(interval);
+                  }
+              })
+              .catch(() => setCountdown(null));
+      }, 1000);
+
+      return () => clearInterval(interval);
+  }, [gameId]);
+
+
   const handleNumberClick = (number) => {
     console.log("clicked");
     const selectedCard = bingoCards.find(card => card.id === number);
@@ -119,7 +140,11 @@ const Bingo = () => {
         </div>
         <div className="bg-white text-purple-400 px-10 py-1 rounded-3xl text-center text-sm font-bold">
           Game Choice<br />
-          <span className="font-bold">{gameChoice} Birr</span>
+          <span className="font-bold">{gameChoice} </span>
+        </div>
+        <div className="bg-white text-purple-400 px-10 py-1 rounded-3xl text-center text-sm font-bold">
+          Game satrts in<br />
+          <span className="font-bold">{countdown} </span>
         </div>
       </div>
 
