@@ -83,49 +83,57 @@ const Bingo = () => {
   };
 
   const startGame = async () => {
-    if (!gameChoice) {
-      setAlertMessage("Game ID is missing!");
-      return;
+    console.log("Game choice:", gameChoice); // Debugging: Check gameChoice value
+
+    if (!gameChoice || gameChoice === null) {
+        setAlertMessage("Game ID is missing!");
+        return;
     }
-  
+
     if (userBalance >= gameChoice) {
-      try {
-        const response = await fetch("https://bingobot-backend.onrender.com/api/games/join", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            telegramId,
-            gameId: gameChoice,  // Ensure this is a valid ID
-            betAmount: gameChoice,
-          }),
-        });
-  
-        const data = await response.json();
-  
-        if (response.ok) {
-          setUserBalance(data.newBalance);
-          setGameStatus(data.gameStatus);
-  
-          // Ensure gameId is correctly stored
-          localStorage.setItem("gameId", data.gameId);
-  
-          navigate("/game", { state: { gameId: data.gameId, cartela, cartelaId } });
-        } else {
-          setAlertMessage(data.error || "An error occurred while joining the game");
-          setTimeout(() => setAlertMessage(""), 3000);
+        try {
+            const response = await fetch("https://bingobot-backend.onrender.com/api/games/join", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    telegramId,
+                    gameId: Number(gameChoice),  // Ensure it's a valid number
+                    betAmount: Number(gameChoice),
+                }),
+            });
+
+            const data = await response.json();
+            console.log("Server response:", data); // Debugging: Check server response
+
+            if (response.ok) {
+                setUserBalance(data.newBalance);
+                setGameStatus(data.gameStatus);
+
+                // Ensure gameId is correctly stored and retrieved
+                if (data.gameId) {
+                    localStorage.setItem("gameId", data.gameId);
+                } else {
+                    console.error("gameId missing in response!");
+                }
+
+                navigate("/game", { state: { gameId: data.gameId, cartela, cartelaId } });
+            } else {
+                setAlertMessage(data.error || "An error occurred while joining the game");
+                setTimeout(() => setAlertMessage(""), 3000);
+            }
+        } catch (error) {
+            console.error("Error joining game:", error);
+            setAlertMessage("An error occurred while processing your request.");
+            setTimeout(() => setAlertMessage(""), 3000);
         }
-      } catch (error) {
-        console.error("Error joining game:", error);
-        setAlertMessage("An error occurred while processing your request.");
-        setTimeout(() => setAlertMessage(""), 3000);
-      }
     } else {
-      setAlertMessage("Your balance is insufficient!");
-      setTimeout(() => setAlertMessage(""), 3000);
+        setAlertMessage("Your balance is insufficient!");
+        setTimeout(() => setAlertMessage(""), 3000);
     }
-  };
+};
+
   
 
 
