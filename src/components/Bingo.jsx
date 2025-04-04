@@ -13,7 +13,7 @@ const Bingo = () => {
   const [gameStatus, setGameStatus] = useState("");
   const [userBalance, setUserBalance] = useState(null);
   const numbers = Array.from({ length: 130 }, (_, i) => i + 1);
-  const [alertMessage, setAlertMessage] = useState("waiting"); // State for alert message
+  const [alertMessage, setAlertMessage] = useState(""); // State for alert message
 
   // Fetch user data from backend
   useEffect(() => {
@@ -32,6 +32,7 @@ const Bingo = () => {
       setUserBalance(data.balance); // Store user balance
     } catch (error) {
       console.error("Error fetching user data:", error);
+      setAlertMessage("Error fetching user data.");
     }
   };
 
@@ -58,11 +59,7 @@ const Bingo = () => {
 
     const interval = setInterval(checkGameStatus, 3000);
     return () => clearInterval(interval);
-}, []);
-
-  
-
-
+  }, []);
 
   const handleNumberClick = (number) => {
     console.log("clicked");
@@ -85,8 +82,14 @@ const Bingo = () => {
   const startGame = async () => {
     console.log("Game choice:", gameChoice); // Debugging: Check gameChoice value
 
+    const storedGameId = localStorage.getItem("gameId"); // Retrieve stored game ID from localStorage
+    if (!storedGameId) {
+      setAlertMessage("Game ID is missing!");
+      return;
+    }
+
     if (!gameChoice || gameChoice === null) {
-        setAlertMessage("Game ID is missing!");
+        setAlertMessage("Game choice is missing!");
         return;
     }
 
@@ -99,7 +102,7 @@ const Bingo = () => {
                 },
                 body: JSON.stringify({
                     telegramId,
-                    gameId: Number(gameChoice),  // Ensure it's a valid number
+                    gameId: Number(storedGameId),  // Ensure it's a valid game ID
                     betAmount: Number(gameChoice),
                 }),
             });
@@ -132,28 +135,24 @@ const Bingo = () => {
         setAlertMessage("Your balance is insufficient!");
         setTimeout(() => setAlertMessage(""), 3000);
     }
-};
-
-  
-
-
-  
+  };
 
   return (
     <div className="flex flex-col items-center p-5 min-h-screen bg-purple-400 text-white w-full overflow-hidden">
-         {alertMessage && (
-            <div className="fixed top-0 left-0 w-full flex justify-center z-50">
-              <div className="flex items-center max-w-sm w-full p-3 m-2 bg-red-100 border-l-4 border-red-500 text-red-700 rounded-md shadow-lg">
-                <svg className="w-5 h-5 mr-2 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M18 10c0 4.418-3.582 8-8 8s-8-3.582-8-8 3.582-8 8-8 8 3.582 8 8zM9 7a1 1 0 012 0v3a1 1 0 01-2 0V7zm1 6a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" />
-                </svg>
-                <span className="flex-1 text-sm">{alertMessage}</span>
-                <button className="text-gray-500 hover:text-gray-700" onClick={() => setAlertMessage("")}>
-                  ✕
-                </button>
-              </div>
-            </div>
-          )}
+      {alertMessage && (
+        <div className="fixed top-0 left-0 w-full flex justify-center z-50">
+          <div className="flex items-center max-w-sm w-full p-3 m-2 bg-red-100 border-l-4 border-red-500 text-red-700 rounded-md shadow-lg">
+            <svg className="w-5 h-5 mr-2 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10c0 4.418-3.582 8-8 8s-8-3.582-8-8 3.582-8 8-8 8 3.582 8 8zM9 7a1 1 0 012 0v3a1 1 0 01-2 0V7zm1 6a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" />
+            </svg>
+            <span className="flex-1 text-sm">{alertMessage}</span>
+            <button className="text-gray-500 hover:text-gray-700" onClick={() => setAlertMessage("")}>
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-around w-full max-w-lg mb-2">
         <div className="bg-white text-purple-400 px-10 py-1 rounded-3xl text-center font-bold text-sm">
           Balance<br />
@@ -174,9 +173,7 @@ const Bingo = () => {
           <button
             key={num}
             onClick={() => handleNumberClick(num)}
-            className={`w-8 h-8 flex items-center justify-center rounded-md border border-gray-300 font-bold cursor-pointer transition-all duration-200 text-xs ${
-              cartelaId === num ? "bg-green-500 text-white" : "bg-purple-100 text-black"
-            }`}
+            className={`w-8 h-8 flex items-center justify-center rounded-md border border-gray-300 font-bold cursor-pointer transition-all duration-200 text-xs ${cartelaId === num ? "bg-green-500 text-white" : "bg-purple-100 text-black"}`}
           >
             {num}
           </button>
