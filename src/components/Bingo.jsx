@@ -159,7 +159,7 @@ const Bingo = () => {
           <span className="font-bold">{userBalance !== null ? `${userBalance} Birr` : "Loading..."}</span>
         </div>
         <div className="bg-white text-purple-400 px-3 py-1 rounded-3xl text-center font-bold text-sm">
-          Game Started<br />
+          Game <br />
           <span className="font-bold">{gameStatus}</span>
         </div>
         <div className="bg-white text-purple-400 px-10 py-1 rounded-3xl text-center text-sm font-bold">
