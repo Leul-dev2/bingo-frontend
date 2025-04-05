@@ -1,68 +1,77 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import bingoCards from "../assets/bingoCards.json"; // Import the JSON file
+import { io } from "socket.io-client";
 
-const Bingo = () => {
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { io } from "socket.io-client";
+
+// Initialize socket connection
+const socket = io("https://bingobot-backend.onrender.com"); // Change to your backend address
+
+const GameSetup = ({ bingoCards }) => {
   const [searchParams] = useSearchParams();
-  const telegramId = searchParams.get("user"); // Extract user from URL
-  const gameChoice = searchParams.get("game"); // Extract game choice
+  const telegramId = searchParams.get("user");
+  const gameChoice = searchParams.get("game");
   const navigate = useNavigate();
-  
+
   const [cartelaId, setCartelaId] = useState(null);
   const [cartela, setCartela] = useState([]);
   const [gameStatus, setGameStatus] = useState("");
   const [userBalance, setUserBalance] = useState(null);
-  const numbers = Array.from({ length: 130 }, (_, i) => i + 1);
-  const [alertMessage, setAlertMessage] = useState(""); // State for alert message
+  const [alertMessage, setAlertMessage] = useState("");
 
-  // Fetch user data from backend
-  useEffect(() => {
-    if (telegramId) {
-      fetchUserData(telegramId);
-    }
-  }, [telegramId]);
-
+  // 🟢 Fetch User Balance from REST
   const fetchUserData = async (id) => {
     try {
-      const response = await fetch(`https://bingobot-backend.onrender.com/api/users/getUser?telegramId=${id}`);
-      if (!response.ok) {
-        throw new Error("User not found");
-      }
-      const data = await response.json();
-      setUserBalance(data.balance); // Store user balance
-    } catch (error) {
-      console.error("Error fetching user data:", error);
+      const res = await fetch(`https://bingobot-backend.onrender.com/api/users/getUser?telegramId=${id}`);
+      if (!res.ok) throw new Error("User not found");
+      const data = await res.json();
+      setUserBalance(data.balance);
+    } catch (err) {
+      console.error(err);
       setAlertMessage("Error fetching user data.");
     }
   };
 
+  // 🟢 Initial Effect to Fetch & Setup Socket
   useEffect(() => {
-    const storedGameId = localStorage.getItem("gameId"); // Retrieve stored gameId
+    if (!telegramId) return;
+    fetchUserData(telegramId);
 
-    if (!storedGameId) {
-        console.error("Game ID is missing!");
-        return;
-    }
+    // Join Socket Room for Telegram ID
+    socket.emit("joinUser", { telegramId });
 
-    const checkGameStatus = async () => {
-        try {
-            const response = await fetch(`https://bingobot-backend.onrender.com/api/games/status?gameId=${storedGameId}`);
-            const data = await response.json();
+    // Listen for balance update from server
+    socket.on("balanceUpdated", (newBalance) => {
+      setUserBalance(newBalance);
+    });
 
-            if (response.ok && data.gameStatus === "active") {
-                navigate("/game", { state: { cartela, cartelaId, gameId: storedGameId } });
-            }
-        } catch (error) {
-            console.error("Error checking game status:", error);
+    // Listen for game status updates
+    socket.on("gameStatusUpdate", (status) => {
+      setGameStatus(status);
+      if (status === "active") {
+        const gameId = localStorage.getItem("gameId");
+        if (gameId) {
+          navigate("/game", { state: { cartela, cartelaId, gameId } });
         }
+      }
+    });
+
+    // Handle errors from server
+    socket.on("error", (err) => {
+      console.error(err);
+      setAlertMessage(err.message);
+    });
+
+    return () => {
+      socket.disconnect();
     };
+  }, [telegramId]);
 
-    const interval = setInterval(checkGameStatus, 3000);
-    return () => clearInterval(interval);
-  }, []);
-
+  // 🟢 Select a bingo card
   const handleNumberClick = (number) => {
-    console.log("clicked");
     const selectedCard = bingoCards.find(card => card.id === number);
     if (selectedCard) {
       setCartela(selectedCard.card);
@@ -79,64 +88,64 @@ const Bingo = () => {
     setGameStatus("");
   };
 
+  // 🟢 Join Game & Emit to Socket
   const startGame = async () => {
-    console.log("Game choice:", gameChoice); // Debugging: Check gameChoice value
-
-    const storedGameId = localStorage.getItem("gameId"); // Retrieve stored game ID from localStorage
+    const storedGameId = localStorage.getItem("gameId");
     if (!storedGameId) {
       setAlertMessage("Game ID is missing!");
       return;
     }
 
-    if (!gameChoice || gameChoice === null) {
-        setAlertMessage("Game choice is missing!");
-        return;
+    if (!gameChoice) {
+      setAlertMessage("Game choice is missing!");
+      return;
     }
 
     if (userBalance >= gameChoice) {
-        try {
-            const response = await fetch("https://bingobot-backend.onrender.com/api/games/join", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    telegramId,
-                    gameId: Number(storedGameId),  // Ensure it's a valid game ID
-                    betAmount: Number(gameChoice),
-                }),
-            });
+      try {
+        const res = await fetch("https://bingobot-backend.onrender.com/api/games/join", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            telegramId,
+            gameId: Number(storedGameId),
+            betAmount: Number(gameChoice),
+          }),
+        });
 
-            const data = await response.json();
-            console.log("Server response:", data); // Debugging: Check server response
+        const data = await res.json();
+        if (res.ok) {
+          setUserBalance(data.newBalance);
+          setGameStatus(data.gameStatus);
 
-            if (response.ok) {
-                setUserBalance(data.newBalance);
-                setGameStatus(data.gameStatus);
+          if (data.gameId) {
+            localStorage.setItem("gameId", data.gameId);
+          }
 
-                // Ensure gameId is correctly stored and retrieved
-                if (data.gameId) {
-                    localStorage.setItem("gameId", data.gameId);
-                } else {
-                    console.error("gameId missing in response!");
-                }
+          // Emit join event to socket
+          socket.emit("userJoinedGame", {
+            telegramId,
+            gameId: data.gameId,
+            cartelaId,
+            cartela,
+          });
 
-                navigate("/game", { state: { gameId: data.gameId, cartela, cartelaId } });
-            } else {
-                setAlertMessage(data.error || "An error occurred while joining the game");
-                setTimeout(() => setAlertMessage(""), 3000);
-            }
-        } catch (error) {
-            console.error("Error joining game:", error);
-            setAlertMessage("An error occurred while processing your request.");
-            setTimeout(() => setAlertMessage(""), 3000);
+          navigate("/game", { state: { gameId: data.gameId, cartela, cartelaId } });
+        } else {
+          setAlertMessage(data.error || "An error occurred while joining the game");
+          setTimeout(() => setAlertMessage(""), 3000);
         }
-    } else {
-        setAlertMessage("Your balance is insufficient!");
+      } catch (err) {
+        console.error(err);
+        setAlertMessage("An error occurred while processing your request.");
         setTimeout(() => setAlertMessage(""), 3000);
+      }
+    } else {
+      setAlertMessage("Your balance is insufficient!");
+      setTimeout(() => setAlertMessage(""), 3000);
     }
   };
-
+  
   return (
     <div className="flex flex-col items-center p-5 min-h-screen bg-purple-400 text-white w-full overflow-hidden">
       {alertMessage && (
