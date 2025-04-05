@@ -41,6 +41,7 @@ function Bingo (){
 
     // Join Socket Room for Telegram ID
     socket.emit("joinUser", { telegramId });
+    
     socket.on("userconnected", (res) => {
           setResponse(res.telegramId);
     })
@@ -118,7 +119,7 @@ function Bingo (){
         </div>
         <div className="bg-white text-purple-400 px-3 py-1 rounded-3xl text-center font-bold text-sm">
           Game <br />
-          <span className="font-bold">{response}</span>
+          <span className="font-bold">{gameStatus}</span>
         </div>
         <div className="bg-white text-purple-400 px-10 py-1 rounded-3xl text-center text-sm font-bold">
           Game Choice<br />
