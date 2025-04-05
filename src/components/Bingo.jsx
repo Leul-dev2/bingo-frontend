@@ -5,7 +5,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { io } from "socket.io-client";
 
 // Initialize socket connection
-const socket = io("http://localhost:5000"); // Change to your backend address 
+const socket = io("https://bingobot-backend.onrender.com"); // Change to your backend address 
 
 function Bingo (){
 
