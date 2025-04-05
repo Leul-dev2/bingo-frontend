@@ -19,6 +19,7 @@ function Bingo (){
   const [userBalance, setUserBalance] = useState(null);
   const [alertMessage, setAlertMessage] = useState("");
   const numbers = Array.from({ length: 130 }, (_, i) => i + 1);
+  const [response, setResponse] = useState("");
 
   // 🟢 Fetch User Balance from REST
   const fetchUserData = async (id) => {
@@ -40,6 +41,9 @@ function Bingo (){
 
     // Join Socket Room for Telegram ID
     socket.emit("joinUser", { telegramId });
+    socket.on("userconnected", (res) => {
+          setResponse(res.telegramId);
+    })
 
     // Listen for balance update from server
     socket.on("balanceUpdated", (newBalance) => {
@@ -114,7 +118,7 @@ function Bingo (){
         </div>
         <div className="bg-white text-purple-400 px-3 py-1 rounded-3xl text-center font-bold text-sm">
           Game <br />
-          <span className="font-bold">{gameStatus}</span>
+          <span className="font-bold">{response}</span>
         </div>
         <div className="bg-white text-purple-400 px-10 py-1 rounded-3xl text-center text-sm font-bold">
           Game Choice<br />
