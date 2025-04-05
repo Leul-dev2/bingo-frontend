@@ -1,8 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import bingoCards from "../assets/bingoCards.json"; // Import the JSON file
-import { io } from "socket.io-client";
 
+import bingoCards from "../assets/bingoCards.json"; // Import the JSON file
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { io } from "socket.io-client";
@@ -10,7 +7,7 @@ import { io } from "socket.io-client";
 // Initialize socket connection
 const socket = io("https://bingobot-backend.onrender.com"); // Change to your backend address
 
-const GameSetup = ({ bingoCards }) => {
+const Bingo = ({ bingoCards }) => {
   const [searchParams] = useSearchParams();
   const telegramId = searchParams.get("user");
   const gameChoice = searchParams.get("game");
@@ -145,7 +142,7 @@ const GameSetup = ({ bingoCards }) => {
       setTimeout(() => setAlertMessage(""), 3000);
     }
   };
-  
+
   return (
     <div className="flex flex-col items-center p-5 min-h-screen bg-purple-400 text-white w-full overflow-hidden">
       {alertMessage && (
