@@ -7,18 +7,19 @@ import { io } from "socket.io-client";
 // Initialize socket connection
 const socket = io("https://bingobot-backend.onrender.com"); // Change to your backend address
 
-const Bingo = ({ bingoCards }) => {
+function Bingo (){
+
   const [searchParams] = useSearchParams();
   const telegramId = searchParams.get("user");
   const gameChoice = searchParams.get("game");
   const navigate = useNavigate();
-
   const [cartelaId, setCartelaId] = useState(null);
   const [cartela, setCartela] = useState([]);
   const [gameStatus, setGameStatus] = useState("");
   const [userBalance, setUserBalance] = useState(null);
   const [alertMessage, setAlertMessage] = useState("");
-
+  const numbers = Array.from({ length: 130 }, (_, i) => i + 1);
+  
   // 🟢 Fetch User Balance from REST
   const fetchUserData = async (id) => {
     try {
