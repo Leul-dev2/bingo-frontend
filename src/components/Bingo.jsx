@@ -124,7 +124,7 @@ function Bingo (){
         </div>
         <div className="bg-white text-purple-400 px-10 py-1 rounded-3xl text-center text-sm font-bold">
           Game Choice<br />
-          <span className="font-bold">{gameChoice} </span>
+          <span className="font-bold">{gameId} </span>
         </div>
       </div>
 
