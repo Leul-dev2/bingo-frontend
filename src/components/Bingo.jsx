@@ -11,7 +11,7 @@ function Bingo (){
 
   const [searchParams] = useSearchParams();
   const telegramId = searchParams.get("user");
-  const gameChoice = searchParams.get("game");
+  const gameId = searchParams.get("game");
   const navigate = useNavigate();
   const [cartelaId, setCartelaId] = useState(null);
   const [cartela, setCartela] = useState([]);
@@ -41,6 +41,7 @@ function Bingo (){
 
     // Join Socket Room for Telegram ID
     socket.emit("joinUser", { telegramId });
+    socket.emit("userJoinedGame", { gameId });
     
     socket.on("userconnected", (res) => {
           setResponse(res.telegramId);
