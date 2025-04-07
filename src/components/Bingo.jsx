@@ -94,8 +94,37 @@ function Bingo (){
 
   // 🟢 Join Game & Emit to Socket
   const startGame = async () => {
-   
+    try {
+      // Send the gameId and user information to the backend to create the game room
+      const response = await fetch("https://your-backend-url/api/games/start", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          gameId: gameId, // The gameId you're passing in the URL
+          telegramId: telegramId, // The user's telegramId
+          betAmount: betAmount, // The bet amount the user is placing
+        }),
+      });
+  
+      const data = await response.json();
+  
+      if (response.ok) {
+        // Set the game status to "waiting" or any other status you prefer
+        setGameStatus("waiting");
+  
+        // Navigate to the game page or handle other actions after starting the game
+        navigate("/game", { state: { gameId, telegramId } });
+      } else {
+        setAlertMessage(data.error || "Error starting the game");
+      }
+    } catch (error) {
+      setAlertMessage("Error connecting to the backend");
+      console.error(error);
+    }
   };
+  
 
   return (
     <div className="flex flex-col items-center p-5 min-h-screen bg-purple-400 text-white w-full overflow-hidden">
