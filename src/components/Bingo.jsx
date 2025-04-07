@@ -8,8 +8,8 @@ const socket = io("https://bingobot-backend.onrender.com"); // Change to your ba
 
 function Bingo() {
   const [searchParams] = useSearchParams();
-  const telegramId = 637145475;
-  const gameId = 10;
+  const telegramId = searchParams.get("user"); // Get telegramId from URL query parameters
+  const gameId = searchParams.get("game"); // Get gameId from URL query parameters
   const navigate = useNavigate();
   const [cartelaId, setCartelaId] = useState(null);
   const [cartela, setCartela] = useState([]);
