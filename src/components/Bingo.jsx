@@ -85,31 +85,40 @@ function Bingo() {
       setGameStatus("Ready to Start");
 
       // Emit selected card event to the server
-      socket.emit('cardSelected', {
+      socket.emit("cardSelected", {
+        telegramId,
+        gameId,
         cardId: number,
         card: selectedCard.card,
-      });
+      });      
     } else {
       console.error("Card not found for ID:", number);
     }
   };
 
   useEffect(() => {
-    // Listen for the broadcasted cardSelected event
-    socket.on('cardSelected', (data) => {
-      console.log('Card selected:', data);
-
-      // Update the game state with the selected card
+    // ✅ Listen only for the card confirmation for THIS user
+    socket.on('cardConfirmed', (data) => {
+      console.log('Card confirmed for this user:', data);
+  
       setCartela(data.card);
       setCartelaId(data.cardId);
       setGameStatus("Ready to Start");
     });
-
-    // Cleanup the listener on component unmount
+  
+    // ✅ Optionally listen when other users pick a card
+    socket.on('userCardSelected', ({ telegramId }) => {
+      console.log(`User ${telegramId} has selected a card`);
+      // You could update UI to show this if needed
+    });
+  
+    // 🔁 Cleanup on unmount
     return () => {
-      socket.off('cardSelected');
+      socket.off('cardConfirmed');
+      socket.off('userCardSelected');
     };
   }, []);
+  
 
   const resetGame = () => {
     setCartelaId(null);
