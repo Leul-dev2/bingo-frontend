@@ -96,7 +96,7 @@ function Bingo (){
   const startGame = async () => {
     try {
       // Send the gameId and user information to the backend to create the game room
-      const response = await fetch("https://your-backend-url/api/games/start", {
+      const response = await fetch("https://bingobot-backend.onrender.com/api/games/start", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
