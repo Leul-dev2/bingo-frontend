@@ -104,7 +104,6 @@ function Bingo (){
         body: JSON.stringify({
           gameId: gameId, // The gameId you're passing in the URL
           telegramId: telegramId, // The user's telegramId
-          betAmount: betAmount, // The bet amount the user is placing
         }),
       });
   
