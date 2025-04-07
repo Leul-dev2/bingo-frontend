@@ -108,16 +108,15 @@ function Bingo (){
       });
   
       const data = await response.json();
-  
-      if (response.ok) {
-        // Set the game status to "waiting" or any other status you prefer
-        setGameStatus("waiting");
-  
-        // Navigate to the game page or handle other actions after starting the game
+     socket.on("gameid", (res)=> {
+      const { gameId, telegramId } = data;
+      if (gameId) {
         navigate("/game", { state: { gameId, telegramId } });
       } else {
-        setAlertMessage(data.error || "Error starting the game");
+        setAlertMessage("Game ID is not sent!");
       }
+     });
+
     } catch (error) {
       setAlertMessage("Error connecting to the backend");
       console.error(error);
