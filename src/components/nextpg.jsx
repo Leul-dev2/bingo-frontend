@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 const BingoGame = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { cartela, cartelaId } = location.state || {};
+  const { cartela, cartelaId, gameId } = location.state || {};
 
 
   const bingoColors = {
@@ -229,7 +229,7 @@ const declareWinner = (winnerPattern) => {
   return (
     <div className="bg-purple-400 min-h-screen flex flex-col items-center p-2 w-full max-w-screen overflow-hidden">
       <div className="grid grid-cols-5 sm:grid-cols-5 gap-1 w-full p-2 bg-purple-600 text-white text-center">
-        {["Game 100311389", "Derash", "Bonus", "Players", "Bet"].map((info, i) => (
+        {[gameId, "Derash", "Bonus", "Players", "Bet"].map((info, i) => (
           <button key={i} className="bg-white text-black p-1 text-sm rounded w-full">
             {info}
           </button>

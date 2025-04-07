@@ -1,17 +1,15 @@
-
 import bingoCards from "../assets/bingoCards.json"; // Import the JSON file
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { io } from "socket.io-client";
 
 // Initialize socket connection
-const socket = io("https://bingobot-backend.onrender.com"); // Change to your backend address 
+const socket = io("https://bingobot-backend.onrender.com"); // Change to your backend address
 
-function Bingo (){
-
+function Bingo() {
   const [searchParams] = useSearchParams();
-  const telegramId = searchParams.get("user");
-  const gameId = searchParams.get("game");
+  const telegramId = 637145475;
+  const gameId = 10;
   const navigate = useNavigate();
   const [cartelaId, setCartelaId] = useState(null);
   const [cartela, setCartela] = useState([]);
@@ -24,7 +22,7 @@ function Bingo (){
   // 🟢 Fetch User Balance from REST
   const fetchUserData = async (id) => {
     try {
-      const res = await fetch(`https://bingobot-backend.onrender.com/api/users/getUser?telegramId=${id}`);
+      const res = await fetch(`https://bingobot-backend.onrender.com/api/users/getUser?telegramId=${telegramId}`);
       if (!res.ok) throw new Error("User not found");
       const data = await res.json();
       setUserBalance(data.balance);
@@ -44,8 +42,8 @@ function Bingo (){
     socket.emit("userJoinedGame", { gameId });
     
     socket.on("userconnected", (res) => {
-          setResponse(res.telegramId);
-    })
+      setResponse(res.telegramId);
+    });
 
     // Listen for balance update from server
     socket.on("balanceUpdated", (newBalance) => {
@@ -55,12 +53,12 @@ function Bingo (){
     // Listen for game status updates
     socket.on("gameStatusUpdate", (status) => {
       setGameStatus(status);
-      // if (status === "active") {
-      //   const gameId = localStorage.getItem("gameId");
-      //   if (gameId) {
-      //     navigate("/game", { state: { cartela, cartelaId, gameId } });
-      //   }
-      // }
+      if (status === "active") {
+        const gameId = localStorage.getItem("gameId");
+        if (gameId) {
+          navigate("/game", { state: { cartela, cartelaId, gameId } });
+        }
+      }
     });
 
     // Handle errors from server
@@ -69,10 +67,14 @@ function Bingo (){
       setAlertMessage(err.message);
     });
 
+    // Cleanup socket listeners when the component unmounts
     return () => {
-      socket.disconnect();
+      socket.off("userconnected");
+      socket.off("balanceUpdated");
+      socket.off("gameStatusUpdate");
+      socket.off("error");
     };
-  }, [telegramId]);
+  }, [telegramId, navigate]);
 
   // 🟢 Select a bingo card
   const handleNumberClick = (number) => {
@@ -81,10 +83,33 @@ function Bingo (){
       setCartela(selectedCard.card);
       setCartelaId(number);
       setGameStatus("Ready to Start");
+
+      // Emit selected card event to the server
+      socket.emit('cardSelected', {
+        cardId: number,
+        card: selectedCard.card,
+      });
     } else {
       console.error("Card not found for ID:", number);
     }
   };
+
+  useEffect(() => {
+    // Listen for the broadcasted cardSelected event
+    socket.on('cardSelected', (data) => {
+      console.log('Card selected:', data);
+
+      // Update the game state with the selected card
+      setCartela(data.card);
+      setCartelaId(data.cardId);
+      setGameStatus("Ready to Start");
+    });
+
+    // Cleanup the listener on component unmount
+    return () => {
+      socket.off('cardSelected');
+    };
+  }, []);
 
   const resetGame = () => {
     setCartelaId(null);
@@ -108,14 +133,16 @@ function Bingo (){
       });
   
       const data = await response.json();
-     socket.on("gameid", (res)=> {
-      const { gameId, telegramId } = data;
-      if (gameId) {
-        navigate("/game", { state: { gameId, telegramId } });
-      } else {
-        setAlertMessage("Game ID is not sent!");
-      }
-     });
+       if(response.ok){
+        socket.on("gameid", (res)=> {
+          const { gameId, telegramId } = data;
+          if (gameId) {
+            navigate("/game", { state: { gameId, telegramId, cartela } });
+          } else {
+            setAlertMessage("Game ID is not sent!");
+          }
+         });
+       } 
 
     } catch (error) {
       setAlertMessage("Error connecting to the backend");
