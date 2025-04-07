@@ -18,6 +18,8 @@ function Bingo() {
   const [alertMessage, setAlertMessage] = useState("");
   const numbers = Array.from({ length: 130 }, (_, i) => i + 1);
   const [response, setResponse] = useState("");
+  const [otherSelectedCards, setOtherSelectedCards] = useState({});
+
 
   // 🟢 Fetch User Balance from REST
   const fetchUserData = async (id) => {
@@ -97,27 +99,27 @@ function Bingo() {
   };
 
   useEffect(() => {
-    // ✅ Listen only for the card confirmation for THIS user
+    // Handle your own card confirmation
     socket.on('cardConfirmed', (data) => {
-      console.log('Card confirmed for this user:', data);
-  
       setCartela(data.card);
       setCartelaId(data.cardId);
       setGameStatus("Ready to Start");
     });
   
-    // ✅ Optionally listen when other users pick a card
-    socket.on('userCardSelected', ({ telegramId }) => {
-      console.log(`User ${telegramId} has selected a card`);
-      // You could update UI to show this if needed
+    // Handle other users' selected cards
+    socket.on('otherCardSelected', ({ telegramId, cardId }) => {
+      setOtherSelectedCards(prev => ({
+        ...prev,
+        [telegramId]: cardId,
+      }));
     });
   
-    // 🔁 Cleanup on unmount
     return () => {
       socket.off('cardConfirmed');
-      socket.off('userCardSelected');
+      socket.off('otherCardSelected');
     };
   }, []);
+  
   
 
   const resetGame = () => {
@@ -192,16 +194,25 @@ function Bingo() {
       </div>
 
       <div className="grid grid-cols-10 gap-1 p-2 max-w-lg w-full text-xs">
-        {numbers.map((num) => (
-          <button
-            key={num}
-            onClick={() => handleNumberClick(num)}
-            className={`w-8 h-8 flex items-center justify-center rounded-md border border-gray-300 font-bold cursor-pointer transition-all duration-200 text-xs ${cartelaId === num ? "bg-green-500 text-white" : "bg-purple-100 text-black"}`}
-          >
-            {num}
-          </button>
-        ))}
+        {numbers.map((num) => {
+          const isMyCard = cartelaId === num;
+          const isOtherCard = Object.values(otherSelectedCards).includes(num);
+
+          return (
+            <button
+              key={num}
+              onClick={() => handleNumberClick(num)}
+              className={`w-8 h-8 flex items-center justify-center rounded-md border border-gray-300 font-bold cursor-pointer transition-all duration-200 text-xs
+                ${isMyCard ? "bg-green-500 text-white"
+                  : isOtherCard ? "bg-yellow-400 text-black"
+                  : "bg-purple-100 text-black"}`}
+            >
+              {num}
+            </button>
+          );
+        })}
       </div>
+
 
       {cartela.length > 0 && (
         <div className="grid grid-cols-5 gap-1 p-2 bg-transparent text-white">
