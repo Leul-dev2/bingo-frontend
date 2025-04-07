@@ -112,6 +112,8 @@ function Bingo (){
           const { gameId, telegramId } = data;  // Assuming the backend sends both gameId and telegramId.
           if (gameId) {
              navigate("/game", { state: { gameId, telegramId } });
+          }else{
+            alert("game id is not sent!!")
           }
        });
        
