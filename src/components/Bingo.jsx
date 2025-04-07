@@ -53,12 +53,12 @@ function Bingo() {
     // Listen for game status updates
     socket.on("gameStatusUpdate", (status) => {
       setGameStatus(status);
-      if (status === "active") {
-        const gameId = localStorage.getItem("gameId");
-        if (gameId) {
-          navigate("/game", { state: { cartela, cartelaId, gameId } });
-        }
-      }
+      // if (status === "active") {
+      //   const gameId = localStorage.getItem("gameId");
+      //   if (gameId) {
+      //     navigate("/game", { state: { cartela, cartelaId, gameId } });
+      //   }
+      // }
     });
 
     // Handle errors from server
