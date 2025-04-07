@@ -109,13 +109,16 @@ function Bingo (){
   
         // Navigate to the game page or handle other actions after starting the game
         socket.on("gameid", (data) => {
-          const { gameId, telegramId } = data;  // Assuming the backend sends both gameId and telegramId.
+          const { gameId, telegramId } = data;
+          alert(`Received gameId: ${gameId}, telegramId: ${telegramId}`);
+          
           if (gameId) {
-             navigate("/game", { state: { gameId, telegramId } });
-          }else{
-            alert("game id is not sent!!")
+            navigate("/game", { state: { gameId, telegramId } });
+          } else {
+            setAlertMessage("game id is not sent!!");
           }
-       });
+        });
+        
        
        
       } else {
