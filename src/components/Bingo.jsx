@@ -55,6 +55,12 @@ function Bingo (){
     // Listen for game status updates
     socket.on("gameStatusUpdate", (status) => {
       setGameStatus(status);
+      // if (status === "active") {
+      //   const gameId = localStorage.getItem("gameId");
+      //   if (gameId) {
+      //     navigate("/game", { state: { cartela, cartelaId, gameId } });
+      //   }
+      // }
     });
 
     // Handle errors from server
@@ -108,19 +114,7 @@ function Bingo (){
         setGameStatus("waiting");
   
         // Navigate to the game page or handle other actions after starting the game
-        socket.on("gameid", (data) => {
-          const { gameId, telegramId } = data;
-          alert(`Received gameId: ${gameId}, telegramId: ${telegramId}`);
-          
-          if (gameId) {
-            navigate("/game", { state: { gameId, telegramId } });
-          } else {
-            setAlertMessage("game id is not sent!!");
-          }
-        });
-        
-       
-       
+        navigate("/game", { state: { gameId, telegramId } });
       } else {
         setAlertMessage(data.error || "Error starting the game");
       }
