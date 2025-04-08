@@ -126,7 +126,7 @@ function Bingo() {
       socket.off('otherCardSelected');
       socket.off("gameid");
     };
-  }, []);
+  }, [socket]);
   
   
 
