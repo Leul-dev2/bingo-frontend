@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Bingo from "./components/Bingo";
 import BingoGame from "./components/nextpg";
 import WinnerPage from "./components/WinnerPage";
-import JoinGame from "./components/JoinGame";
+
 
 const App = () => {
   const [cartela, setCartela] = useState([]);
