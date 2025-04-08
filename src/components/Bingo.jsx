@@ -19,6 +19,7 @@ function Bingo() {
   const numbers = Array.from({ length: 130 }, (_, i) => i + 1);
   const [response, setResponse] = useState("");
   const [otherSelectedCards, setOtherSelectedCards] = useState({});
+  const [count, setCount] = useState(0);
 
 
   // 🟢 Fetch User Balance from REST
@@ -113,10 +114,18 @@ function Bingo() {
         [telegramId]: cardId,
       }));
     });
+
+    socket.on("gameid", (data) => {
+      if (data.gameId === gameId) {
+        setCount(data.numberOfPlayers);
+      }
+    });
+
   
     return () => {
       socket.off('cardConfirmed');
       socket.off('otherCardSelected');
+      socket.off("gameid");
     };
   }, []);
   
@@ -185,7 +194,7 @@ function Bingo() {
         </div>
         <div className="bg-white text-purple-400 px-3 py-1 rounded-3xl text-center font-bold text-sm">
           Game <br />
-          <span className="font-bold">{gameStatus}</span>
+          <span className="font-bold">{count}</span>
         </div>
         <div className="bg-white text-purple-400 px-10 py-1 rounded-3xl text-center text-sm font-bold">
           Game Choice<br />
@@ -202,6 +211,7 @@ function Bingo() {
             <button
               key={num}
               onClick={() => handleNumberClick(num)}
+              disabled={isOtherCard}
               className={`w-8 h-8 flex items-center justify-center rounded-md border border-gray-300 font-bold cursor-pointer transition-all duration-200 text-xs
                 ${isMyCard ? "bg-green-500 text-white"
                   : isOtherCard ? "bg-yellow-400 text-black"

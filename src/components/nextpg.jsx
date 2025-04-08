@@ -21,7 +21,7 @@ const BingoGame = () => {
   const [calledNumbers, setCalledNumbers] = useState([]);
   const [currentCall, setCurrentCall] = useState(null);
   const [selectedNumbers, setSelectedNumbers] = useState(new Set());
-  const [countdown, setCountdown] = useState(5);
+  const [countdown, setCountdown] = useState(25);
   const [calledSet, setCalledSet] = useState(new Set()); // Track called numbers
   const intervalRef = useRef(null); // Store interval reference
   const [lastWinnerCells, setLastWinnerCells] = useState([]);
