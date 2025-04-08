@@ -79,6 +79,29 @@ function Bingo() {
     };
   }, [telegramId, navigate]);
 
+  useEffect(() => {
+    socket.on("currentCardSelections", (cards) => {
+      // Loop through the cards and mark them as selected in the UI
+      setOtherSelectedCards(cards); // Update the selected cards by others
+    });
+
+    socket.on("cardAvailable", ({ cardId }) => {
+      // Handle the card being available again
+      // In this case, mark the card as available in the UI
+      setOtherSelectedCards(prevCards => {
+        const newCards = { ...prevCards };
+        delete newCards[cardId]; // Remove the card from the selected list
+        return newCards;
+      });
+    });
+
+    return () => {
+      socket.off("currentCardSelections");
+      socket.off("cardAvailable");
+    };
+  }, []);
+  
+
   // 🟢 Select a bingo card
   const handleNumberClick = (number) => {
     const selectedCard = bingoCards.find(card => card.id === number);
