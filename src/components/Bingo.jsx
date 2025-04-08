@@ -42,7 +42,7 @@ function Bingo() {
 
     // Join Socket Room for Telegram ID
     socket.emit("joinUser", { telegramId });
-    socket.emit("userJoinedGame", { gameId });
+    socket.emit("userJoinedGame", { telegramId, gameId });
     
     socket.on("userconnected", (res) => {
       setResponse(res.telegramId);
