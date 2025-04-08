@@ -116,9 +116,8 @@ function Bingo() {
     });
 
     socket.on("gameid", (data) => {
-      if (data.gameId === gameId) {
         setCount(data.numberOfPlayers);
-      }
+      
     });
 
   
