@@ -227,26 +227,25 @@ function Bingo() {
       </div>
 
       <div className="grid grid-cols-10 gap-1 p-2 max-w-lg w-full text-xs">
-        {numbers.map((num) => {
-          const isMyCard = cartelaId === num;
-          const isOtherCard = Object.values(otherSelectedCards).includes(num);
+  {numbers.map((num) => {
+    const isMyCard = cartelaId === num;
+    const isOtherCard = Object.values(otherSelectedCards).includes(num);
 
-          return (
-            <button
-              key={num}
-              onClick={() => handleNumberClick(num)}
-              disabled={isOtherCard}
-              className={`w-8 h-8 flex items-center justify-center rounded-md border border-gray-300 font-bold cursor-pointer transition-all duration-200 text-xs
-                ${isMyCard ? "bg-green-500 text-white"
-                  : isOtherCard ? "bg-yellow-400 text-black"
-                  : "bg-purple-100 text-black"}`}
-            >
-              {num}
-            </button>
-          );
-        })}
-      </div>
-
+    return (
+      <button
+        key={num}
+        onClick={() => handleNumberClick(num)}
+        disabled={isOtherCard}
+        className={`w-8 h-8 flex items-center justify-center rounded-md border border-gray-300 font-bold cursor-pointer transition-all duration-200 text-xs
+          ${isMyCard ? "bg-green-500 text-white"
+            : isOtherCard ? "bg-yellow-400 text-black"
+            : "bg-purple-100 text-black"}`}
+      >
+        {num}
+      </button>
+    );
+  })}
+    </div>
 
       {cartela.length > 0 && (
         <div className="grid grid-cols-5 gap-1 p-2 bg-transparent text-white">
