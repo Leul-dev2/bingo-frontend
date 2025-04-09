@@ -86,14 +86,16 @@ function Bingo() {
     });
 
     socket.on("cardAvailable", ({ cardId }) => {
-      // Handle the card being available again
-      // In this case, mark the card as available in the UI
       setOtherSelectedCards(prevCards => {
-        const newCards = { ...prevCards };
-        delete newCards[cardId]; // Remove the card from the selected list
+        const newCards = {};
+        for (const [socketId, id] of Object.entries(prevCards)) {
+          if (id !== cardId) {
+            newCards[socketId] = id;
+          }
+        }
         return newCards;
       });
-    });
+    });    
 
     return () => {
       socket.off("currentCardSelections");
