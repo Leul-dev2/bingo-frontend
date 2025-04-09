@@ -80,28 +80,32 @@ function Bingo() {
   }, [telegramId, navigate]);
 
   useEffect(() => {
+    if (!socket) return;
+  
     socket.on("currentCardSelections", (cards) => {
-      // Loop through the cards and mark them as selected in the UI
-      setOtherSelectedCards(cards); // Update the selected cards by others
+      console.log("💡 Initial card selections received:", cards);
+      setOtherSelectedCards(cards);
     });
-
+  
     socket.on("cardAvailable", ({ cardId }) => {
-      setOtherSelectedCards(prevCards => {
-        const newCards = {};
-        for (const [socketId, id] of Object.entries(prevCards)) {
-          if (id !== cardId) {
-            newCards[socketId] = id;
+      setOtherSelectedCards((prevCards) => {
+        const updated = { ...prevCards };
+        for (const key in updated) {
+          if (updated[key] === cardId) {
+            delete updated[key];
+            break;
           }
         }
-        return newCards;
+        return updated;
       });
-    });    
-
+    });
+  
     return () => {
       socket.off("currentCardSelections");
       socket.off("cardAvailable");
     };
-  }, []);
+  }, [socket]); // 👈 Add `socket` here if it's set after mount
+  
   
 
   // 🟢 Select a bingo card
