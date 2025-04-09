@@ -233,7 +233,8 @@ function Bingo() {
       <div className="grid grid-cols-10 gap-1 p-2 max-w-lg w-full text-xs">
   {numbers.map((num) => {
     const isMyCard = cartelaId === num;
-    const isOtherCard = Object.values(otherSelectedCards).includes(num);
+    // const isOtherCard = Object.values(otherSelectedCards).includes(num);
+    const isOtherCard = (num) => Object.keys(otherSelectedCards).includes(num.toString());
 
     return (
       <button
