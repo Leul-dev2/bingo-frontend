@@ -5,11 +5,14 @@ import { io } from "socket.io-client";
 
 // Initialize socket connection
 const socket = io("https://bingobot-backend.onrender.com"); // Change to your backend address
+// const socket = io("http://localhost:5000"); // Change to your backend address
 
 function Bingo() {
   const [searchParams] = useSearchParams();
-  const telegramId = searchParams.get("user"); // Get telegramId from URL query parameters
-  const gameId = searchParams.get("game"); // Get gameId from URL query parameters
+  // const telegramId = searchParams.get("user"); // Get telegramId from URL query parameters
+  // const gameId = searchParams.get("game"); // Get gameId from URL query parameters
+  const telegramId = 637145475; // Get telegramId from URL query parameters
+  const gameId = 10;
   const navigate = useNavigate();
   const [cartelaId, setCartelaId] = useState(null);
   const [cartela, setCartela] = useState([]);
@@ -25,7 +28,7 @@ function Bingo() {
   // 🟢 Fetch User Balance from REST
   const fetchUserData = async (id) => {
     try {
-      const res = await fetch(`https://bingobot-backend.onrender.com/api/users/getUser?telegramId=${telegramId}`);
+      const res = await fetch(`http://localhost:5000/api/users/getUser?telegramId=${telegramId}`);
       if (!res.ok) throw new Error("User not found");
       const data = await res.json();
       setUserBalance(data.balance);
@@ -81,6 +84,8 @@ function Bingo() {
 
   useEffect(() => {
     if (!socket) return;
+    
+    socket.emit("requestCurrentCards", { gameId });
   
     socket.on("currentCardSelections", (cards) => {
       console.log("💡 Initial card selections received:", cards);
@@ -169,7 +174,7 @@ function Bingo() {
   const startGame = async () => {
     try {
       // Send the gameId and user information to the backend to create the game room
-      const response = await fetch("https://bingobot-backend.onrender.com/api/games/start", {
+      const response = await fetch("http://localhost:5000/api/games/start", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
