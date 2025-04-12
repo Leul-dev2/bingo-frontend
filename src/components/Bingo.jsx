@@ -66,6 +66,13 @@ function Bingo() {
       // }
     });
 
+    const handleCardSelections = (cards) => {
+      console.log("💡 Initial card selections received:", cards);
+      setOtherSelectedCards(cards);
+    };
+
+    socket.on("currentCardSelections", handleCardSelections);
+
     // Handle errors from server
     socket.on("error", (err) => {
       console.error(err);
@@ -78,17 +85,14 @@ function Bingo() {
       socket.off("balanceUpdated");
       socket.off("gameStatusUpdate");
       socket.off("error");
+      socket.off("currentCardSelections", handleCardSelections);
     };
   }, [telegramId, navigate]);
 
 
   useEffect(() => {
     if (!socket) return;
-  
-    const handleCardSelections = (cards) => {
-      console.log("💡 Initial card selections received:", cards);
-      setOtherSelectedCards(cards);
-    };
+
   
     const handleCardAvailable = ({ cardId }) => {
       setOtherSelectedCards((prevCards) => {
@@ -103,11 +107,9 @@ function Bingo() {
       });
     };
   
-    socket.on("currentCardSelections", handleCardSelections);
     socket.on("cardAvailable", handleCardAvailable);
   
     return () => {
-      socket.off("currentCardSelections", handleCardSelections);
       socket.off("cardAvailable", handleCardAvailable);
     };
   }, [socket]);
