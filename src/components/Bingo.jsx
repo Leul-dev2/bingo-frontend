@@ -81,19 +81,16 @@ function Bingo() {
     };
   }, [telegramId, navigate]);
 
+
   useEffect(() => {
     if (!socket) return;
-    
-    // setTimeout(() => {
-    //   socket.emit("requestCurrentCards", { gameId });
-    // }, 300); // 300ms is usually enough
   
-    socket.on("currentCardSelections", (cards) => {
+    const handleCardSelections = (cards) => {
       console.log("💡 Initial card selections received:", cards);
       setOtherSelectedCards(cards);
-    });
+    };
   
-    socket.on("cardAvailable", ({ cardId }) => {
+    const handleCardAvailable = ({ cardId }) => {
       setOtherSelectedCards((prevCards) => {
         const updated = { ...prevCards };
         for (const key in updated) {
@@ -104,13 +101,17 @@ function Bingo() {
         }
         return updated;
       });
-    });
+    };
+  
+    socket.on("currentCardSelections", handleCardSelections);
+    socket.on("cardAvailable", handleCardAvailable);
   
     return () => {
-      socket.off("currentCardSelections");
-      socket.off("cardAvailable");
+      socket.off("currentCardSelections", handleCardSelections);
+      socket.off("cardAvailable", handleCardAvailable);
     };
-  }, [socket]); // 👈 Add `socket` here if it's set after mount
+  }, [socket]);
+  
   
   
 
