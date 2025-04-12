@@ -5,7 +5,6 @@ import { io } from "socket.io-client";
 
 // Initialize socket connection
 const socket = io("https://bingobot-backend.onrender.com");
-// const socket = io("http://localhost:5000"); // Change to your backend address
 
 function Bingo() {
   const [searchParams] = useSearchParams();
@@ -85,7 +84,9 @@ function Bingo() {
   useEffect(() => {
     if (!socket) return;
     
-    socket.emit("requestCurrentCards", { gameId });
+    setTimeout(() => {
+      socket.emit("requestCurrentCards", { gameId });
+    }, 300); // 300ms is usually enough
   
     socket.on("currentCardSelections", (cards) => {
       console.log("💡 Initial card selections received:", cards);
