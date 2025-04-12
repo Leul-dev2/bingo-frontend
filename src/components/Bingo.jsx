@@ -190,22 +190,43 @@ function Bingo() {
       });
   
       const data = await response.json();
-       if(response.ok){
-        socket.on("gameid", (res)=> {
-          const { gameId, telegramId } = data;
-          if (gameId) {
-            navigate("/game", { state: { gameId, telegramId, cartela } });
+  
+      if (response.ok) {
+        // Emit the gameId to join the room
+        socket.emit("joinGame", gameId, telegramId);
+  
+        // Listen for the player count update from the backend
+        socket.on("playerCountUpdate", (data) => {
+          const { gameId, playerCount } = data;
+          console.log(`Players in the game room ${gameId}: ${playerCount}`);
+  
+          // Update the UI with the current player count or take action
+          // For example, you could disable the 'Start Game' button if there are enough players
+          setPlayerCount(playerCount);
+        });
+  
+        // Listen for the gameId event from the backend
+        socket.on("gameId", (res) => {
+          const { gameId: receivedGameId, telegramId: receivedTelegramId } = res;
+  
+          if (receivedGameId) {
+            // Navigate to the game page with the necessary state
+            navigate("/game", { state: { gameId: receivedGameId, telegramId: receivedTelegramId, cartela } });
           } else {
             setAlertMessage("Game ID is not sent!");
           }
-         });
-       } 
-
+        });
+      } else {
+        setAlertMessage(data.error || "Error starting the game");
+      }
+  
     } catch (error) {
       setAlertMessage("Error connecting to the backend");
       console.error(error);
     }
   };
+  
+  
   
 
   return (

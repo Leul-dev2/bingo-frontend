@@ -26,23 +26,42 @@ const BingoGame = () => {
   const intervalRef = useRef(null); // Store interval reference
   const [lastWinnerCells, setLastWinnerCells] = useState([]);
   const randomNumberRef = useRef(new Set()); // To store drawn numbers without triggering re-renders
-
+  const [playerCount, setPlayerCount] = useState(0);
+  const [gameStarted, setGameStarted] = useState(false);
  
+ 
+  const socket = io("https://bingobot-backend.onrender.com");
+  
+  useEffect(() => {
+    // Listen for player count updates
+    socket.on("playerCountUpdate", ({ playerCount }) => {
+      setPlayerCount(playerCount);
+    });
+
+    // Only start the countdown when the player count is >= 2
+    if (playerCount >= 2 && !gameStarted) {
+      setCountdown(25); // Set countdown to 25 seconds (or any preferred time)
+      setGameStarted(true);
+    }
+
+    return () => {
+      socket.off("playerCountUpdate");
+    };
+  }, [playerCount, gameStarted]);
 
   useEffect(() => {
+    // Start the countdown if it's greater than 0
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
       return () => clearTimeout(timer);
-    } else {
+    } else if (countdown === 0 && gameStarted) {
       drawNumber(); // Draw the first number immediately
-  
       intervalRef.current = setInterval(() => {
         drawNumber();
       }, 2000);
-  
-      return () => clearInterval(intervalRef.current);
     }
-  }, [countdown]);
+  }, [countdown, gameStarted]);
+
 
 
   let shuffledNumbers = Array.from({ length: 75 }, (_, i) => i + 1).sort(() => Math.random() - 0.5);
