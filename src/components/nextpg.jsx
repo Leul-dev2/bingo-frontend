@@ -39,7 +39,7 @@ const BingoGame = () => {
     });
 
     // Only start the countdown when the player count is >= 2
-    if (playerCount >= 2) {
+    if (playerCount >= 2 && !gameStarted) {
       setCountdown(25); // Set countdown to 25 seconds (or any preferred time)
       setGameStarted(true);
     }
@@ -47,20 +47,20 @@ const BingoGame = () => {
     return () => {
       socket.off("playerCountUpdate");
     };
-  }, [playerCount]);
+  }, [playerCount, gameStarted]);
 
   useEffect(() => {
     // Start the countdown if it's greater than 0
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
       return () => clearTimeout(timer);
-    } else if (countdown === 0) {
+    } else if (countdown === 0 && gameStarted) {
       drawNumber(); // Draw the first number immediately
       intervalRef.current = setInterval(() => {
         drawNumber();
       }, 2000);
     }
-  }, [countdown]);
+  }, [countdown, gameStarted]);
 
 
 

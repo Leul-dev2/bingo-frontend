@@ -22,6 +22,8 @@ function Bingo() {
   const [response, setResponse] = useState("");
   const [otherSelectedCards, setOtherSelectedCards] = useState({});
   const [count, setCount] = useState(0);
+  const [playerCount, setPlayerCount] = useState(0);
+
 
 
   // 🟢 Fetch User Balance from REST
