@@ -84,9 +84,9 @@ function Bingo() {
   useEffect(() => {
     if (!socket) return;
     
-    setTimeout(() => {
-      socket.emit("requestCurrentCards", { gameId });
-    }, 300); // 300ms is usually enough
+    // setTimeout(() => {
+    //   socket.emit("requestCurrentCards", { gameId });
+    // }, 300); // 300ms is usually enough
   
     socket.on("currentCardSelections", (cards) => {
       console.log("💡 Initial card selections received:", cards);
