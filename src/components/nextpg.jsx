@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef  } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { io } from "socket.io-client";
 
 const BingoGame = () => {
   const location = useLocation();
