@@ -34,7 +34,7 @@ const BingoGame = () => {
   const socket = io("https://bingobot-backend.onrender.com");
 
   useEffect(() => {
-     Listen for player count updates
+     //Listen for player count updates
      socket.on("playerCountUpdate", ({ playerCount }) => {
       setPlayerCount(playerCount);
      });
