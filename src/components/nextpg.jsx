@@ -5,7 +5,7 @@ import { io } from "socket.io-client";
 const BingoGame = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { cartela, cartelaId, gameId, playerCount  } = location.state || {};
+  const { cartela, cartelaId, gameId} = location.state || {};
 
 
   const bingoColors = {
