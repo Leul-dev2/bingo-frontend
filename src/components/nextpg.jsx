@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 const BingoGame = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { cartela, cartelaId, gameId } = location.state || {};
+  const { cartela, cartelaId, gameId, playerCount  } = location.state || {};
 
 
   const bingoColors = {
@@ -26,17 +26,17 @@ const BingoGame = () => {
   const intervalRef = useRef(null); // Store interval reference
   const [lastWinnerCells, setLastWinnerCells] = useState([]);
   const randomNumberRef = useRef(new Set()); // To store drawn numbers without triggering re-renders
-  const [playerCount, setPlayerCount] = useState(0);
-  const [gameStarted, setGameStarted] = useState(false);
+  // const [playerCount, setPlayerCount] = useState(0);
+  // const [gameStarted, setGameStarted] = useState(false);
  
  
   const socket = io("https://bingobot-backend.onrender.com");
 
   useEffect(() => {
     // Listen for player count updates
-    socket.on("playerCountUpdate", ({ playerCount }) => {
-      setPlayerCount(playerCount);
-    });
+    // socket.on("playerCountUpdate", ({ playerCount }) => {
+    //   setPlayerCount(playerCount);
+    // });
 
     // Only start the countdown when the player count is >= 2
     if (playerCount >= 2 && !gameStarted) {
@@ -45,7 +45,7 @@ const BingoGame = () => {
     }
 
     return () => {
-      socket.off("playerCountUpdate");
+      // socket.off("playerCountUpdate");
     };
   }, [playerCount, gameStarted]);
 

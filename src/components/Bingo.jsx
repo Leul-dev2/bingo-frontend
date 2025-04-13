@@ -213,7 +213,7 @@ function Bingo() {
   
           if (receivedGameId) {
             // Navigate to the game page with the necessary state
-            navigate("/game", { state: { gameId: receivedGameId, telegramId: receivedTelegramId, cartela } });
+            navigate("/game", { state: { gameId: receivedGameId, telegramId: receivedTelegramId, cartela, playerCount } });
           } else {
             setAlertMessage("Game ID is not sent!");
           }
