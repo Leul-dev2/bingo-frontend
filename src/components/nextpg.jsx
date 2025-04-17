@@ -35,9 +35,14 @@ const BingoGame = () => {
 
   useEffect(() => {
      //Listen for player count updates
-     socket.on("playerCountUpdate", ({ playerCount }) => {
+     socket.on("playerCountUpdate", (data) => {
+      const { gameId, playerCount } = data;
+      console.log(`Players in the game room ${gameId}: ${playerCount}`);
+
+      // Update the UI with the current player count or take action
+      // For example, you could disable the 'Start Game' button if there are enough players
       setPlayerCount(playerCount);
-     });
+    });
 
     // Only start the countdown when the player count is >= 2
     if (playerCount >= 2 && !gameStarted) {
