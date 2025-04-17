@@ -195,7 +195,7 @@ function Bingo() {
   
       if (response.ok) {
         // Emit the gameId to join the room
-        socket.emit("joinGame",{gameId, telegramId} );
+        socket.emit("joinGame", gameId, telegramId);
   
         // Listen for the player count update from the backend
         socket.on("playerCountUpdate", (data) => {
@@ -219,7 +219,7 @@ function Bingo() {
           }
         });
       } else {
-        setAlertMessage(data.error || "Error starting the gamesss");
+        setAlertMessage(data.error || "Error starting the game");
       }
   
     } catch (error) {
