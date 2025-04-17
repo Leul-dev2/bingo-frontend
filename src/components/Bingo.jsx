@@ -213,7 +213,8 @@ function Bingo() {
   
           if (receivedGameId) {
             // Navigate to the game page with the necessary state
-            navigate("/game", { state: { gameId: receivedGameId, telegramId: receivedTelegramId, cartela, playerCount } });
+            //navigate("/game", { state: { gameId: receivedGameId, telegramId: receivedTelegramId, cartela, playerCount } });
+
           } else {
             setAlertMessage("Game ID is not sent!");
           }
@@ -258,7 +259,7 @@ function Bingo() {
         </div>
         <div className="bg-white text-purple-400 px-10 py-1 rounded-3xl text-center text-sm font-bold">
           Game Choice<br />
-          <span className="font-bold">{gameId} </span>
+          <span className="font-bold">{playerCount} </span>
         </div>
       </div>
 
