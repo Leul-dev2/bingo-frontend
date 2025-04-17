@@ -219,7 +219,7 @@ function Bingo() {
           }
         });
       } else {
-        setAlertMessage(data.error || "Error starting the game");
+        setAlertMessage(data.error || "Error starting the gamesss");
       }
   
     } catch (error) {
