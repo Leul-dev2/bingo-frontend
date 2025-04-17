@@ -179,52 +179,48 @@ function Bingo() {
   // 🟢 Join Game & Emit to Socket
   const startGame = async () => {
     try {
-      // Send the gameId and user information to the backend to create the game room
       const response = await fetch("https://bingobot-backend.onrender.com/api/games/start", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          gameId: gameId, // The gameId you're passing in the URL
-          telegramId: telegramId, // The user's telegramId
-        }),
+        body: JSON.stringify({ gameId, telegramId }),
       });
   
       const data = await response.json();
   
       if (response.ok) {
-        // Emit the gameId to join the room
-        socket.emit("joinGame", gameId, telegramId);
+        // ✅ Correct emit syntax
+        socket.emit("joinGame", { gameId, telegramId });
   
-        // Listen for the player count update from the backend
-        socket.on("playerCountUpdate", (data) => {
-          const { gameId, playerCount } = data;
+        // 🧠 Best practice: move listeners outside to avoid multiple bindings
+        socket.off("playerCountUpdate").on("playerCountUpdate", ({ gameId, playerCount }) => {
           console.log(`Players in the game room ${gameId}: ${playerCount}`);
-  
-          // Update the UI with the current player count or take action
-          // For example, you could disable the 'Start Game' button if there are enough players
           setPlayerCount(playerCount);
         });
   
-        // Listen for the gameId event from the backend
-        socket.on("gameId", (res) => {
-          const { gameId: receivedGameId, telegramId: receivedTelegramId } = res;
-  
+        socket.off("gameId").on("gameId", ({ gameId: receivedGameId, telegramId: receivedTelegramId }) => {
           if (receivedGameId) {
-            // Navigate to the game page with the necessary state
-            navigate("/game", { state: { gameId: receivedGameId, telegramId: receivedTelegramId, cartela, playerCount } });
+            navigate("/game", {
+              state: {
+                gameId: receivedGameId,
+                telegramId: receivedTelegramId,
+                cartela,
+                playerCount,
+              },
+            });
           } else {
             setAlertMessage("Game ID is not sent!");
           }
         });
+  
       } else {
         setAlertMessage(data.error || "Error starting the game");
       }
   
     } catch (error) {
+      console.error("Frontend error:", error);
       setAlertMessage("Error connecting to the backend");
-      console.error(error);
     }
   };
   
