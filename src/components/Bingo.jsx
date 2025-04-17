@@ -196,14 +196,13 @@ function Bingo() {
       if (response.ok) {
         // Emit the gameId to join the room
         socket.emit("joinGame", gameId, telegramId);
-  
+
+        socket.emit("getPlayerCount", gameId);
+        
         // Listen for the player count update from the backend
         socket.on("playerCountUpdate", (data) => {
           const { gameId, playerCount } = data;
           console.log(`Players in the game room ${gameId}: ${playerCount}`);
-  
-          // Update the UI with the current player count or take action
-          // For example, you could disable the 'Start Game' button if there are enough players
           setPlayerCount(playerCount);
         });
   
@@ -213,8 +212,7 @@ function Bingo() {
   
           if (receivedGameId) {
             // Navigate to the game page with the necessary state
-            navigate("/game", { state: { gameId: receivedGameId, telegramId: receivedTelegramId, cartela } });
-
+            navigate("/game", { state: { gameId: receivedGameId, telegramId: receivedTelegramId, cartela, playerCount } });
           } else {
             setAlertMessage("Game ID is not sent!");
           }
@@ -259,7 +257,7 @@ function Bingo() {
         </div>
         <div className="bg-white text-purple-400 px-10 py-1 rounded-3xl text-center text-sm font-bold">
           Game Choice<br />
-          <span className="font-bold">{playerCount} </span>
+          <span className="font-bold">{gameId} </span>
         </div>
       </div>
 
