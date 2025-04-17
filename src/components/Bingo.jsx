@@ -196,14 +196,11 @@ function Bingo() {
       if (response.ok) {
         // Emit the gameId to join the room
         socket.emit("joinGame", gameId, telegramId);
-
-        socket.emit("getPlayerCount", gameId);
-        
+  
         // Listen for the player count update from the backend
         socket.on("playerCountUpdate", (data) => {
-          const { gameId, playerCount } = data;
           console.log(`Players in the game room ${gameId}: ${playerCount}`);
-          setPlayerCount(playerCount);
+          setPlayerCount(data.playerCount);
         });
   
         // Listen for the gameId event from the backend
