@@ -44,8 +44,7 @@ const BingoGame = () => {
     return () => {
       socket.off("playerCountUpdate");  // Clean up when component unmounts
     };
-  }, [gameId]);
-  
+  }, [gameId, playerCount]);
   
   
   useEffect(() => {
