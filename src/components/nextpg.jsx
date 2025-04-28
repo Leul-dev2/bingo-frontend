@@ -34,17 +34,21 @@ const BingoGame = () => {
   const socket = io("https://bingobot-backend.onrender.com");
 
   useEffect(() => {
-    socket.emit("getPlayerCount", { gameId });  // Request initial player count
-  
+    // Listen for player count updates without emitting a request
     socket.on("playerCountUpdate", (data) => {
       console.log("Player count received:", data.playerCount);
       setPlayerCount(data.playerCount);  // Update player count
     });
   
+    // Request initial player count when the component is mounted
+    socket.emit("getPlayerCount", { gameId });
+  
+    // Clean up the event listener on component unmount
     return () => {
-      socket.off("playerCountUpdate");  // Clean up when component unmounts
+      socket.off("playerCountUpdate");
     };
-  }, [gameId]);
+  }, [gameId]);  // Re-run when gameId changes
+  
   
   
   useEffect(() => {
