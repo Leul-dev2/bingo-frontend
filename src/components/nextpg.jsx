@@ -34,16 +34,14 @@ const BingoGame = () => {
   const socket = io("https://bingobot-backend.onrender.com");
 
   useEffect(() => {
-    // Listen for player count updates
+    // Listen for player count updates without emitting a request
     socket.on("playerCountUpdate", (data) => {
       console.log("Player count received:", data.playerCount);
       setPlayerCount(data.playerCount);  // Update player count
     });
-
-    // Listen for countdown updates
-    socket.on("countdownUpdate", (data) => {
-      setCountdown(data.countdown);  // Update countdown
-    });
+  
+    // Request initial player count when the component is mounted
+    socket.emit("getPlayerCount", { gameId });
 
     // Listen for game start
     socket.on("gameStarted", () => {
@@ -53,47 +51,67 @@ const BingoGame = () => {
         drawNumber();
       }, 2000);
     });
-
-    // Request initial player count when the component is mounted
-    socket.emit("getPlayerCount", { gameId });
-
+  
+    // Clean up the event listener on component unmount
     return () => {
       socket.off("playerCountUpdate");
-      socket.off("countdownUpdate");
-      socket.off("gameStarted");
     };
-  }, [gameId]);
-  
 
+
+  }, [gameId]);  // Re-run when gameId changes
+  
+  
   useEffect(() => {
-    if (playerCount >= 2 && !gameStarted) {
-      setCountdown(25);
-      setGameStarted(true);
+    // Start the countdown if it's greater than 0
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (countdown === 0 && gameStarted) {
+      drawNumber(); // Draw the first number immediately
+      intervalRef.current = setInterval(() => {
+        drawNumber();
+      }, 2000);
     }
-  }, [playerCount, gameStarted]);
+  }, [countdown, gameStarted]);
 
+useEffect(() => {
+  // Request initial player count when the component is mounted
+  socket.emit("getPlayerCount", { gameId });
 
-  
-  // useEffect(() => {
-  //   if (playerCount >= 2 && !gameStarted) {
-  //     setCountdown(25);
-  //     setGameStarted(true);
-  //   }
-  // }, [playerCount, gameStarted]);
-  
+  // Listen for player count updates
+  socket.on("playerCountUpdate", (data) => {
+    setPlayerCount(data.playerCount);
+  });
 
-  // useEffect(() => {
-  //   // Start the countdown if it's greater than 0
-  //   if (countdown > 0) {
-  //     const timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
-  //     return () => clearTimeout(timer);
-  //   } else if (countdown === 0 && gameStarted) {
-  //     drawNumber(); // Draw the first number immediately
-  //     intervalRef.current = setInterval(() => {
-  //       drawNumber();
-  //     }, 2000);
-  //   }
-  // }, [countdown, gameStarted]);
+  // Countdown handlers
+  socket.on("countdownStart", (initialCountdown) => {
+    setCountdown(initialCountdown);
+  });
+
+  socket.on("countdownUpdate", (newCountdown) => {
+    setCountdown(newCountdown);
+  });
+
+  // Game start handler
+  socket.on("gameStarted", () => {
+    setGameStarted(true);
+    drawNumber();
+    intervalRef.current = setInterval(drawNumber, 2000);
+  });
+
+  return () => {
+    socket.off("playerCountUpdate");
+    socket.off("countdownStart");
+    socket.off("countdownUpdate");
+    socket.off("gameStarted");
+  };
+}, [gameId]);
+
+useEffect(() => {
+  if (playerCount >= 2 && !gameStarted) {
+    socket.emit("gameCount", { playerCount, gameId }); // ✅ FIXED
+  }
+}, [playerCount, gameStarted]);
 
 
 
