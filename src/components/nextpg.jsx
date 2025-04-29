@@ -69,13 +69,11 @@ const BingoGame = () => {
   
 useEffect(() => {
   if (playerCount >= 2 && !gameStarted) {
-    socket.emit("gameCount", { gameId }); // Pass the gameId
+    socket.emit("gameCount", { gameId });
   }
 }, [playerCount, gameStarted]);
 
-  
-
-  useEffect(() => {
+useEffect(() => {
   socket.on("gameStart", ({ countdown }) => {
     setCountdown(countdown);
     setGameStarted(true);
@@ -86,23 +84,14 @@ useEffect(() => {
   };
 }, []);
 
+useEffect(() => {
+  if (countdown > 0) {
+    const timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
+    return () => clearTimeout(timer);
+  }
+}, [countdown]);
 
-  useEffect(() => {
-    // Start the countdown if it's greater than 0
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
-      return () => clearTimeout(timer);
-    } else if (countdown === 0 && gameStarted) {
-      drawNumber(); // Draw the first number immediately
-      intervalRef.current = setInterval(() => {
-        drawNumber();
-      }, 2000);
-    }
-  }, [countdown, gameStarted]);
-
-
-
-  useEffect(() => {
+useEffect(() => {
   socket.on("numberDrawn", ({ number, label }) => {
     setRandomNumber((prev) => [...prev, number]);
     setCalledSet((prev) => new Set(prev).add(label));
