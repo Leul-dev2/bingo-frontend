@@ -69,11 +69,24 @@ const BingoGame = () => {
   
   useEffect(() => {
     if (playerCount >= 2 && !gameStarted) {
-      setCountdown(25);
-      setGameStarted(true);
+      socket.emit("gameCount");
+      // setCountdown(25);
+      // setGameStarted(true);
     }
   }, [playerCount, gameStarted]);
   
+
+  useEffect(() => {
+  socket.on("gameStart", ({ countdown }) => {
+    setCountdown(countdown);
+    setGameStarted(true);
+  });
+
+  return () => {
+    socket.off("gameStart");
+  };
+}, []);
+
 
   useEffect(() => {
     // Start the countdown if it's greater than 0
