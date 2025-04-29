@@ -67,13 +67,12 @@ const BingoGame = () => {
   
   
   
-  useEffect(() => {
-    if (playerCount >= 2 && !gameStarted) {
-      socket.emit("gameCount");
-      // setCountdown(25);
-      // setGameStarted(true);
-    }
-  }, [playerCount, gameStarted]);
+useEffect(() => {
+  if (playerCount >= 2 && !gameStarted) {
+    socket.emit("gameCount", { gameId }); // Pass the gameId
+  }
+}, [playerCount, gameStarted]);
+
   
 
   useEffect(() => {
