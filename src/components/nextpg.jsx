@@ -102,27 +102,17 @@ useEffect(() => {
 
 
 
-  let shuffledNumbers = Array.from({ length: 75 }, (_, i) => i + 1).sort(() => Math.random() - 0.5);
-  let currentIndex = 0;
-  
-  const drawNumber = () => {
-    if (currentIndex >= shuffledNumbers.length) {
-      alert("All numbers have been drawn!");
-      declareWinner();
-      return;
-    }
-  
-    const random = shuffledNumbers[currentIndex];
-    currentIndex++;
-  
-    const letterIndex = Math.floor((random - 1) / 15);
-    const letter = ["B", "I", "N", "G", "O"][letterIndex];
-    const randomNumberLabel = `${letter}-${random}`;
-  
-    setRandomNumber((prev) => [...prev, random]);
-    setCalledSet((prev) => new Set(prev).add(randomNumberLabel));
+  useEffect(() => {
+  socket.on("numberDrawn", ({ number, label }) => {
+    setRandomNumber((prev) => [...prev, number]);
+    setCalledSet((prev) => new Set(prev).add(label));
+  });
+
+  return () => {
+    socket.off("numberDrawn");
   };
-  
+}, []);
+
   
   
   // Log all drawn numbers less frequently or use a callback
