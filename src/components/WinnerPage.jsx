@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 
 const WinnerPage = () => {
   const location = useLocation();
-  const { winnerName, prizeAmount, board, winnerPattern, boardNumber } = location.state || {};
+  const { winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount } = location.state || {};
   console.log("winnerpatern",winnerPattern);
   console.log("board",board);
 
@@ -29,7 +29,7 @@ const WinnerPage = () => {
 
       <div className="text-center mb-6">
         <h2 className="text-2xl font-semibold text-green-600">Congratulations, {winnerName}!</h2>
-        <p className="text-xl mt-2 text-gray-800">You are the winner of the game!</p>
+        <p className="text-xl mt-2 text-gray-800">playerCount, {playerCount}</p>
         <p className="text-lg mt-2 text-gray-700">Prize Amount: <span className="font-bold text-xl text-yellow-600">${prizeAmount}</span></p>
         <p className="text-md mt-4 text-gray-600">Game ID: {boardNumber}</p>
       </div>

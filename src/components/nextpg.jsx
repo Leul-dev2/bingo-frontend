@@ -265,14 +265,15 @@ const declareWinner = (winnerPattern) => {
 
 
 useEffect(() => {
-  socket.on("winnerfound", ({ winnerName, prizeAmount, board, winnerPattern, boardNumber }) => {
+  socket.on("winnerfound", ({ winnerName, prizeAmount, board, winnerPattern, boardNumber,playerCount }) => {
     navigate("/winnerPage", {
       state: {
         winnerName,
         prizeAmount,
         board,
         winnerPattern,
-        boardNumber
+        boardNumber,
+        playerCount
       }
     });
   });
