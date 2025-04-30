@@ -254,7 +254,7 @@ const declareWinner = (winnerPattern) => {
   const winnerData = {
     telegramId,
     gameId,
-    prizeAmount: 40,
+    prizeAmount,
     board,
     winnerPattern,
     cartelaId
