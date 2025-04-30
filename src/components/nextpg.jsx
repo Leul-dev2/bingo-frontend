@@ -291,7 +291,7 @@ useEffect(() => {
   return (
     <div className="bg-purple-400 min-h-screen flex flex-col items-center p-2 w-full max-w-screen overflow-hidden">
       <div className="grid grid-cols-5 sm:grid-cols-5 gap-1 w-full p-2 bg-purple-600 text-white text-center">
-        {[gameId, playerCount, "Bonus", "Players", "Bet"].map((info, i) => (
+        {[gameId, playerCount, telegramId, "Players", "Bet"].map((info, i) => (
           <button key={i} className="bg-white text-black p-1 text-sm rounded w-full">
             {info}
           </button>
