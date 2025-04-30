@@ -179,41 +179,46 @@ function Bingo() {
   // 🟢 Join Game & Emit to Socket
   const startGame = async () => {
     try {
-      // Send the gameId and user information to the backend to create the game room
+      // Call backend API to create/join game room
       const response = await fetch("https://bingobot-backend.onrender.com/api/games/start", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          gameId: gameId, // The gameId you're passing in the URL
-          telegramId: telegramId, // The user's telegramId
+          gameId: gameId,        // From your UI/state
+          telegramId: telegramId // From the user
         }),
       });
   
       const data = await response.json();
   
       if (response.ok) {
-        // Emit the gameId to join the room
-        socket.emit("joinGame", gameId, telegramId);
-  
-        // Listen for the player count update from the backend
-        socket.on("playerCountUpdate", (data) => {
+        // ✅ Set up socket listeners BEFORE emitting
+        socket.off("playerCountUpdate").on("playerCountUpdate", ({ playerCount }) => {
           console.log(`Players in the game room ${gameId}: ${playerCount}`);
-          setPlayerCount(data.playerCount);
+          setPlayerCount(playerCount);
         });
   
-        // Listen for the gameId event from the backend
-        socket.on("gameId", (res) => {
+        socket.off("gameId").on("gameId", (res) => {
           const { gameId: receivedGameId, telegramId: receivedTelegramId } = res;
   
           if (receivedGameId) {
-            // Navigate to the game page with the necessary state
-            navigate("/game", { state: { gameId: receivedGameId, telegramId: receivedTelegramId, cartela, playerCount } });
+            navigate("/game", {
+              state: {
+                gameId: receivedGameId,
+                telegramId: receivedTelegramId,
+                cartela,
+                playerCount,
+              },
+            });
           } else {
             setAlertMessage("Game ID is not sent!");
           }
         });
+  
+        // ✅ Emit after listeners are set
+        socket.emit("joinGame", gameId, telegramId);
       } else {
         setAlertMessage(data.error || "Error starting the game");
       }
@@ -223,6 +228,7 @@ function Bingo() {
       console.error(error);
     }
   };
+  
   
   
   
