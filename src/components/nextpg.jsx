@@ -243,25 +243,43 @@ useEffect(() => {
 //console.log("card numbersss", cartela);
 
 const declareWinner = (winnerPattern) => {
-socket.emit("winner", {telegramId, gameId} );
+  const board = cartela.map((row, rowIndex) =>
+    row.map((num, colIndex) => ({
+      value: num,
+      selected: selectedNumbers.has(num),
+      isWinning: lastWinnerCells.some(([r, c]) => r === rowIndex && c === colIndex)
+    }))
+  );
 
-  
-  // navigate("/winnerPage", {
-  //   state: {
-  //     winnerName: telegramId, // Example winner name
-  //     prizeAmount: 40, // Example prize amount
-  //     board: cartela.map((row, rowIndex) =>
-  //       row.map((num, colIndex) => ({
-  //         value: num,
-  //         selected: selectedNumbers.has(num),
-  //         isWinning: lastWinnerCells.some(([r, c]) => r === rowIndex && c === colIndex) // Highlight the winning cells
-  //       }))
-  //     ),
-  //     winnerPattern: winnerPattern, // Array of winning cells (coordinates)
-  //     boardNumber: cartelaId, // Example game ID
-  //   },
-  // });
+  const winnerData = {
+    telegramId,
+    gameId,
+    prizeAmount: 40,
+    board,
+    winnerPattern,
+    cartelaId
+  };
+
+  // Send all winner data to backend
+  socket.emit("winner", winnerData);
 };
+
+
+useEffect(() => {
+  socket.on("winnerfound", ({ winnerName, prizeAmount, board, winnerPattern, boardNumber }) => {
+    navigate("/winnerPage", {
+      state: {
+        winnerName,
+        prizeAmount,
+        board,
+        winnerPattern,
+        boardNumber
+      }
+    });
+  });
+
+  return () => socket.off("winnerfound");
+}, []);
 
   
 
