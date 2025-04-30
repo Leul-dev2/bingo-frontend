@@ -203,7 +203,7 @@ function Bingo() {
         socket.off("gameId").on("gameId", (res) => {
           const { gameId: receivedGameId, telegramId: receivedTelegramId } = res;
   
-          if (receivedGameId) {
+          if (receivedGameId && receivedTelegramId) {
             navigate("/game", {
               state: {
                 gameId: receivedGameId,
@@ -213,7 +213,7 @@ function Bingo() {
               },
             });
           } else {
-            setAlertMessage("Game ID is not sent!");
+            setAlertMessage("Invalid game or user data received!");
           }
         });
   
@@ -221,13 +221,15 @@ function Bingo() {
         socket.emit("joinGame", gameId, telegramId);
       } else {
         setAlertMessage(data.error || "Error starting the game");
+        console.error("Game start error:", data.error);
       }
   
     } catch (error) {
       setAlertMessage("Error connecting to the backend");
-      console.error(error);
+      console.error("Connection error:", error);
     }
   };
+  
   
   
   
