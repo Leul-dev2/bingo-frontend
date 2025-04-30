@@ -5,7 +5,7 @@ import { io } from "socket.io-client";
 const BingoGame = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { cartela, cartelaId, gameId} = location.state || {};
+  const { cartela, cartelaId, gameId, telegramId} = location.state || {};
 
 
   const bingoColors = {
@@ -243,9 +243,11 @@ useEffect(() => {
 
 const declareWinner = (winnerPattern) => {
   // Send the winner's details, including the winning cells and the pattern
+
+
   navigate("/winnerPage", {
     state: {
-      winnerName: "Aki", // Example winner name
+      winnerName: telegramId, // Example winner name
       prizeAmount: 40, // Example prize amount
       board: cartela.map((row, rowIndex) =>
         row.map((num, colIndex) => ({
