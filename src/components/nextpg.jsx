@@ -434,7 +434,7 @@ useEffect(() => {
       </div>
 
       <div className="w-full flex flex-col items-center gap-2 mt-4">
-       <button onClick={() => checkForWin(selectedNumbers)} className="w-full bg-orange-500 px-4 py-2 text-white rounded-lg text-lg">
+       <button onClick={() => checkForWin(selectedNumbers, telegramId)} className="w-full bg-orange-500 px-4 py-2 text-white rounded-lg text-lg">
           Bingo!
         </button>
         <div className="w-full flex gap-2">
