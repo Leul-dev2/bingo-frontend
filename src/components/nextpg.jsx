@@ -29,6 +29,7 @@ const BingoGame = () => {
   const randomNumberRef = useRef(new Set()); // To store drawn numbers without triggering re-renders
   const [playerCount, setPlayerCount] = useState(0);
   const [gameStarted, setGameStarted] = useState(false);
+  const [winnerFound, setWinnerFound] = useState(false);
  
  
   const socket = io("https://bingobot-backend.onrender.com");
@@ -242,24 +243,24 @@ useEffect(() => {
 //console.log("card numbersss", cartela);
 
 const declareWinner = (winnerPattern) => {
-  // Send the winner's details, including the winning cells and the pattern
+socket.emit("winner", {telegramId, gameId} );
 
-
-  navigate("/winnerPage", {
-    state: {
-      winnerName: telegramId, // Example winner name
-      prizeAmount: 40, // Example prize amount
-      board: cartela.map((row, rowIndex) =>
-        row.map((num, colIndex) => ({
-          value: num,
-          selected: selectedNumbers.has(num),
-          isWinning: lastWinnerCells.some(([r, c]) => r === rowIndex && c === colIndex) // Highlight the winning cells
-        }))
-      ),
-      winnerPattern: winnerPattern, // Array of winning cells (coordinates)
-      boardNumber: cartelaId, // Example game ID
-    },
-  });
+  
+  // navigate("/winnerPage", {
+  //   state: {
+  //     winnerName: telegramId, // Example winner name
+  //     prizeAmount: 40, // Example prize amount
+  //     board: cartela.map((row, rowIndex) =>
+  //       row.map((num, colIndex) => ({
+  //         value: num,
+  //         selected: selectedNumbers.has(num),
+  //         isWinning: lastWinnerCells.some(([r, c]) => r === rowIndex && c === colIndex) // Highlight the winning cells
+  //       }))
+  //     ),
+  //     winnerPattern: winnerPattern, // Array of winning cells (coordinates)
+  //     boardNumber: cartelaId, // Example game ID
+  //   },
+  // });
 };
 
   
