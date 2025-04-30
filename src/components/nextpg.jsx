@@ -132,7 +132,7 @@ useEffect(() => {
     });
   };
   
-  const checkForWin = (selectedNumbers) => {
+  const checkForWin = (selectedNumbers, telegramId) => {
     const markedNumbers = new Set(selectedNumbers); // Marked numbers by the player
     const drawnNumbers = new Set(randomNumber); // Numbers that have been drawn
 
@@ -231,7 +231,7 @@ useEffect(() => {
 
     if (winCount > 0) {
       // alert(`Bingo! Winning Pattern: ${lastMatchedPattern}`);
-      declareWinner(winnerPattern);
+      declareWinner(winnerPattern, telegramId);
       return lastMatchedPattern;
     } else {
       alert("You are not a winner yet! Keep playing.");
@@ -242,7 +242,7 @@ useEffect(() => {
 
 //console.log("card numbersss", cartela);
 
-const declareWinner = (winnerPattern) => {
+const declareWinner = (winnerPattern, telegramId) => {
   const board = cartela.map((row, rowIndex) =>
     row.map((num, colIndex) => ({
       value: num,
