@@ -218,7 +218,8 @@ function Bingo() {
         });
   
         // ✅ Emit after listeners are set
-        socket.emit("joinGame", gameId, telegramId);
+        socket.emit("joinGame", { gameId, telegramId });
+
       } else {
         setAlertMessage(data.error || "Error starting the game");
         console.error("Game start error:", data.error);
