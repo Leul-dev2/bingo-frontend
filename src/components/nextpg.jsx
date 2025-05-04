@@ -103,6 +103,40 @@ useEffect(() => {
   };
 }, []);
 
+
+useEffect(() => {
+  // Listen for "numberDrawn" event
+  const handleNumberDrawn = ({ number, label }) => {
+    setRandomNumber((prev) => [...prev, number]);
+    setCalledSet((prev) => new Set(prev).add(label));
+  };
+
+  socket.on("numberDrawn", handleNumberDrawn);
+
+  // Cleanup listener on unmount
+  return () => {
+    socket.off("numberDrawn", handleNumberDrawn);
+  };
+}, [socket]);  // Only re-run when `socket` changes
+
+useEffect(() => {
+  // Listen for "allNumbersDrawn" event (game over)
+  const handleAllNumbersDrawn = () => {
+    // Perform necessary actions when all numbers have been drawn
+    console.log("All numbers have been drawn, game over!");
+    // Optionally, you can trigger a state update to show an end game message or reset
+    setGameStarted(false);  // Assuming you have a state to manage the game status
+  };
+
+  socket.on("allNumbersDrawn", handleAllNumbersDrawn);
+
+  // Cleanup listener on unmount
+  return () => {
+    socket.off("allNumbersDrawn", handleAllNumbersDrawn);
+  };
+}, [socket]);  // Only re-run when `socket` changes
+
+
   
   
   // Log all drawn numbers less frequently or use a callback
