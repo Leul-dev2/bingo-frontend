@@ -62,58 +62,67 @@ const BingoGame = () => {
   
   
   
-useEffect(() => {
-  if (playerCount >= 2 && !gameStarted) {
-    socket.emit("gameCount", { gameId });
-  }
-}, [playerCount, gameStarted]);
+  useEffect(() => {
+    socket.emit("frontendReady", { gameId });
+    console.log(`Frontend is ready for game ${gameId}`);
+    
+    return () => {
+        socket.off("frontendReady");
+    };
+}, [gameId]);
 
+// Listen for the "gameStart" event and handle countdown
 useEffect(() => {
-  socket.on("gameStart", ({ countdown }) => {
-    setCountdown(countdown);
-    setGameStarted(true);
-  });
+    socket.on("gameStart", ({ countdown }) => {
+        setCountdown(countdown);
+        setGameStarted(true);
+    });
 
-  return () => {
-    socket.off("gameStart");
-  };
+    return () => {
+        socket.off("gameStart");
+    };
 }, []);
 
+// Countdown timer logic
 useEffect(() => {
-  if (countdown > 0) {
-    const timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
-    return () => clearTimeout(timer);
-  }
+    if (countdown > 0) {
+        const timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
+        return () => clearTimeout(timer);
+    }
 }, [countdown]);
 
+// Listen for the "numberDrawn" event to update the displayed numbers
 useEffect(() => {
-  socket.on("numberDrawn", ({ number, label }) => {
-    setRandomNumber((prev) => [...prev, number]);
-    setCalledSet((prev) => new Set(prev).add(label));
-  });
+    socket.on("numberDrawn", ({ number, label }) => {
+        setRandomNumber((prev) => [...prev, number]);
+        setCalledSet((prev) => new Set(prev).add(label));
+    });
 
-  return () => {
-    socket.off("numberDrawn");
-  };
+    return () => {
+        socket.off("numberDrawn");
+    };
 }, []);
 
+// Handle all numbers drawn (end of game)
 useEffect(() => {
-  // Listen for "allNumbersDrawn" event (game over)
-  const handleAllNumbersDrawn = () => {
-    // Perform necessary actions when all numbers have been drawn
-    console.log("All numbers have been drawn, game over!");
-    // Optionally, you can trigger a state update to show an end game message or reset
-    setGameStarted(false);  // Assuming you have a state to manage the game status
-  };
+    const handleAllNumbersDrawn = () => {
+        console.log("All numbers have been drawn, game over!");
+        setGameStarted(false); // Assuming you have a state to manage the game status
+    };
 
-  socket.on("allNumbersDrawn", handleAllNumbersDrawn);
+    socket.on("allNumbersDrawn", handleAllNumbersDrawn);
 
-  // Cleanup listener on unmount
-  return () => {
-    socket.off("allNumbersDrawn", handleAllNumbersDrawn);
-  };
-}, [socket]);  // Only re-run when `socket` changes
+    return () => {
+        socket.off("allNumbersDrawn", handleAllNumbersDrawn);
+    };
+}, [socket]);
 
+// Start the game count when player count is sufficient
+useEffect(() => {
+    if (playerCount >= 2 && !gameStarted) {
+        socket.emit("gameCount", { gameId });
+    }
+}, [playerCount, gameStarted]);
 
 
   const handleCartelaClick = (num) => {
