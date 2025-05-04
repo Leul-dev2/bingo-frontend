@@ -62,76 +62,67 @@ const BingoGame = () => {
   
   
   
- const previousTimestampRef = useRef(null);
+  useEffect(() => {
+    socket.emit("frontendReady", { gameId });
+    console.log(`Frontend is ready for game ${gameId}`);
+    
+    return () => {
+        socket.off("frontendReady");
+    };
+}, [gameId]);
 
-    useEffect(() => {
-        socket.emit("frontendReady", { gameId });
-        console.log(`Frontend is ready for game ${gameId}`);
+// Listen for the "gameStart" event and handle countdown
+useEffect(() => {
+    socket.on("gameStart", ({ countdown }) => {
+        setCountdown(countdown);
+        setGameStarted(true);
+    });
 
-        return () => {
-            socket.off("frontendReady");
-        };
-    }, [gameId, socket]); // Added socket to dependency array
+    return () => {
+        socket.off("gameStart");
+    };
+}, []);
 
-    useEffect(() => {
-        socket.on("gameStart", ({ countdown }) => {
-            setCountdown(countdown);
-            setGameStarted(true);
-        });
+// Countdown timer logic
+useEffect(() => {
+    if (countdown > 0) {
+        const timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
+        return () => clearTimeout(timer);
+    }
+}, [countdown]);
 
-        return () => {
-            socket.off("gameStart");
-        };
-    }, [socket]);
+// Listen for the "numberDrawn" event to update the displayed numbers
+useEffect(() => {
+    socket.on("numberDrawn", ({ number, label }) => {
+        setRandomNumber((prev) => [...prev, number]);
+        setCalledSet((prev) => new Set(prev).add(label));
+    });
 
-    useEffect(() => {
-        if (countdown > 0) {
-            const timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
-            return () => clearTimeout(timer);
-        }
-    }, [countdown]);
+    return () => {
+        socket.off("numberDrawn");
+    };
+}, []);
 
-    useEffect(() => {
-      // useRef to hold the previous timestamp
-      const previousTimestampRef = useRef(null);
-  
-      socket.on("numberDrawn", ({ number, label, timestamp }) => {
-          setRandomNumber((prev) => [...prev, number]);
-          setCalledSet((prev) => new Set(prev).add(label));
-  
-          // Calculate the actual interval if the previous timestamp exists
-          if (previousTimestampRef.current !== null) {
-              const interval = timestamp - previousTimestampRef.current;
-              console.log(`Actual interval: ${interval}ms`); // Log the interval
-          }
-  
-          // Update the previous timestamp
-          previousTimestampRef.current = timestamp;
-      });
-  
-      return () => {
-          socket.off("numberDrawn");
-      };
-  }, []);
-  
-    useEffect(() => {
-        const handleAllNumbersDrawn = () => {
-            console.log("All numbers have been drawn, game over!");
-            setGameStarted(false);
-        };
+// Handle all numbers drawn (end of game)
+useEffect(() => {
+    const handleAllNumbersDrawn = () => {
+        console.log("All numbers have been drawn, game over!");
+        setGameStarted(false); // Assuming you have a state to manage the game status
+    };
 
-        socket.on("allNumbersDrawn", handleAllNumbersDrawn);
+    socket.on("allNumbersDrawn", handleAllNumbersDrawn);
 
-        return () => {
-            socket.off("allNumbersDrawn", handleAllNumbersDrawn);
-        };
-    }, [socket]); // Added socket to dependency array
+    return () => {
+        socket.off("allNumbersDrawn", handleAllNumbersDrawn);
+    };
+}, [socket]);
 
-    useEffect(() => {
-        if (playerCount >= 2 && !gameStarted) {
-            socket.emit("gameCount", { gameId });
-        }
-    }, [playerCount, gameStarted, gameId, socket]); // Added socket to dependency array
+// Start the game count when player count is sufficient
+useEffect(() => {
+    if (playerCount >= 2 && !gameStarted) {
+        socket.emit("gameCount", { gameId });
+    }
+}, [playerCount, gameStarted]);
 
 
   const handleCartelaClick = (num) => {
