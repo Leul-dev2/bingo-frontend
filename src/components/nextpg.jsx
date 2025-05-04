@@ -52,10 +52,10 @@ const BingoGame = () => {
     // Listen for game start
     socket.on("gameStarted", () => {
       setGameStarted(true);
-      drawNumber();  // Draw the first number immediately
-      intervalRef.current = setInterval(() => {
-        drawNumber();
-      }, 2000);
+     // drawNumber();  // Draw the first number immediately
+      // intervalRef.current = setInterval(() => {
+      //   //drawNumber();
+      // }, 2000);
     });
   
     // Clean up the event listener on component unmount
