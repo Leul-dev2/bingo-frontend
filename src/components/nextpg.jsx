@@ -50,8 +50,7 @@ const BingoGame = () => {
     });
 
     // Listen for game start
-   
-  
+ 
     // Clean up the event listener on component unmount
     return () => {
       socket.off("playerCountUpdate");
@@ -62,68 +61,49 @@ const BingoGame = () => {
   
   
   
-  useEffect(() => {
-    socket.emit("frontendReady", { gameId });
-    console.log(`Frontend is ready for game ${gameId}`);
-    
-    return () => {
-        socket.off("frontendReady");
-    };
-}, [gameId]);
-
-// Listen for the "gameStart" event and handle countdown
 useEffect(() => {
-    socket.on("gameStart", ({ countdown }) => {
-        setCountdown(countdown);
-        setGameStarted(true);
-    });
-
-    return () => {
-        socket.off("gameStart");
-    };
-}, []);
-
-// Countdown timer logic
-useEffect(() => {
-    if (countdown > 0) {
-        const timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
-        return () => clearTimeout(timer);
-    }
-}, [countdown]);
-
-// Listen for the "numberDrawn" event to update the displayed numbers
-useEffect(() => {
-    socket.on("numberDrawn", ({ number, label }) => {
-        setRandomNumber((prev) => [...prev, number]);
-        setCalledSet((prev) => new Set(prev).add(label));
-    });
-
-    return () => {
-        socket.off("numberDrawn");
-    };
-}, []);
-
-// Handle all numbers drawn (end of game)
-useEffect(() => {
-    const handleAllNumbersDrawn = () => {
-        console.log("All numbers have been drawn, game over!");
-        setGameStarted(false); // Assuming you have a state to manage the game status
-    };
-
-    socket.on("allNumbersDrawn", handleAllNumbersDrawn);
-
-    return () => {
-        socket.off("allNumbersDrawn", handleAllNumbersDrawn);
-    };
-}, [socket]);
-
-// Start the game count when player count is sufficient
-useEffect(() => {
-    if (playerCount >= 2 && !gameStarted) {
-        socket.emit("gameCount", { gameId });
-    }
+  if (playerCount >= 2 && !gameStarted) {
+    socket.emit("gameCount", { gameId });
+  }
 }, [playerCount, gameStarted]);
 
+useEffect(() => {
+  socket.on("gameStart", ({ countdown }) => {
+    setCountdown(countdown);
+    setGameStarted(true);
+  });
+
+  return () => {
+    socket.off("gameStart");
+  };
+}, []);
+
+useEffect(() => {
+  if (countdown > 0) {
+    const timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
+    return () => clearTimeout(timer);
+  }
+}, [countdown]);
+
+useEffect(() => {
+  socket.on("numberDrawn", ({ number, label }) => {
+    setRandomNumber((prev) => [...prev, number]);
+    setCalledSet((prev) => new Set(prev).add(label));
+  });
+
+  return () => {
+    socket.off("numberDrawn");
+  };
+}, []);
+
+  
+  
+  // Log all drawn numbers less frequently or use a callback
+  // useEffect(() => {
+  //   if (randomNumber.length > 0) {
+  //     //console.log("🎯 All Drawn Numbers:", randomNumber);
+  //   }
+  // }, [randomNumber]);
 
   const handleCartelaClick = (num) => {
     setSelectedNumbers((prev) => {
