@@ -62,67 +62,78 @@ const BingoGame = () => {
   
   
   
+  const previousTimestampRef = useRef(null);
+
   useEffect(() => {
-    socket.emit("frontendReady", { gameId });
-    console.log(`Frontend is ready for game ${gameId}`);
-    
-    return () => {
-        socket.off("frontendReady");
-    };
-}, [gameId]);
+      socket.emit("frontendReady", { gameId });
+      console.log(`Frontend is ready for game ${gameId}`);
 
-// Listen for the "gameStart" event and handle countdown
-useEffect(() => {
-    socket.on("gameStart", ({ countdown }) => {
-        setCountdown(countdown);
-        setGameStarted(true);
-    });
+      return () => {
+          socket.off("frontendReady");
+      };
+  }, [gameId, socket]); // Added socket to dependency array
 
-    return () => {
-        socket.off("gameStart");
-    };
-}, []);
+  useEffect(() => {
+      socket.on("gameStart", ({ countdown }) => {
+          setCountdown(countdown);
+          setGameStarted(true);
+      });
 
-// Countdown timer logic
-useEffect(() => {
-    if (countdown > 0) {
-        const timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
-        return () => clearTimeout(timer);
-    }
-}, [countdown]);
+      return () => {
+          socket.off("gameStart");
+      };
+  }, [socket]);
 
-// Listen for the "numberDrawn" event to update the displayed numbers
-useEffect(() => {
-    socket.on("numberDrawn", ({ number, label }) => {
-        setRandomNumber((prev) => [...prev, number]);
-        setCalledSet((prev) => new Set(prev).add(label));
-    });
+  useEffect(() => {
+      if (countdown > 0) {
+          const timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
+          return () => clearTimeout(timer);
+      }
+  }, [countdown]);
 
-    return () => {
-        socket.off("numberDrawn");
-    };
-}, []);
+  useEffect(() => {
+      socket.on("numberDrawn", ({ number, label, timestamp }) => {
+          // Calculate the actual interval
+          let interval = 8000; // Default interval
+          if (previousTimestampRef.current !== null) {
+              interval = timestamp - previousTimestampRef.current;
+              console.log(`Actual interval: ${interval}ms`);
+          }
 
-// Handle all numbers drawn (end of game)
-useEffect(() => {
-    const handleAllNumbersDrawn = () => {
-        console.log("All numbers have been drawn, game over!");
-        setGameStarted(false); // Assuming you have a state to manage the game status
-    };
+          previousTimestampRef.current = timestamp;
 
-    socket.on("allNumbersDrawn", handleAllNumbersDrawn);
+          // Basic Smoothing (adjust delay as needed)
+          const delay = Math.max(0, 8000 - interval);
 
-    return () => {
-        socket.off("allNumbersDrawn", handleAllNumbersDrawn);
-    };
-}, [socket]);
+          setTimeout(() => {
+              setRandomNumber((prev) => [...prev, number]);
+              setCalledSet((prev) => new Set(prev).add(label));
+          }, delay);
+      });
 
-// Start the game count when player count is sufficient
-useEffect(() => {
-    if (playerCount >= 2 && !gameStarted) {
-        socket.emit("gameCount", { gameId });
-    }
-}, [playerCount, gameStarted]);
+      return () => {
+          socket.off("numberDrawn");
+      };
+  }, [socket]); // Added socket to dependency array
+
+  useEffect(() => {
+      const handleAllNumbersDrawn = () => {
+          console.log("All numbers have been drawn, game over!");
+          setGameStarted(false);
+      };
+
+      socket.on("allNumbersDrawn", handleAllNumbersDrawn);
+
+      return () => {
+          socket.off("allNumbersDrawn", handleAllNumbersDrawn);
+      };
+  }, [socket]); // Added socket to dependency array
+
+  useEffect(() => {
+      if (playerCount >= 2 && !gameStarted) {
+          socket.emit("gameCount", { gameId });
+      }
+  }, [playerCount, gameStarted, gameId, socket]); // Added socket to dependency array
 
 
   const handleCartelaClick = (num) => {
