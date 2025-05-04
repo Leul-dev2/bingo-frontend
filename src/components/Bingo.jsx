@@ -23,7 +23,7 @@ function Bingo() {
   const [otherSelectedCards, setOtherSelectedCards] = useState({});
   const [count, setCount] = useState(0);
   const [playerCount, setPlayerCount] = useState(0);
-  const [canJoin, setCanJoin] = useState(true); // New state to control joinability
+
 
 
   // 🟢 Fetch User Balance from REST
@@ -177,23 +177,7 @@ function Bingo() {
   };
 
   // 🟢 Join Game & Emit to Socket
-  useEffect(() => {
-    socket.on("gameFull", (data) => {
-      alert(data.message); // Display the "Game Full" message
-      setCanJoin(false); // Ensure the user can't try to join again
-    });
-
-    return () => {
-      socket.off("gameFull");
-    };
-  }, []);
-
   const startGame = async () => {
-    if (!canJoin) {
-      alert("You cannot join this game anymore. It has already started.");
-      return; // Prevent the API call
-    }
-
     try {
       // Call backend API to create/join game room
       const response = await fetch("https://bingobot-backend.onrender.com/api/games/start", {
@@ -206,19 +190,19 @@ function Bingo() {
           telegramId: telegramId // From the user
         }),
       });
-
+  
       const data = await response.json();
-
+  
       if (response.ok) {
         // ✅ Set up socket listeners BEFORE emitting
         socket.off("playerCountUpdate").on("playerCountUpdate", ({ playerCount }) => {
           console.log(`Players in the game room ${gameId}: ${playerCount}`);
           setPlayerCount(playerCount);
         });
-
+  
         socket.off("gameId").on("gameId", (res) => {
           const { gameId: receivedGameId, telegramId: receivedTelegramId } = res;
-
+  
           if (receivedGameId && receivedTelegramId) {
             navigate("/game", {
               state: {
@@ -232,7 +216,7 @@ function Bingo() {
             setAlertMessage("Invalid game or user data received!");
           }
         });
-
+  
         // ✅ Emit after listeners are set
         socket.emit("joinGame", { gameId, telegramId });
 
@@ -240,7 +224,7 @@ function Bingo() {
         setAlertMessage(data.error || "Error starting the game");
         console.error("Game start error:", data.error);
       }
-
+  
     } catch (error) {
       setAlertMessage("Error connecting to the backend");
       console.error("Connection error:", error);
