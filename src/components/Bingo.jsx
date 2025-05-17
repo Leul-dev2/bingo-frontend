@@ -40,12 +40,12 @@ function Bingo() {
   };
 
   // 🟢 Initial Effect to Fetch & Setup Socket
- useEffect(() => {
+useEffect(() => {
   if (!telegramId) return;
 
   fetchUserData(telegramId);
 
-  // ✅ Setup all listeners FIRST
+  // Setup all socket listeners first
   const handleCardSelections = (cards) => {
     console.log("💡 Initial card selections received:", cards);
     setOtherSelectedCards(cards);
@@ -65,22 +65,41 @@ function Bingo() {
 
   socket.on("currentCardSelections", handleCardSelections);
 
+  socket.on("cardConfirmed", (data) => {
+    setCartela(data.card);
+    setCartelaId(data.cardId);
+    setGameStatus("Ready to Start");
+  });
+
+  socket.on("otherCardSelected", ({ telegramId, cardId }) => {
+    setOtherSelectedCards((prev) => ({
+      ...prev,
+      [telegramId]: cardId,
+    }));
+  });
+
+  socket.on("gameid", (data) => {
+    setCount(data.numberOfPlayers);
+  });
+
   socket.on("error", (err) => {
     console.error(err);
     setAlertMessage(err.message);
   });
 
-  // ✅ THEN emit after all listeners are ready
+  // Emit after all listeners are set up
   socket.emit("joinUser", { telegramId });
   socket.emit("userJoinedGame", { telegramId, gameId });
 
-  // Cleanup
   return () => {
     socket.off("userconnected");
     socket.off("balanceUpdated");
     socket.off("gameStatusUpdate");
-    socket.off("error");
     socket.off("currentCardSelections", handleCardSelections);
+    socket.off("cardConfirmed");
+    socket.off("otherCardSelected");
+    socket.off("gameid");
+    socket.off("error");
   };
 }, [telegramId, navigate]);
 
@@ -127,34 +146,34 @@ function Bingo() {
     }
   };
 
-  useEffect(() => {
-    // Handle your own card confirmation
-    socket.on('cardConfirmed', (data) => {
-      setCartela(data.card);
-      setCartelaId(data.cardId);
-      setGameStatus("Ready to Start");
-    });
+  // useEffect(() => {
+  //   // Handle your own card confirmation
+  //   socket.on('cardConfirmed', (data) => {
+  //     setCartela(data.card);
+  //     setCartelaId(data.cardId);
+  //     setGameStatus("Ready to Start");
+  //   });
   
-    // Handle other users' selected cards
-    socket.on('otherCardSelected', ({ telegramId, cardId }) => {
-      setOtherSelectedCards(prev => ({
-        ...prev,
-        [telegramId]: cardId,
-      }));
-    });
+  //   // Handle other users' selected cards
+  //   socket.on('otherCardSelected', ({ telegramId, cardId }) => {
+  //     setOtherSelectedCards(prev => ({
+  //       ...prev,
+  //       [telegramId]: cardId,
+  //     }));
+  //   });
 
-    socket.on("gameid", (data) => {
-        setCount(data.numberOfPlayers);
+  //   socket.on("gameid", (data) => {
+  //       setCount(data.numberOfPlayers);
       
-    });
+  //   });
 
   
-    return () => {
-      socket.off('cardConfirmed');
-      socket.off('otherCardSelected');
-      socket.off("gameid");
-    };
-  }, [socket]);
+  //   return () => {
+  //     socket.off('cardConfirmed');
+  //     socket.off('otherCardSelected');
+  //     socket.off("gameid");
+  //   };
+  // }, [socket]);
   
   
 
