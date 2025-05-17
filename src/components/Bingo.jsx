@@ -40,69 +40,60 @@ function Bingo() {
   };
 
   // 🟢 Initial Effect to Fetch & Setup Socket
-  useEffect(() => {
-    if (!telegramId) return;
-    fetchUserData(telegramId);
+ useEffect(() => {
+  if (!telegramId) return;
 
-    // Join Socket Room for Telegram ID
-    socket.emit("joinUser", { telegramId });
-    socket.emit("userJoinedGame", { telegramId, gameId });
-    
-    socket.on("userconnected", (res) => {
-      setResponse(res.telegramId);
-    });
+  fetchUserData(telegramId);
 
-    // Listen for balance update from server
-    socket.on("balanceUpdated", (newBalance) => {
-      setUserBalance(newBalance);
-    });
+  // ✅ Setup all listeners FIRST
+  const handleCardSelections = (cards) => {
+    console.log("💡 Initial card selections received:", cards);
+    setOtherSelectedCards(cards);
+  };
 
-    // Listen for game status updates
-    socket.on("gameStatusUpdate", (status) => {
-      setGameStatus(status);
-      // if (status === "active") {
-      //   const gameId = localStorage.getItem("gameId");
-      //   if (gameId) {
-      //     navigate("/game", { state: { cartela, cartelaId, gameId } });
-      //   }
-      // }
-    });
+  socket.on("userconnected", (res) => {
+    setResponse(res.telegramId);
+  });
 
-    const handleCardSelections = (cards) => {
-      console.log("💡 Initial card selections received:", cards);
-      setOtherSelectedCards(cards);
-    };
+  socket.on("balanceUpdated", (newBalance) => {
+    setUserBalance(newBalance);
+  });
 
-    socket.on("currentCardSelections", handleCardSelections);
+  socket.on("gameStatusUpdate", (status) => {
+    setGameStatus(status);
+  });
 
-    // Handle errors from server
-    socket.on("error", (err) => {
-      console.error(err);
-      setAlertMessage(err.message);
-    });
+  socket.on("currentCardSelections", handleCardSelections);
 
-    // Cleanup socket listeners when the component unmounts
-    return () => {
-      socket.off("userconnected");
-      socket.off("balanceUpdated");
-      socket.off("gameStatusUpdate");
-      socket.off("error");
-      socket.off("currentCardSelections", handleCardSelections);
-    };
-  }, [telegramId, navigate]);
+  socket.on("error", (err) => {
+    console.error(err);
+    setAlertMessage(err.message);
+  });
+
+  // ✅ THEN emit after all listeners are ready
+  socket.emit("joinUser", { telegramId });
+  socket.emit("userJoinedGame", { telegramId, gameId });
+
+  // Cleanup
+  return () => {
+    socket.off("userconnected");
+    socket.off("balanceUpdated");
+    socket.off("gameStatusUpdate");
+    socket.off("error");
+    socket.off("currentCardSelections", handleCardSelections);
+  };
+}, [telegramId, navigate]);
 
 
   useEffect(() => {
     if (!socket) return;
-
-  
     const handleCardAvailable = ({ cardId }) => {
       setOtherSelectedCards((prevCards) => {
         const updated = { ...prevCards };
         for (const key in updated) {
           if (updated[key] === cardId) {
             delete updated[key];
-            break;
+            break;  
           }
         }
         return updated;
@@ -116,8 +107,6 @@ function Bingo() {
     };
   }, [socket]);
   
-  
-  
 
   // 🟢 Select a bingo card
   const handleNumberClick = (number) => {
@@ -126,7 +115,6 @@ function Bingo() {
       setCartela(selectedCard.card);
       setCartelaId(number);
       setGameStatus("Ready to Start");
-
       // Emit selected card event to the server
       socket.emit("cardSelected", {
         telegramId,
@@ -230,10 +218,6 @@ function Bingo() {
       console.error("Connection error:", error);
     }
   };
-  
-  
-  
-  
   
 
   return (

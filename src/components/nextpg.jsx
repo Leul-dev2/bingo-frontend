@@ -17,8 +17,7 @@ const BingoGame = () => {
   };
 
  
-  const [randomNumber, setRandomNumber] = useState([
-  ]);
+  const [randomNumber, setRandomNumber] = useState([]);
   const [calledNumbers, setCalledNumbers] = useState([]);
   const [currentCall, setCurrentCall] = useState(null);
   const [selectedNumbers, setSelectedNumbers] = useState(new Set());
@@ -50,7 +49,7 @@ const BingoGame = () => {
     });
 
     // Listen for game start
- 
+
     // Clean up the event listener on component unmount
     return () => {
       socket.off("playerCountUpdate");
@@ -355,9 +354,6 @@ useEffect(() => {
 </div>
 
 
-
-
-
        {/* Called Numbers Section */}
 <div className="bg-gray-100 p-2 rounded-lg w-full max-w-md mx-auto">
   <p className="text-center font-bold text-xs sm:text-sm md:text-base">Called Numbers</p>
@@ -416,12 +412,7 @@ useEffect(() => {
       )}
     </div>
   </div>
-)}
-
-
-
-
-
+ )}
 
         </div>
       </div>
