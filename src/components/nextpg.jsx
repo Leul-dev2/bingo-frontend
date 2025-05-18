@@ -67,15 +67,22 @@ useEffect(() => {
 }, [playerCount, gameStarted]);
 
 useEffect(() => {
-  socket.on("gameStart", ({ countdown }) => {
+  // Listen for countdown ticks
+  socket.on("countdownTick", ({ countdown }) => {
     setCountdown(countdown);
+  });
+
+  // Listen for actual game start trigger
+  socket.on("gameStart", () => {
     setGameStarted(true);
   });
 
   return () => {
+    socket.off("countdownTick");
     socket.off("gameStart");
   };
 }, []);
+
 
 useEffect(() => {
   if (countdown > 0) {
