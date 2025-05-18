@@ -23,6 +23,7 @@ function Bingo() {
   const [otherSelectedCards, setOtherSelectedCards] = useState({});
   const [count, setCount] = useState(0);
   const [playerCount, setPlayerCount] = useState(0);
+  const [gameStarted, setGameStarted] = useState(false);
 
 
 
@@ -152,6 +153,17 @@ const handleCardSelections = (cards) => {
     }
   };
 
+
+  useEffect(() => {
+    socket.on("gameStart", ({ countdown }) => {
+      setGameStarted(true);
+    });
+    
+  return () => {
+    socket.off("gameStart");
+  };
+}, []);
+
   // useEffect(() => {
   //   // Handle your own card confirmation
   //   socket.on('cardConfirmed', (data) => {
@@ -191,6 +203,10 @@ const handleCardSelections = (cards) => {
 
   // 🟢 Join Game & Emit to Socket
   const startGame = async () => {
+     if (gameStarted) {
+      alert("Please wait until the active game ends.");
+      return;
+      }
     try {
       // Call backend API to create/join game room
       const response = await fetch("https://bingobot-backend.onrender.com/api/games/start", {
