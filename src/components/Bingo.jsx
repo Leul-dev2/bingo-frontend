@@ -96,6 +96,15 @@ const handleCardSelections = (cards) => {
     setAlertMessage(err.message);
   });
 
+   socket.on("cardsReset", ({ gameId: resetGameId }) => {
+    if (resetGameId === gameId) {
+      setOtherSelectedCards({});
+      setCartela([]);
+      setCartelaId(null);
+      console.log("🔄 Cards have been reset for this game.");
+    }
+  });
+
   // Emit after all listeners are set up
   socket.emit("joinUser", { telegramId });
   socket.emit("userJoinedGame", { telegramId, gameId });
@@ -109,6 +118,7 @@ const handleCardSelections = (cards) => {
     socket.off("otherCardSelected");
     socket.off("gameid");
     socket.off("error");
+    socket.off("cardsReset");
   };
 }, [telegramId, navigate]);
 
