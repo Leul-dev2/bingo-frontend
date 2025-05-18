@@ -157,10 +157,6 @@ const handleCardSelections = (cards) => {
 
 
 useEffect(() => {
-  // Countdown tick handler
-  socket.on("countdownTick", ({ countdown }) => {
-    setCountdown(countdown); // You'll need a countdown state
-  });
 
   // Game start handler
   socket.on("gameStart", () => {
@@ -168,7 +164,6 @@ useEffect(() => {
   });
 
   return () => {
-    socket.off("countdownTick");
     socket.off("gameStart");
   };
 }, []);

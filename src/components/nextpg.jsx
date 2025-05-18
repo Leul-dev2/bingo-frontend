@@ -264,7 +264,7 @@ const declareWinner = (winnerPattern, telegramId) => {
 
 
 useEffect(() => {
-  const handleWinnerFound = ({ winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount }) => {
+  const handleWinnerFound = ({ winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId }) => {
     navigate("/winnerPage", {
       state: {
         winnerName,
@@ -272,7 +272,9 @@ useEffect(() => {
         board,
         winnerPattern,
         boardNumber,
-        playerCount
+        playerCount,
+        telegramId,
+        gameId
       }
     });
   };

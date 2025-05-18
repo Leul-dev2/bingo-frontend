@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 
 const WinnerPage = () => {
   const location = useLocation();
-  const { winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount } = location.state || {};
+  const { winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId } = location.state || {};
   console.log("winnerpatern",winnerPattern);
   console.log("board",board);
 
@@ -22,6 +22,16 @@ const WinnerPage = () => {
       </div>
     );
   };
+  
+  function playAgain(){
+       navigate("/game", {
+              state: {
+                gameId,
+                telegramId
+              },
+            });
+  }
+
 
  return (
   <div className="container mx-auto p-4 sm:p-6 md:p-8 max-w-4xl">
@@ -69,7 +79,7 @@ const WinnerPage = () => {
     {/* Play Again Button */}
     <div className="text-center mt-6">
       <button
-        onClick={() => window.location.href = "/"}
+        onClick={playAgain()}
         className="bg-blue-500 text-white px-5 sm:px-6 py-2 rounded-lg shadow-md hover:bg-blue-600 transition duration-300"
       >
         Play Again
