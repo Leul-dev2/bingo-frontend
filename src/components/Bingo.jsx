@@ -182,6 +182,18 @@ useEffect(() => {
   };
 }, []);
 
+useEffect(() => {
+
+  // Game start handler
+  socket.on("gameFinished", () => {
+    setGameStarted(false);
+  });
+
+  return () => {
+    socket.off("gameFinished");
+  };
+}, []);
+
 
   // useEffect(() => {
   //   // Handle your own card confirmation
