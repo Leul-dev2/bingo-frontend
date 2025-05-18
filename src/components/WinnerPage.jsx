@@ -1,9 +1,10 @@
 import React from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const WinnerPage = () => {
   const location = useLocation();
   const { winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId } = location.state || {};
+    const navigate = useNavigate();
   console.log("winnerpatern",winnerPattern);
   console.log("board",board);
 
@@ -22,15 +23,12 @@ const WinnerPage = () => {
       </div>
     );
   };
+
+   function playAgain() {
+  navigate(`/?user=${telegramId}&game=${gameId}`);
+}
+
   
-  function playAgain(){
-       navigate("/game", {
-              state: {
-                gameId,
-                telegramId
-              },
-            });
-  }
 
 
  return (
