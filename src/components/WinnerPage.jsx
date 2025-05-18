@@ -79,7 +79,7 @@ const WinnerPage = () => {
     {/* Play Again Button */}
     <div className="text-center mt-6">
       <button
-        onClick={playAgain()}
+        onClick={() => playAgain()}
         className="bg-blue-500 text-white px-5 sm:px-6 py-2 rounded-lg shadow-md hover:bg-blue-600 transition duration-300"
       >
         Play Again
