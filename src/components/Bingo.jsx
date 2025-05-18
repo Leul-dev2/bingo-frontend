@@ -24,6 +24,8 @@ function Bingo() {
   const [count, setCount] = useState(0);
   const [playerCount, setPlayerCount] = useState(0);
   const [gameStarted, setGameStarted] = useState(false);
+  const [countdown, setCountdown] = useState(null);
+
 
 
 
@@ -154,15 +156,23 @@ const handleCardSelections = (cards) => {
   };
 
 
-  useEffect(() => {
-    socket.on("gameStart", () => {
-      setGameStarted(true);
-    });
-    
+useEffect(() => {
+  // Countdown tick handler
+  socket.on("countdownTick", ({ countdown }) => {
+    setCountdown(countdown); // You'll need a countdown state
+  });
+
+  // Game start handler
+  socket.on("gameStart", () => {
+    setGameStarted(true);
+  });
+
   return () => {
+    socket.off("countdownTick");
     socket.off("gameStart");
   };
 }, []);
+
 
   // useEffect(() => {
   //   // Handle your own card confirmation
