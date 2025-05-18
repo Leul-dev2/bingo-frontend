@@ -46,10 +46,16 @@ useEffect(() => {
   fetchUserData(telegramId);
 
   // Setup all socket listeners first
-  const handleCardSelections = (cards) => {
-    console.log("💡 Initial card selections received:", cards);
-    setOtherSelectedCards(cards);
-  };
+const handleCardSelections = (cards) => {
+  console.log("💡 Initial card selections received:", cards);
+  const reformatted = {};
+
+  for (const [cardId, telegramId] of Object.entries(cards)) {
+    reformatted[telegramId] = cardId;
+  }
+
+  setOtherSelectedCards(reformatted);
+};
 
   socket.on("userconnected", (res) => {
     setResponse(res.telegramId);
