@@ -51,7 +51,7 @@ const handleCardSelections = (cards) => {
   const reformatted = {};
 
   for (const [cardId, telegramId] of Object.entries(cards)) {
-    reformatted[telegramId] = cardId;
+    reformatted[telegramId] = parseInt(cardId); // Ensure same type as num
   }
 
   setOtherSelectedCards(reformatted);
