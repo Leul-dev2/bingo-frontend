@@ -24,9 +24,11 @@ const WinnerPage = () => {
     );
   };
 
-   function playAgain() {
-  navigate(`/?user=${telegramId}&game=${gameId}`);
+ function playAgain() {
+  const myTelegramId = localStorage.getItem("telegramId");
+  navigate(`/?user=${myTelegramId}&game=${gameId}`);
 }
+
 
   
 

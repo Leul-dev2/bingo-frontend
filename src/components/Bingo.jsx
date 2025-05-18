@@ -46,7 +46,11 @@ function Bingo() {
 useEffect(() => {
   if (!telegramId) return;
 
+
   fetchUserData(telegramId);
+  // When loading game, maybe in useEffect or login flow
+   localStorage.setItem("telegramId", telegramId);
+
 
   // Setup all socket listeners first
 const handleCardSelections = (cards) => {
