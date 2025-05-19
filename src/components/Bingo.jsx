@@ -25,6 +25,7 @@ function Bingo() {
   const [playerCount, setPlayerCount] = useState(0);
   const [gameStarted, setGameStarted] = useState(false);
   const [countdown, setCountdown] = useState(null);
+  const [isStarting, setIsStarting] = useState(false);
 
 
 
@@ -233,63 +234,66 @@ useEffect(() => {
   };
 
   // 🟢 Join Game & Emit to Socket
-  const startGame = async () => {
-     if (gameStarted) {
-      alert("Please wait until the active game ends.");
-      return;
-      }
-    try {
-      // Call backend API to create/join game room
-      const response = await fetch("https://bingobot-backend.onrender.com/api/games/start", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          gameId: gameId,        // From your UI/state
-          telegramId: telegramId // From the user
-        }),
-      });
-  
-      const data = await response.json();
-  
-      if (response.ok) {
-        // ✅ Set up socket listeners BEFORE emitting
-        socket.off("playerCountUpdate").on("playerCountUpdate", ({ playerCount }) => {
-          console.log(`Players in the game room ${gameId}: ${playerCount}`);
-          setPlayerCount(playerCount);
-        });
-  
-        socket.off("gameId").on("gameId", (res) => {
-          const { gameId: receivedGameId, telegramId: receivedTelegramId } = res;
-  
-          if (receivedGameId && receivedTelegramId) {
-            navigate("/game", {
-              state: {
-                gameId: receivedGameId,
-                telegramId: receivedTelegramId,
-                cartela,
-                playerCount,
-              },
-            });
-          } else {
-            setAlertMessage("Invalid game or user data received!");
-          }
-        });
-  
-        // ✅ Emit after listeners are set
-        socket.emit("joinGame", { gameId, telegramId });
+ const startGame = async () => {
+  if (gameStarted || isStarting) {
+    alert("Please wait until the active game ends.");
+    return;
+  }
 
-      } else {
-        setAlertMessage(data.error || "Error starting the game");
-        console.error("Game start error:", data.error);
-      }
-  
-    } catch (error) {
-      setAlertMessage("Error connecting to the backend");
-      console.error("Connection error:", error);
+  setIsStarting(true); // 🚫 Block further clicks
+
+  try {
+    const response = await fetch("https://bingobot-backend.onrender.com/api/games/start", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        gameId,
+        telegramId
+      }),
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      socket.off("playerCountUpdate").on("playerCountUpdate", ({ playerCount }) => {
+        console.log(`Players in the game room ${gameId}: ${playerCount}`);
+        setPlayerCount(playerCount);
+      });
+
+      socket.off("gameId").on("gameId", (res) => {
+        const { gameId: receivedGameId, telegramId: receivedTelegramId } = res;
+
+        if (receivedGameId && receivedTelegramId) {
+          navigate("/game", {
+            state: {
+              gameId: receivedGameId,
+              telegramId: receivedTelegramId,
+              cartela,
+              playerCount,
+            },
+          });
+        } else {
+          setAlertMessage("Invalid game or user data received!");
+        }
+      });
+
+      socket.emit("joinGame", { gameId, telegramId });
+
+    } else {
+      setAlertMessage(data.error || "Error starting the game");
+      console.error("Game start error:", data.error);
     }
-  };
+
+  } catch (error) {
+    setAlertMessage("Error connecting to the backend");
+    console.error("Connection error:", error);
+  } finally {
+    setIsStarting(false); // ✅ Allow retry only after the request finishes
+  }
+};
+
   
 
   return (
@@ -360,9 +364,16 @@ useEffect(() => {
         <button onClick={resetGame} className="bg-blue-500 text-white px-3 py-1 rounded-lg shadow-md text-sm">
           Refresh
         </button>
-        <button onClick={startGame} className="bg-orange-500 text-white px-3 py-1 rounded-lg shadow-md text-sm" disabled={!cartelaId}>
-          Start Game
-        </button>
+       <button
+        onClick={startGame}
+        disabled={!cartelaId || isStarting}
+        className={`${
+          !cartelaId || isStarting ? "bg-gray-400 cursor-not-allowed" : "bg-orange-500 hover:bg-orange-600"
+        } text-white px-3 py-1 rounded-lg shadow-md text-sm`}
+        >
+        {isStarting ? "Starting..." : "Start Game"}
+      </button>
+
       </div>
     </div>
   );
