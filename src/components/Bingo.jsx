@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { io } from "socket.io-client";
 
 // Initialize socket connection
-const socket = io("https://bingobot-backend.onrender.com");
+const socket = io("https://bingobot-backend-bwdo.onrender.com");
 
 function Bingo() {
   const [searchParams] = useSearchParams();
@@ -33,7 +33,7 @@ function Bingo() {
   // 🟢 Fetch User Balance from REST
   const fetchUserData = async (id) => {
     try {
-      const res = await fetch(`https://bingobot-backend.onrender.com/api/users/getUser?telegramId=${telegramId}`);
+      const res = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/users/getUser?telegramId=${telegramId}`);
       if (!res.ok) throw new Error("User not found");
       const data = await res.json();
       setUserBalance(data.balance);
@@ -243,7 +243,7 @@ useEffect(() => {
   setIsStarting(true); // 🚫 Block further clicks
 
   try {
-    const response = await fetch("https://bingobot-backend.onrender.com/api/games/start", {
+    const response = await fetch("https://bingobot-backend-bwdo.onrender.com/api/games/start", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
