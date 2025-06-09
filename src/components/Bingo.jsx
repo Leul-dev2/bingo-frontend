@@ -95,6 +95,7 @@ const handleCardSelections = (cards) => {
   });
 
   socket.on("gameid", (data) => {
+    console.log("user joined")
     setCount(data.numberOfPlayers);
   });
 
@@ -198,7 +199,35 @@ useEffect(() => {
 }, []);
 
 
- 
+  // useEffect(() => {
+  //   // Handle your own card confirmation
+  //   socket.on('cardConfirmed', (data) => {
+  //     setCartela(data.card);
+  //     setCartelaId(data.cardId);
+  //     setGameStatus("Ready to Start");
+  //   });
+  
+  //   // Handle other users' selected cards
+  //   socket.on('otherCardSelected', ({ telegramId, cardId }) => {
+  //     setOtherSelectedCards(prev => ({
+  //       ...prev,
+  //       [telegramId]: cardId,
+  //     }));
+  //   });
+
+  //   socket.on("gameid", (data) => {
+  //       setCount(data.numberOfPlayers);
+      
+  //   });
+
+  
+  //   return () => {
+  //     socket.off('cardConfirmed');
+  //     socket.off('otherCardSelected');
+  //     socket.off("gameid");
+  //   };
+  // }, [socket]);
+  
   
 
   const resetGame = () => {
