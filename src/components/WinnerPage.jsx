@@ -29,10 +29,6 @@ const WinnerPage = () => {
   navigate(`/?user=${myTelegramId}&game=${gameId}`);
 }
 
-
-  
-
-
  return (
   <div className="container mx-auto p-4 sm:p-6 md:p-8 max-w-4xl">
     <h1 className="text-2xl sm:text-3xl font-bold text-center text-blue-600 mb-4 sm:mb-6">

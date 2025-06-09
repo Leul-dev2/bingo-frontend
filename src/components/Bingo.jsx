@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { io } from "socket.io-client";
 
+// http://localhost:5173/?user=637145475&game=10
+
 // Initialize socket connection
 const socket = io("https://bingobot-backend-bwdo.onrender.com");
 
@@ -28,9 +30,7 @@ function Bingo() {
   const [isStarting, setIsStarting] = useState(false);
 
 
-
-
-  // 🟢 Fetch User Balance from REST
+ // 🟢 Fetch User Balance from REST
   const fetchUserData = async (id) => {
     try {
       const res = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/users/getUser?telegramId=${telegramId}`);
@@ -43,10 +43,11 @@ function Bingo() {
     }
   };
 
-  // 🟢 Initial Effect to Fetch & Setup Socket
-useEffect(() => {
-  if (!telegramId) return;
+ 
 
+  // 🟢 Initial Effect to Fetch & Setup Socket
+ useEffect(() => {
+  if (!telegramId) return;
 
   fetchUserData(telegramId);
   // When loading game, maybe in useEffect or login flow
@@ -54,35 +55,31 @@ useEffect(() => {
 
 
   // Setup all socket listeners first
-const handleCardSelections = (cards) => {
-  console.log("💡 Initial card selections received:", cards);
-  const reformatted = {};
+  const handleCardSelections = (cards) => {
+    console.log("💡 Initial card selections received:", cards);
+    const reformatted = {};
 
-  for (const [cardId, telegramId] of Object.entries(cards)) {
-    reformatted[telegramId] = parseInt(cardId); // Ensure same type as num
-  }
+    for (const [cardId, telegramId] of Object.entries(cards)) {
+      reformatted[telegramId] = parseInt(cardId); // Ensure same type as num
+    }
 
-  setOtherSelectedCards(reformatted);
-};
+    setOtherSelectedCards(reformatted);
+  };
 
-  socket.on("userconnected", (res) => {
-    setResponse(res.telegramId);
-  });
+  // socket.on("userconnected", (res) => {
+  //   setResponse(res.telegramId);
+  // });
 
-  socket.on("balanceUpdated", (newBalance) => {
-    setUserBalance(newBalance);
-  });
-
-  socket.on("gameStatusUpdate", (status) => {
-    setGameStatus(status);
-  });
+  // socket.on("balanceUpdated", (newBalance) => {
+  //   setUserBalance(newBalance);
+  // });
 
   socket.on("currentCardSelections", handleCardSelections);
 
   socket.on("cardConfirmed", (data) => {
     setCartela(data.card);
     setCartelaId(data.cardId);
-    setGameStatus("Ready to Start");
+    //setGameStatus("Ready to Start");
   });
 
   socket.on("otherCardSelected", ({ telegramId, cardId }) => {
@@ -92,7 +89,7 @@ const handleCardSelections = (cards) => {
     }));
   });
 
-  socket.on("gameid", (data) => {
+  socket.on("numPlayers", (data) => {
     setCount(data.numberOfPlayers);
   });
 
@@ -171,6 +168,8 @@ const handleCardSelections = (cards) => {
   };
 
 
+
+  //game start functions below here !!!
 useEffect(() => {
 
   // Game start handler
@@ -194,38 +193,6 @@ useEffect(() => {
     socket.off("gameFinished");
   };
 }, []);
-
-
-  // useEffect(() => {
-  //   // Handle your own card confirmation
-  //   socket.on('cardConfirmed', (data) => {
-  //     setCartela(data.card);
-  //     setCartelaId(data.cardId);
-  //     setGameStatus("Ready to Start");
-  //   });
-  
-  //   // Handle other users' selected cards
-  //   socket.on('otherCardSelected', ({ telegramId, cardId }) => {
-  //     setOtherSelectedCards(prev => ({
-  //       ...prev,
-  //       [telegramId]: cardId,
-  //     }));
-  //   });
-
-  //   socket.on("gameid", (data) => {
-  //       setCount(data.numberOfPlayers);
-      
-  //   });
-
-  
-  //   return () => {
-  //     socket.off('cardConfirmed');
-  //     socket.off('otherCardSelected');
-  //     socket.off("gameid");
-  //   };
-  // }, [socket]);
-  
-  
 
   const resetGame = () => {
     setCartelaId(null);
@@ -257,7 +224,7 @@ useEffect(() => {
     const data = await response.json();
 
     if (response.ok) {
-      socket.off("playerCountUpdate").on("playerCountUpdate", ({ playerCount }) => {
+       socket.off("playerCountUpdate").on("playerCountUpdate", ({ playerCount }) => {
         console.log(`Players in the game room ${gameId}: ${playerCount}`);
         setPlayerCount(playerCount);
       });
