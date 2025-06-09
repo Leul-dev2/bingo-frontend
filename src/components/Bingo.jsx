@@ -89,7 +89,7 @@ function Bingo() {
     }));
   });
 
-  socket.on("numPlayers", (data) => {
+  socket.on("gameid", (data) => {
     setCount(data.numberOfPlayers);
   });
 
