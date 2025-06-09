@@ -30,7 +30,9 @@ function Bingo() {
   const [isStarting, setIsStarting] = useState(false);
 
 
- // 🟢 Fetch User Balance from REST
+
+
+  // 🟢 Fetch User Balance from REST
   const fetchUserData = async (id) => {
     try {
       const res = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/users/getUser?telegramId=${telegramId}`);
@@ -43,11 +45,10 @@ function Bingo() {
     }
   };
 
- 
-
   // 🟢 Initial Effect to Fetch & Setup Socket
- useEffect(() => {
+useEffect(() => {
   if (!telegramId) return;
+
 
   fetchUserData(telegramId);
   // When loading game, maybe in useEffect or login flow
@@ -55,31 +56,35 @@ function Bingo() {
 
 
   // Setup all socket listeners first
-  const handleCardSelections = (cards) => {
-    console.log("💡 Initial card selections received:", cards);
-    const reformatted = {};
+const handleCardSelections = (cards) => {
+  console.log("💡 Initial card selections received:", cards);
+  const reformatted = {};
 
-    for (const [cardId, telegramId] of Object.entries(cards)) {
-      reformatted[telegramId] = parseInt(cardId); // Ensure same type as num
-    }
+  for (const [cardId, telegramId] of Object.entries(cards)) {
+    reformatted[telegramId] = parseInt(cardId); // Ensure same type as num
+  }
 
-    setOtherSelectedCards(reformatted);
-  };
+  setOtherSelectedCards(reformatted);
+};
 
-  // socket.on("userconnected", (res) => {
-  //   setResponse(res.telegramId);
-  // });
+  socket.on("userconnected", (res) => {
+    setResponse(res.telegramId);
+  });
 
-  // socket.on("balanceUpdated", (newBalance) => {
-  //   setUserBalance(newBalance);
-  // });
+  socket.on("balanceUpdated", (newBalance) => {
+    setUserBalance(newBalance);
+  });
+
+  socket.on("gameStatusUpdate", (status) => {
+    setGameStatus(status);
+  });
 
   socket.on("currentCardSelections", handleCardSelections);
 
   socket.on("cardConfirmed", (data) => {
     setCartela(data.card);
     setCartelaId(data.cardId);
-    //setGameStatus("Ready to Start");
+    setGameStatus("Ready to Start");
   });
 
   socket.on("otherCardSelected", ({ telegramId, cardId }) => {
@@ -168,8 +173,6 @@ function Bingo() {
   };
 
 
-
-  //game start functions below here !!!
 useEffect(() => {
 
   // Game start handler
@@ -193,6 +196,10 @@ useEffect(() => {
     socket.off("gameFinished");
   };
 }, []);
+
+
+ 
+  
 
   const resetGame = () => {
     setCartelaId(null);
@@ -224,7 +231,7 @@ useEffect(() => {
     const data = await response.json();
 
     if (response.ok) {
-       socket.off("playerCountUpdate").on("playerCountUpdate", ({ playerCount }) => {
+      socket.off("playerCountUpdate").on("playerCountUpdate", ({ playerCount }) => {
         console.log(`Players in the game room ${gameId}: ${playerCount}`);
         setPlayerCount(playerCount);
       });
