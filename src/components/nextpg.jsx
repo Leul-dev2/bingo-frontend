@@ -34,26 +34,29 @@ const BingoGame = () => {
   const socket = io("https://bingobot-backend-bwdo.onrender.com");
 
  useEffect(() => {
-  if (gameId) {
-    socket.emit("joinGameRoom", { gameId });
-  }
-
-  socket.on("playerCountUpdate", (data) => {
-    console.log("Player count received:", data.playerCount);
-    setPlayerCount(data.playerCount);
-  });
-
-  socket.on("countdownUpdate", (data) => {
-    setCountdown(data.countdown);
-  });
-
-  return () => {
-    socket.off("playerCountUpdate");
-    socket.off("countdownUpdate");
-  };
-}, [gameId]);
- // Re-run when gameId changes
+    // Listen for player count updates without emitting a request
+    socket.on("playerCountUpdate", (data) => {
+      console.log("Player count received:", data.playerCount);
+      setPlayerCount(data.playerCount);  // Update player count
+    });
   
+    // Request initial player count when the component is mounted
+    socket.emit("getPlayerCount", { gameId });
+
+
+     socket.on("countdownUpdate", (data) => {
+      setCountdown(data.countdown);  // Update countdown
+    });
+
+    // Listen for game start
+
+    // Clean up the event listener on component unmount
+    return () => {
+      socket.off("playerCountUpdate");
+    };
+
+
+  }, [gameId]); 
   
   
 useEffect(() => {
