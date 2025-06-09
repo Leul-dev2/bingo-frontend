@@ -260,7 +260,6 @@ useEffect(() => {
     const data = await response.json();
 
     if (response.ok) {
-      socket.emit("joinGame", { gameId, telegramId });
       socket.off("playerCountUpdate").on("playerCountUpdate", ({ playerCount }) => {
         console.log(`Players in the game room ${gameId}: ${playerCount}`);
         setPlayerCount(playerCount);
