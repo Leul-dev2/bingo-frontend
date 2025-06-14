@@ -95,7 +95,7 @@ const handleCardSelections = (cards) => {
   });
 
   socket.on("gameid", (data) => {
-    console.log("user joined")
+   // console.log("user joined")
     setCount(data.numberOfPlayers);
   });
 

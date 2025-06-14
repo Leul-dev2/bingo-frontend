@@ -43,6 +43,7 @@ const BingoGame = () => {
     console.log("player count", playerCount)
     // Request initial player count when the component is mounted
     socket.emit("getPlayerCount", { gameId });
+    console.log("player count in nextpage", playerCount);
 
 
      socket.on("countdownUpdate", (data) => {
