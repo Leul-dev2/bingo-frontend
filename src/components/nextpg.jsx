@@ -34,32 +34,26 @@ const BingoGame = () => {
   const socket = io("https://bingobot-backend-bwdo.onrender.com");
 
 useEffect(() => {
-  // Step 1: Join the game and wait for confirmation
+  // Emit joinGame again here to make sure this socket is registered in the room
   socket.emit("joinGame", { gameId, telegramId });
 
-  // Step 2: Listen once for the confirmation that you're in the room
-  socket.once("gameId", ({ gameId: joinedGameId, telegramId: joinedTelegramId }) => {
-    if (joinedGameId && joinedTelegramId) {
-      // ✅ Now safe to request the player count
-      socket.emit("getPlayerCount", { gameId: joinedGameId });
-    }
+  // Listen for player count updates
+  socket.on("playerCountUpdate", (data) => {
+    console.log("Player count received:", data.playerCount);
+    setPlayerCount(data.playerCount);
   });
 
-  // Step 3: Listen for player count updates
-  socket.on("playerCountUpdate", ({ playerCount }) => {
-    console.log("✅ Player count received:", playerCount);
-    setPlayerCount(playerCount);
-  });
-
-  // Countdown if needed
+  // Listen for countdown updates (if needed)
   socket.on("countdownUpdate", (data) => {
     setCountdown(data.countdown);
   });
 
+  // Request current player count (optional now, but still okay)
+  socket.emit("getPlayerCount", { gameId });
+
   return () => {
     socket.off("playerCountUpdate");
     socket.off("countdownUpdate");
-    socket.off("gameId");
   };
 }, [gameId, telegramId]);
 
