@@ -247,14 +247,15 @@ const startGame = async () => {
 
   try {
     // 🧠 Step 1: Check if the game is already active
-    const statusRes = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/games/${gameId}/status`);
-    const statusData = await statusRes.json();
+  const statusRes = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/games/${gameId}/status`);
+  const statusData = await statusRes.json();
 
-    if (!statusRes.ok || statusData.isActive) {
-      alert("🚫 A game is currently running. Please wait until it ends.");
-      setIsStarting(false);
-      return;
-    }
+  if (!statusRes.ok || statusData.isActive || statusData.exists) {
+    alert("🚫 A game is already running or being initialized. Please wait.");
+    setIsStarting(false);
+    return;
+  }
+
 
     // 🟢 Step 2: No active game, proceed to start
     const response = await fetch("https://bingobot-backend-bwdo.onrender.com/api/games/start", {
