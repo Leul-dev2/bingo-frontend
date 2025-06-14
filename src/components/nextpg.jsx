@@ -37,12 +37,6 @@ useEffect(() => {
   // Step 1: Join the game
   socket.emit("joinGame", { gameId, telegramId });
 
-  // Step 2: Wait for confirmation before requesting count
-  socket.once("gameId", ({ gameId: joinedGameId }) => {
-    // Safe to ask for latest count
-    socket.emit("getPlayerCount", { gameId: joinedGameId });
-  });
-
   // Step 3: Listen for updates
   socket.on("playerCountUpdate", ({ playerCount }) => {
     console.log("✅ Player count received:", playerCount);
@@ -58,7 +52,7 @@ useEffect(() => {
     socket.off("gameId");
     socket.off("countdownUpdate");
   };
-}, [gameId, telegramId]);
+}, [gameId]);
 
   
 useEffect(() => {
