@@ -34,14 +34,13 @@ const BingoGame = () => {
   const socket = io("https://bingobot-backend-bwdo.onrender.com");
 
  useEffect(() => {
-
-    socket.emit("joinGame", { gameId, telegramId });
     // Listen for player count updates without emitting a request
     socket.on("playerCountUpdate", (data) => {
       console.log("Player count received:", data.playerCount);
       setPlayerCount(data.playerCount);  // Update player count
     });
   
+    console.log("player count", playerCount)
     // Request initial player count when the component is mounted
     socket.emit("getPlayerCount", { gameId });
 
