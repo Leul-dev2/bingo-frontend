@@ -237,15 +237,26 @@ useEffect(() => {
   };
 
   // 🟢 Join Game & Emit to Socket
- const startGame = async () => {
+const startGame = async () => {
   if (gameStarted || isStarting) {
     alert("Please wait until the active game ends.");
     return;
   }
 
-  setIsStarting(true); // 🚫 Block further clicks
+  setIsStarting(true); // Block multiple clicks
 
   try {
+    // 🧠 Step 1: Check if the game is already active
+    const statusRes = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/games/${gameId}/status`);
+    const statusData = await statusRes.json();
+
+    if (!statusRes.ok || statusData.isActive) {
+      alert("🚫 A game is currently running. Please wait until it ends.");
+      setIsStarting(false);
+      return;
+    }
+
+    // 🟢 Step 2: No active game, proceed to start
     const response = await fetch("https://bingobot-backend-bwdo.onrender.com/api/games/start", {
       method: "POST",
       headers: {
@@ -253,7 +264,7 @@ useEffect(() => {
       },
       body: JSON.stringify({
         gameId,
-        telegramId
+        telegramId,
       }),
     });
 
@@ -261,6 +272,7 @@ useEffect(() => {
 
     if (response.ok) {
       socket.emit("joinGame", { gameId, telegramId });
+
       socket.off("playerCountUpdate").on("playerCountUpdate", ({ playerCount }) => {
         console.log(`Players in the game room ${gameId}: ${playerCount}`);
         setPlayerCount(playerCount);
@@ -283,7 +295,6 @@ useEffect(() => {
         }
       });
 
-
     } else {
       setAlertMessage(data.error || "Error starting the game");
       console.error("Game start error:", data.error);
@@ -293,9 +304,10 @@ useEffect(() => {
     setAlertMessage("Error connecting to the backend");
     console.error("Connection error:", error);
   } finally {
-    setIsStarting(false); // ✅ Allow retry only after the request finishes
+    setIsStarting(false); // Allow retry
   }
 };
+
 
   
 
