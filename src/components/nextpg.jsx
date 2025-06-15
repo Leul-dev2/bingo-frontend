@@ -57,7 +57,7 @@ useEffect(() => {
   
 useEffect(() => {
   if (playerCount >= 2 && !gameStarted) {
-    socket.once("gameCount", { gameId });
+    socket.emit("gameCount", { gameId });
   }
 }, [playerCount, gameStarted]);
 
