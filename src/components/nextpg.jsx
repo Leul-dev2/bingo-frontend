@@ -1,12 +1,11 @@
-import React, { useState, useEffect, useRef  } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { io } from "socket.io-client";
+import socket from "../socket.js"; // ✅ Shared socket instance
 
 const BingoGame = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { cartela, cartelaId, gameId, telegramId} = location.state || {};
-
+  const { cartela, cartelaId, gameId, telegramId } = location.state || {};
 
   const bingoColors = {
     B: "bg-yellow-500",
@@ -16,88 +15,89 @@ const BingoGame = () => {
     O: "bg-purple-500",
   };
 
- 
   const [randomNumber, setRandomNumber] = useState([]);
   const [calledNumbers, setCalledNumbers] = useState([]);
   const [currentCall, setCurrentCall] = useState(null);
   const [selectedNumbers, setSelectedNumbers] = useState(new Set());
   const [countdown, setCountdown] = useState(0);
-  const [calledSet, setCalledSet] = useState(new Set()); // Track called numbers
-  const intervalRef = useRef(null); // Store interval reference
+  const [calledSet, setCalledSet] = useState(new Set());
   const [lastWinnerCells, setLastWinnerCells] = useState([]);
-  const randomNumberRef = useRef(new Set()); // To store drawn numbers without triggering re-renders
   const [playerCount, setPlayerCount] = useState(0);
   const [gameStarted, setGameStarted] = useState(false);
   const [winnerFound, setWinnerFound] = useState(false);
- 
- 
-  const socket = io("https://bingobot-backend-bwdo.onrender.com");
 
-useEffect(() => {
-  // Step 1: Join the game
-  socket.emit("joinGame", { gameId, telegramId });
+  const hasJoinedRef = useRef(false);
 
-  // Step 3: Listen for updates
-  socket.on("playerCountUpdate", ({ playerCount }) => {
-    console.log("✅ Player count received:", playerCount);
-    setPlayerCount(playerCount);
-  });
+  // 1️⃣ Connect socket and joinGame
+  useEffect(() => {
+    if (!socket.connected) {
+      socket.connect();
+    }
 
-  socket.on("countdownUpdate", (data) => {
-    setCountdown(data.countdown);
-  });
+    if (!hasJoinedRef.current && gameId && telegramId) {
+      socket.emit("joinGame", { gameId, telegramId });
+      hasJoinedRef.current = true;
+    }
 
-  return () => {
-    socket.off("playerCountUpdate");
-    socket.off("gameId");
-    socket.off("countdownUpdate");
-  };
-}, [gameId]);
+    // Cleanup on unmount
+    return () => {
+      socket.off("playerCountUpdate");
+      socket.off("countdownUpdate");
+      socket.off("countdownTick");
+      socket.off("gameStart");
+      socket.off("numberDrawn");
+      // Optionally disconnect:
+      // socket.disconnect();
+    };
+  }, [gameId, telegramId]);
 
-  
-useEffect(() => {
-  if (playerCount >= 2 && !gameStarted) {
-    socket.emit("gameCount", { gameId });
-  }
-}, [playerCount, gameStarted]);
+  // 2️⃣ Handle player count updates
+  useEffect(() => {
+    socket.on("playerCountUpdate", ({ playerCount }) => {
+      console.log("✅ Player count received:", playerCount);
+      setPlayerCount(playerCount);
+    });
 
-useEffect(() => {
-  // Listen for countdown ticks
-  socket.on("countdownTick", ({ countdown }) => {
-    setCountdown(countdown);
-  });
+    socket.on("countdownUpdate", ({ countdown }) => {
+      setCountdown(countdown);
+    });
+  }, []);
 
-  // Listen for actual game start trigger
-  socket.on("gameStart", () => {
-    setGameStarted(true);
-  });
+  // 3️⃣ Request to start game if enough players
+  useEffect(() => {
+    if (playerCount >= 2 && !gameStarted) {
+      socket.emit("gameCount", { gameId });
+    }
+  }, [playerCount, gameStarted]);
 
-  return () => {
-    socket.off("countdownTick");
-    socket.off("gameStart");
-  };
-}, []);
+  // 4️⃣ Countdown and game start
+  useEffect(() => {
+    socket.on("countdownTick", ({ countdown }) => {
+      setCountdown(countdown);
+    });
 
+    socket.on("gameStart", () => {
+      setGameStarted(true);
+    });
+  }, []);
 
-useEffect(() => {
-  if (countdown > 0) {
-    const timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
-    return () => clearTimeout(timer);
-  }
-}, [countdown]);
+  // 5️⃣ Local countdown timer
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => {
+        setCountdown((prev) => prev - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [countdown]);
 
-useEffect(() => {
-  socket.on("numberDrawn", ({ number, label }) => {
-    setRandomNumber((prev) => [...prev, number]);
-    setCalledSet((prev) => new Set(prev).add(label));
-  });
-
-  return () => {
-    socket.off("numberDrawn");
-  };
-}, []);
-
-  
+  // 6️⃣ Handle number draw
+  useEffect(() => {
+    socket.on("numberDrawn", ({ number, label }) => {
+      setRandomNumber((prev) => [...prev, number]);
+      setCalledSet((prev) => new Set(prev).add(label));
+    });
+  }, []);
   
   // Log all drawn numbers less frequently or use a callback
   // useEffect(() => {
