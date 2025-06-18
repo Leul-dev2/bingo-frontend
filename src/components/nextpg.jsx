@@ -65,17 +65,30 @@ const BingoGame = () => {
   }, []);
 
   // 3️⃣ Request to start game if enough players
-  useEffect(() => {
-  if (playerCount >= 2 && !gameStarted && !hasEmittedGameCount) {
+ useEffect(() => {
+  // Game has already started or gameCount has already been sent — don't emit again
+  if (gameStarted || hasEmittedGameCount) return;
+
+  // Only emit when minimum players are ready and game hasn't been triggered yet
+  if (playerCount >= 2) {
+    console.log("✅ Emitting gameCount to server...");
     socket.emit("gameCount", { gameId });
     setHasEmittedGameCount(true);
   }
+}, [playerCount, gameStarted, hasEmittedGameCount]);
 
-  // Reset when game starts or resets
-  if (gameStarted) {
+
+useEffect(() => {
+  socket.on("gameReset", () => {
+    console.log("🔄 Game reset received, allowing new gameCount emit");
     setHasEmittedGameCount(false);
-  }
-  }, [playerCount, gameStarted]);
+  });
+
+  return () => {
+    socket.off("gameReset");
+  };
+}, []);
+
 
   // 4️⃣ Countdown and game start
   useEffect(() => {
