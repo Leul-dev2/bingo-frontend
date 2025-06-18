@@ -25,6 +25,7 @@ const BingoGame = () => {
   const [playerCount, setPlayerCount] = useState(0);
   const [gameStarted, setGameStarted] = useState(false);
   const [winnerFound, setWinnerFound] = useState(false);
+  const [hasEmittedGameCount, setHasEmittedGameCount] = React.useState(false);
 
   const hasJoinedRef = useRef(false);
 
@@ -65,9 +66,15 @@ const BingoGame = () => {
 
   // 3️⃣ Request to start game if enough players
   useEffect(() => {
-    if (playerCount >= 2 && !gameStarted) {
-      socket.emit("gameCount", { gameId });
-    }
+  if (playerCount >= 2 && !gameStarted && !hasEmittedGameCount) {
+    socket.emit("gameCount", { gameId });
+    setHasEmittedGameCount(true);
+  }
+
+  // Reset when game starts or resets
+  if (gameStarted) {
+    setHasEmittedGameCount(false);
+  }
   }, [playerCount, gameStarted]);
 
   // 4️⃣ Countdown and game start
