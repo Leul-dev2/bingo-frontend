@@ -243,10 +243,22 @@ const startGame = async () => {
     return;
   }
 
-  setIsStarting(true); // Prevent rapid double-clicks
+  setIsStarting(true); // Block multiple clicks
 
   try {
-    // 🔐 Try to start/join game
+    // 🧠 Step 1: Check if the game is already active
+ const statusRes = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/games/${gameId}/status`);
+const statusData = await statusRes.json();
+
+if (statusData.exists && statusData.isActive) {
+  alert("🚫 A game is already running or being initialized. Please wait.");
+  setIsStarting(false);
+  return;
+}
+
+
+
+    // 🟢 Step 2: No active game, proceed to start
     const response = await fetch("https://bingobot-backend-bwdo.onrender.com/api/games/start", {
       method: "POST",
       headers: {
@@ -261,7 +273,6 @@ const startGame = async () => {
     const data = await response.json();
 
     if (response.ok) {
-      // ✅ Only emit socket and redirect AFTER successful join
       socket.emit("joinGame", { gameId, telegramId });
 
       socket.off("playerCountUpdate").on("playerCountUpdate", ({ playerCount }) => {
@@ -285,6 +296,7 @@ const startGame = async () => {
           setAlertMessage("Invalid game or user data received!");
         }
       });
+
     } else {
       setAlertMessage(data.error || "Error starting the game");
       console.error("Game start error:", data.error);
@@ -294,10 +306,9 @@ const startGame = async () => {
     setAlertMessage("Error connecting to the backend");
     console.error("Connection error:", error);
   } finally {
-    setIsStarting(false); // Unlock UI
+    setIsStarting(false); // Allow retry
   }
 };
-
 
 
   
