@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { io } from "socket.io-client";
 
-// http://localhost:5173/?user=637145475&game=10
+//      
 
 // Initialize socket connection
 const socket = io("https://bingobot-backend-bwdo.onrender.com");
@@ -243,22 +243,10 @@ const startGame = async () => {
     return;
   }
 
-  setIsStarting(true); // Block multiple clicks
+  setIsStarting(true); // Prevent rapid double-clicks
 
   try {
-    // 🧠 Step 1: Check if the game is already active
- const statusRes = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/games/${gameId}/status`);
-const statusData = await statusRes.json();
-
-if (statusData.exists && statusData.isActive) {
-  alert("🚫 A game is already running or being initialized. Please wait.");
-  setIsStarting(false);
-  return;
-}
-
-
-
-    // 🟢 Step 2: No active game, proceed to start
+    // 🔐 Try to start/join game
     const response = await fetch("https://bingobot-backend-bwdo.onrender.com/api/games/start", {
       method: "POST",
       headers: {
@@ -273,6 +261,7 @@ if (statusData.exists && statusData.isActive) {
     const data = await response.json();
 
     if (response.ok) {
+      // ✅ Only emit socket and redirect AFTER successful join
       socket.emit("joinGame", { gameId, telegramId });
 
       socket.off("playerCountUpdate").on("playerCountUpdate", ({ playerCount }) => {
@@ -296,7 +285,6 @@ if (statusData.exists && statusData.isActive) {
           setAlertMessage("Invalid game or user data received!");
         }
       });
-
     } else {
       setAlertMessage(data.error || "Error starting the game");
       console.error("Game start error:", data.error);
@@ -306,7 +294,7 @@ if (statusData.exists && statusData.isActive) {
     setAlertMessage("Error connecting to the backend");
     console.error("Connection error:", error);
   } finally {
-    setIsStarting(false); // Allow retry
+    setIsStarting(false); // Unlock UI
   }
 };
 
