@@ -236,6 +236,17 @@ useEffect(() => {
     setGameStatus("");
   };
 
+
+  // Real-time update
+useEffect(() => {
+  socket.on("gameEnded", () => {
+    setGameStarted(false);
+    setAlertMessage("");
+  });
+
+  return () => socket.off("gameEnded");
+}, []);
+
  useEffect(() => {
   const interval = setInterval(async () => {
     try {
