@@ -236,6 +236,27 @@ useEffect(() => {
     setGameStatus("");
   };
 
+  useEffect(() => {
+  const interval = setInterval(async () => {
+    try {
+      const res = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/games/${gameId}/status`);
+      const data = await res.json();
+
+      if (!data.isActive) {
+        console.log("🟢 Game is inactive now. Updating UI.");
+        setIsStarting(false); // ✅ Re-enable button
+      } else {
+        setIsStarting(true); // still active, keep blocking
+      }
+    } catch (error) {
+      console.error("Status polling failed:", error);
+    }
+  }, 3000); // poll every 3 seconds
+
+  return () => clearInterval(interval);
+}, [gameId]);
+
+
   // 🟢 Join Game & Emit to Socket
 const startGame = async () => {
   if (gameStarted || isStarting) {
