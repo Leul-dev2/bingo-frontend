@@ -1,0 +1,51 @@
+/*
+Step-by-step Summary of Routing & Persistent Nav Setup:
+
+1. Problem:
+   - You have multiple pages/routes in your React app using react-router-dom.
+   - You want a bottom navigation bar (Nav component) to be visible on some pages.
+   - Nav should NOT appear on other pages (e.g., /game and /winnerPage).
+   - You want to avoid repeating Nav code in every page component.
+
+2. Solution:
+   - Use React Router v6 nested routes with a "Layout" component.
+   - Layout component renders the Nav and an <Outlet />.
+   - <Outlet /> renders the matched child route component.
+   - This makes Nav persistent on all child routes nested inside Layout.
+
+3. Steps taken:
+
+  a) Created a new Layout component:
+     - Imports Outlet and Nav.
+     - Returns <Outlet /> to render the current page.
+     - Renders <Nav /> below <Outlet /> so Nav is always visible on nested routes.
+
+  b) Modified the App.js routing:
+     - Defined routes WITHOUT Nav first:
+       - /game → BingoGame component
+       - /winnerPage → WinnerPage component
+     - Defined a route for "/" with element = Layout.
+       This Layout route nests all routes that should show Nav:
+       - index route "/" → Bingo component
+       - /score → Score component
+       - /history → History component
+       - /wallet → Wallet component
+       - /profile → Profile component
+       
+     This nesting means all these pages show Nav automatically.
+     /game and /winnerPage do not use Layout, so Nav is hidden there.
+
+4. Benefits of this approach:
+   - Single place to maintain Nav component.
+   - Clear control which routes show Nav by nesting them inside Layout.
+   - Cleaner and scalable routing structure.
+
+5. What you need to do next:
+   - Use Layout component to wrap all routes needing persistent Nav.
+   - Keep routes without Nav outside Layout.
+   - Import and place Nav component inside Layout.
+   - Use <Outlet /> inside Layout to render current route content.
+
+This setup lets your Nav persist only on the desired pages, avoiding repetition or conditional rendering in every page.
+
+*/

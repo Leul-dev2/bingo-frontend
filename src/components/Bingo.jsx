@@ -2,6 +2,7 @@ import bingoCards from "../assets/bingoCards.json"; // Import the JSON file
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { io } from "socket.io-client";
+import Nav from "./Bing-Pges/NavLink";
 
 //      
 
@@ -20,7 +21,7 @@ function Bingo() {
   const [gameStatus, setGameStatus] = useState("");
   const [userBalance, setUserBalance] = useState(null);
   const [alertMessage, setAlertMessage] = useState("");
-  const numbers = Array.from({ length: 130 }, (_, i) => i + 1);
+  const numbers = Array.from({ length: 100 }, (_, i) => i + 1);
   const [response, setResponse] = useState("");
   const [otherSelectedCards, setOtherSelectedCards] = useState({});
   const [count, setCount] = useState(0);
@@ -342,11 +343,9 @@ const startGame = async () => {
 };
 
 
-
-  
-
   return (
-<div className="flex flex-col items-center p-2 pb-20 min-h-screen bg-purple-400 text-white w-full overflow-hidden">
+    <>
+    <div className="flex flex-col items-center p-3 pb-20 min-h-screen bg-purple-400 text-white w-full overflow-hidden">
       {alertMessage && (
         <div className="fixed top-0 left-0 w-full flex justify-center z-50">
           <div className="flex items-center max-w-sm w-full p-3 m-2 bg-red-100 border-l-4 border-red-500 text-red-700 rounded-md shadow-lg">
@@ -424,31 +423,12 @@ const startGame = async () => {
       </button>
 
       </div>
-      
-      <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 flex justify-around items-center py-2">
-  <div className="flex flex-col items-center text-purple-500 text-xs font-semibold">
-    <span className="text-xl">🎮</span>
-    <span>Game</span>
-  </div>
-  <div className="flex flex-col items-center text-gray-700 text-xs">
-    <span className="text-xl">🏆</span>
-    <span>Scores</span>
-  </div>
-  <div className="flex flex-col items-center text-gray-700 text-xs">
-    <span className="text-xl">⏳</span>
-    <span>History</span>
-  </div>
-  <div className="flex flex-col items-center text-gray-700 text-xs">
-    <span className="text-xl">👛</span>
-    <span>Wallet</span>
-  </div>
-  <div className="flex flex-col items-center text-gray-700 text-xs">
-    <span className="text-xl">👤</span>
-    <span>Profile</span>
-  </div>
-</div>
-
+    
     </div>
+        <Nav />
+
+    </>
+
   );
 };
 
