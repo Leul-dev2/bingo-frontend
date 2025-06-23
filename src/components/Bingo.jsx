@@ -420,7 +420,7 @@ const startGame = async () => {
           !cartelaId || isStarting ? "bg-red-400 cursor-not-allowed" : "bg-yellow-500 hover:bg-orange-600"
         } text-white px-3 py-1 rounded-lg shadow-md text-sm`}
         >
-        {isStarting ? "Starting..." : "Start Game"}
+        {isStarting ? "lets check..." : "lets check"}
       </button>
 
       </div>
