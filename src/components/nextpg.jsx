@@ -450,7 +450,7 @@ useEffect(() => {
           <button className="w-1/2 bg-blue-500 px-4 py-2 text-white rounded-lg text-lg">
             Refresh
           </button>
-          <button onClick={() => navigate("/")} className="w-1/2 bg-red-500 px-4 py-2 text-white rounded-lg text-lg">
+          <button onClick={() => navigate("/")} className="w-1/2 bg-green-500 px-4 py-2 text-white rounded-lg text-lg">
             Leave
           </button>
         </div>
