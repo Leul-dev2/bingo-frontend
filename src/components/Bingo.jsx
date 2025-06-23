@@ -417,7 +417,7 @@ const startGame = async () => {
         onClick={startGame}
         disabled={!cartelaId || isStarting}
         className={`${
-          !cartelaId || isStarting ? "bg-gray-400 cursor-not-allowed" : "bg-orange-500 hover:bg-orange-600"
+          !cartelaId || isStarting ? "bg-red-400 cursor-not-allowed" : "bg-yellow-500 hover:bg-orange-600"
         } text-white px-3 py-1 rounded-lg shadow-md text-sm`}
         >
         {isStarting ? "Starting..." : "Start Game"}
