@@ -1,21 +1,12 @@
-import { useEffect } from "react";
-import { Outlet, useLocation } from "react-router-dom";
-
+import { Outlet } from "react-router-dom"; // Outlet renders child route components
+import Nav from "./NavLink";
 export default function Layout() {
-  const location = useLocation();
-
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const telegramId = params.get("user");
-    const gameChoice = params.get("game");
-
-    if (telegramId) localStorage.setItem("telegramId", telegramId);
-    if (gameChoice) localStorage.setItem("gameChoice", gameChoice);
-  }, [location.search]);
-
   return (
     <>
+      {/* This will render the current page (child route) */}
       <Outlet />
+      
+      {/* This is the persistent Nav */}
       <Nav />
     </>
   );
