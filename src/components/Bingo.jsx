@@ -8,11 +8,19 @@ import { io } from "socket.io-client";
 const socket = io("https://bingobot-backend-bwdo.onrender.com");
 
 function Bingo() {
-  const [searchParams] = useSearchParams();
-  const telegramId = searchParams.get("user"); // Get telegramId from URL query parameters
-  const gameId = searchParams.get("game"); // Get gameId from URL query parameters
-  // const telegramId = 637145475; // Get telegramId from URL query parameters
-  // const gameId = 10;
+ const urlTelegramId = searchParams.get("user");
+const urlGameId = searchParams.get("game");
+
+// Store once if found in URL
+useEffect(() => {
+  if (urlTelegramId) localStorage.setItem("telegramId", urlTelegramId);
+  if (urlGameId) localStorage.setItem("gameChoice", urlGameId);
+}, [urlTelegramId, urlGameId]);
+
+// Always fallback to localStorage if needed
+const telegramId = urlTelegramId || localStorage.getItem("telegramId");
+const gameId = urlGameId || localStorage.getItem("gameChoice");
+
   const navigate = useNavigate();
   const [cartelaId, setCartelaId] = useState(null);
   const [cartela, setCartela] = useState([]);
