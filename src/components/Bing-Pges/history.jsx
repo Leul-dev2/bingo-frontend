@@ -47,8 +47,7 @@ export default function History() {
   }, [activeTab, activeBet]);
 
 
-const isWin = (val) => Number(val) > 0;
-const isLose = (val) => Number(val) === 0 || val === null || val === undefined || val === '';
+
   const filteredGames = games
     .filter(g =>
       g.ref.toLowerCase().includes(search.toLowerCase()) ||
@@ -57,7 +56,7 @@ const isLose = (val) => Number(val) === 0 || val === null || val === undefined |
     .filter(g => {
       if (activeTab === 1) {
         if (activeResult === 1) return Number(g.win) > 0;
-        if (activeResult === 2) return Number(g.win) === 0 || null || undefined || '';
+        if (activeResult === 2) return Number(g.win) === 0 || null || undefined ||;
       }
       if (activeTab === 0) {
         return g.bet == selectedBet; // make sure it matches the selected birr amount
