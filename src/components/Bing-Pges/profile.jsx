@@ -46,67 +46,68 @@ export default function Profile() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <main className="max-w-md mx-auto bg-white min-h-screen">
-        {/* Header */}
-        <div className="bg-blue-600 text-white p-4 flex justify-between items-center">
-          <h1 className="text-xl font-bold">Addis Bingo</h1>
-          <RefreshCw size={20} />
-        </div>
+    <div className="min-h-screen bg-[#C597E6]">
+      {/* Header */}
+      <div className="bg-[#1E1E2D] text-white px-4 py-3 flex justify-between items-center">
+        <h1 className="text-lg font-semibold">Addis Bingo</h1>
+        <RefreshCw size={20} />
+      </div>
 
-        {/* User Info */}
-        <div className="p-4 border-b">
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <span className="font-medium">👤 {username || 'Player'}</span>
-            </div>
-            <div className="text-right text-sm text-gray-500">
-              ID: {telegramId || 'Loading...'}
-            </div>
+      {/* Avatar + Username */}
+      <div className="flex flex-col items-center py-6">
+        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-yellow-300 to-orange-500 flex items-center justify-center text-white text-4xl font-bold">
+          {username?.charAt(0)?.toUpperCase() || 'M'}
+        </div>
+        <div className="mt-2 text-white font-semibold text-lg">
+          {username || 'M'}
+        </div>
+      </div>
+
+      {/* Stats Boxes */}
+      <div className="grid grid-cols-2 gap-4 px-6 pb-4">
+        <div className="bg-[#B57FD6] p-4 rounded-xl text-white text-center">
+          <div className="text-2xl">👛</div>
+          <p className="text-sm mt-2">Balance</p>
+          <p className="text-lg font-semibold">{balance} Birr</p>
+        </div>
+        <div className="bg-[#B57FD6] p-4 rounded-xl text-white text-center">
+          <div className="text-2xl">🎁</div>
+          <p className="text-sm mt-2">Bonus Wallet</p>
+          <p className="text-lg font-semibold">{bonus}</p>
+        </div>
+        <div className="bg-[#B57FD6] p-4 rounded-xl text-white text-center">
+          <div className="text-2xl">🪙</div>
+          <p className="text-sm mt-2">Total Coins</p>
+          <p className="text-lg font-semibold">{coins}</p>
+        </div>
+        <div className="bg-[#B57FD6] p-4 rounded-xl text-white text-center">
+          <div className="text-2xl">🏆</div>
+          <p className="text-sm mt-2">Games Won</p>
+          <p className="text-lg font-semibold">{gamesWon}</p>
+        </div>
+      </div>
+
+      {/* Settings Section */}
+      <div className="px-6 pt-4">
+        <h2 className="text-white font-semibold text-lg mb-2">Settings</h2>
+
+        <div className="bg-[#B57FD6] rounded-xl text-white text-sm divide-y divide-purple-300">
+          <div className="flex justify-between items-center p-4">
+            <span>🔊 Sound</span>
+            <span className="opacity-60">Toggle</span>
+          </div>
+          <div className="flex justify-between items-center p-4">
+            <span>🌙 Dark Mode</span>
+            <span className="opacity-60">Toggle</span>
+          </div>
+          <div className="flex justify-between items-center p-4">
+            <span>👥 Invite Friends</span>
+            <span className="opacity-60">Share &gt;</span>
           </div>
         </div>
+      </div>
 
-        {/* Balance Section */}
-        <div className="p-4 border-b space-y-4">
-          <div>
-            <h2 className="text-gray-500 text-sm">Main Balance</h2>
-            <p className="text-xl font-bold">{balance} Birr</p>
-          </div>
-          <div>
-            <h2 className="text-gray-500 text-sm">Bonus Wallet</h2>
-            <p className="text-xl font-bold">{bonus}</p>
-          </div>
-          <div>
-            <h2 className="text-gray-500 text-sm">Total Coins</h2>
-            <p className="text-xl font-bold">{coins}</p>
-          </div>
-          <div>
-            <h2 className="text-gray-500 text-sm">Games Won</h2>
-            <p className="text-xl font-bold">{gamesWon}</p>
-          </div>
-        </div>
-
-        {/* Settings Section */}
-        <div className="p-4 border-b">
-          <div className="mb-3">
-            <h2 className="font-medium">Settings</h2>
-          </div>
-          <div className="flex justify-between items-center mb-3">
-            <span>Sound</span>
-            <span className="text-gray-400">Toggle</span>
-          </div>
-          <div className="flex justify-between items-center mb-3">
-            <span>Dark Mode</span>
-            <span className="text-gray-400">Toggle</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span>Invite Friends</span>
-            <span className="text-gray-400">Share &gt;</span>
-          </div>
-        </div>
-
-        
-      </main>
+     
     </div>
   );
 }
