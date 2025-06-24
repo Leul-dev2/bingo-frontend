@@ -8,7 +8,7 @@ import Profile from "./components/Bing-Pges/profile";
 import Score from "./components/Bing-Pges/score";
 import Wallet from "./components/Bing-Pges/wallet";
 
-import Layout from "./components/Bing-Pges/Layout.jsX"; // Layout renders Nav + Outlet
+import Layout from "./components/Bing-Pges/Layout"; // Layout renders Nav + Outlet
 
 const App = () => {
   const [cartela, setCartela] = useState([]);
