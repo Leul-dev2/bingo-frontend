@@ -55,9 +55,9 @@ const isLose = (val) => Number(val) === 0 || val === null || val === undefined |
       g.id?.toString().includes(search)
     )
     .filter(g => {
-       if (activeTab === 1) {
-       if (activeResult === 1) return Number(g.win) > 0;
-       if (activeResult === 2) return g.win === 0 || g.win === '0' || g.win === null || g.win === undefined || g.win === '';
+      if (activeTab === 1) {
+        if (activeResult === 1) return Number(g.win) > 0;
+        if (activeResult === 2) return Number(g.win) === 0 || null || undefined || '';
       }
       if (activeTab === 0) {
         return g.bet == selectedBet; // make sure it matches the selected birr amount
