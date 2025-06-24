@@ -2,25 +2,38 @@ import { useState, useEffect } from 'react';
 import { ChevronLeft, RefreshCw, Search, Gamepad, Clock, Wallet, User, ListChecks } from 'lucide-react';
 
 const tabs = ['Last 24 hours', 'Last 7 days', 'Last 30 days', 'All time'];
+const timeKeys = ['24hr', '7days', '30days', 'all']; // maps to backend values
 
 export default function Score() {
   const [activeTab, setActiveTab] = useState(0);
   const [search, setSearch] = useState('');
   const [players, setPlayers] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // TODO: Replace this static fetch with your async DB/API call
-    // e.g. fetch(`/api/players?range=${activeTab}`).then(res => res.json()).then(data => setPlayers(data));
-  
-    const staticData = [
-      { id: '1', name: 'Edase19', phoneMasked: '25191**43582', score: 24 },
-      { id: '2', name: 'King', phoneMasked: '25194**44537', score: 18 },
-      { id: '3', name: 'Arsenal', phoneMasked: '25192**13933', score: 18 },
-      { id: '4', name: 'Natii', phoneMasked: '25191**97323', score: 17 },
-      { id: '5', name: 'Aman', phoneMasked: '25194**14383', score: 16 },
-    ];
-    // simulate async
-    setTimeout(() => setPlayers(staticData), 300);
+    const fetchPlayers = async () => {
+      setLoading(true);
+      try {
+const res = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/Score?time=${timeKeys[activeTab]}`);
+        const data = await res.json();
+
+        // Mask phone and rename fields
+        const maskedPlayers = data.map((p, i) => ({
+          id: i + 1,
+          name: p.username,
+          phoneMasked: p._id.replace(/^(\d{5})\d{3}(\d{2})$/, '$1**$2'), // Basic phone mask
+          score: p.gamesPlayed
+        }));
+
+        setPlayers(maskedPlayers);
+      } catch (err) {
+        console.error('Failed to fetch players:', err);
+        setPlayers([]);
+      }
+      setLoading(false);
+    };
+
+    fetchPlayers();
   }, [activeTab]);
 
   const filtered = players.filter(p =>
@@ -71,36 +84,38 @@ export default function Score() {
             </button>
           </div>
 
-          {/* Initials Circles */}
+          {/* Initial Circles (Top 5 letters) */}
           <div className="flex justify-center space-x-2">
-            {['E','K','A','N','A'].map((l,i) => (
+            {filtered.slice(0, 5).map((p, i) => (
               <div key={i} className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold">
-                {l}
+                {p.name.charAt(0).toUpperCase()}
               </div>
             ))}
           </div>
 
           {/* Players List */}
-          <div className="space-y-2">
-            {filtered.map(p => (
-              <div key={p.id} className="bg-purple-400 rounded-lg flex items-center justify-between p-3">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center text-white font-bold">
-                    {p.name.charAt(0)}
+          {loading ? (
+            <div className="text-center text-white font-semibold">Loading...</div>
+          ) : (
+            <div className="space-y-2">
+              {filtered.map(p => (
+                <div key={p.id} className="bg-purple-400 rounded-lg flex items-center justify-between p-3">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center text-white font-bold">
+                      {p.name.charAt(0)}
+                    </div>
+                    <div>
+                      <div className="font-semibold text-white">{p.name}</div>
+                      <div className="text-sm text-purple-200">{p.phoneMasked}</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="font-semibold text-white">{p.name}</div>
-                    <div className="text-sm text-purple-200">{p.phoneMasked}</div>
-                  </div>
+                  <div className="text-white font-bold text-xl">{p.score}</div>
                 </div>
-                <div className="text-white font-bold text-xl">{p.score}</div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </main>
-
-    
     </div>
   );
 }
