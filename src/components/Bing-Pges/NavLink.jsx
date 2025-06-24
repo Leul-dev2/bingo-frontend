@@ -1,7 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
+import {  useSearchParams } from "react-router-dom";
+
+
 
 export default function Nav() {
   const location = useLocation();
+     const [searchParams] = useSearchParams();
+  const telegramId = searchParams.get("user"); // Get telegramId from URL query parameters
 
   // Helper to apply active styles if the route matches current location
   const getLinkClass = (path) =>
@@ -11,10 +16,10 @@ export default function Nav() {
 
   return (
     <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 flex justify-around items-center py-2">
-      <Link to="/" className={getLinkClass("/")}>
-        <span className="text-xl">🎮</span>
-        <span>Game</span>
-      </Link>
+   <Link to={`/?telegramId=${telegramId}`} className={getLinkClass("/")}>
+  <span className="text-xl">🎮</span>
+  <span>Game</span>
+</Link>
 
       <Link to="/score" className={getLinkClass("/score")}>
         <span className="text-xl">🏆</span>
