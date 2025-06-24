@@ -46,21 +46,25 @@ export default function History() {
     fetchGames();
   }, [activeTab, activeBet]);
 
-  const filteredGames = games
-    .filter(g =>
-      g.ref.toLowerCase().includes(search.toLowerCase()) ||
-      g.id?.toString().includes(search)
-    )
-    .filter(g => {
-      if (activeTab === 1) {
-        if (activeResult === 1) return Number(g.win) > 0;
-        if (activeResult === 2) return Number(g.win) === 0;
-      }
-      if (activeTab === 0) {
-        return g.bet == selectedBet; // make sure it matches the selected birr amount
-      }
-      return true;
-    });
+  const isWin = (val) => Number(val) > 0;
+const isLose = (val) => Number(val) === 0 || val === null || val === undefined || val === '';
+
+const filteredGames = games
+  .filter(g =>
+    g.ref.toLowerCase().includes(search.toLowerCase()) ||
+    g.id?.toString().includes(search)
+  )
+  .filter(g => {
+    if (activeTab === 1) {
+      if (activeResult === 1) return isWin(g.win);
+      if (activeResult === 2) return isLose(g.win);
+    }
+    if (activeTab === 0) {
+      return g.bet == selectedBet;
+    }
+    return true;
+  });
+
 
   return (
     <div className="min-h-screen flex flex-col bg-purple-200">
