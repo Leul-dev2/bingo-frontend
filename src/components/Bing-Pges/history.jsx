@@ -54,7 +54,7 @@ export default function History() {
     .filter(g => {
       if (activeTab === 1) {
         if (activeResult === 1) return Number(g.win) > 0;
-        if (activeResult === 2) return !g.win || Number(g.win) === 0;
+        if (activeResult === 2) return Number(g.win) === 0;
       }
       if (activeTab === 0) {
         return g.bet == selectedBet; // make sure it matches the selected birr amount
