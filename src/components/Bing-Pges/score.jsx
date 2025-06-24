@@ -65,7 +65,7 @@ const res = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/Score?ti
               <button
                 key={i}
                 onClick={() => setActiveTab(i)}
-                className={`flex-1 text-center py-2 rounded-lg transition ${
+                className={`flex-1 text-center py-2 rounded-lg text-sm transition ${
                   activeTab === i
                     ? 'bg-purple-600 text-white'
                     : 'bg-purple-400 text-purple-100'
@@ -79,12 +79,17 @@ const res = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/Score?ti
             </button>
           </div>
 
-         {/* Show only the first player's full name */}
 {filtered.length > 0 && (
-  <div className="text-center text-white font-bold text-lg mb-4">
-    Top Player: {filtered[0].name}
+  <div className="mx-auto mb-6 max-w-sm bg-gradient-to-r from-purple-700 via-purple-900 to-indigo-700 rounded-xl shadow-lg p-4 flex items-center space-x-4 text-white">
+    <div className="text-4xl">👑</div>
+    <div>
+      <div className="text-sm uppercase tracking-wide opacity-75">Top Player</div>
+      <div className="text-2xl font-extrabold truncate">{filtered[0].name}</div>
+    </div>
   </div>
 )}
+
+
 
 
           {/* Players List */}
