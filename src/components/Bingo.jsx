@@ -8,19 +8,29 @@ import { io } from "socket.io-client";
 const socket = io("https://bingobot-backend-bwdo.onrender.com");
 
 function Bingo() {
- const urlTelegramId = searchParams.get("user");
+///////saving teh tegram id and gamechoice in localstaoge /////////////////////////////////////////////////////
+  const [searchParams] = useSearchParams();
+const urlTelegramId = searchParams.get("user");
 const urlGameId = searchParams.get("game");
 
-// Store once if found in URL
+// Store only if changed
 useEffect(() => {
-  if (urlTelegramId) localStorage.setItem("telegramId", urlTelegramId);
-  if (urlGameId) localStorage.setItem("gameChoice", urlGameId);
+  const storedTelegramId = localStorage.getItem("telegramId");
+  const storedGameId = localStorage.getItem("gameChoice");
+
+  if (urlTelegramId && urlTelegramId !== storedTelegramId) {
+    localStorage.setItem("telegramId", urlTelegramId);
+  }
+
+  if (urlGameId && urlGameId !== storedGameId) {
+    localStorage.setItem("gameChoice", urlGameId);
+  }
 }, [urlTelegramId, urlGameId]);
 
-// Always fallback to localStorage if needed
+// Use URL value if available, otherwise fallback to localStorage
 const telegramId = urlTelegramId || localStorage.getItem("telegramId");
 const gameId = urlGameId || localStorage.getItem("gameChoice");
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   const navigate = useNavigate();
   const [cartelaId, setCartelaId] = useState(null);
   const [cartela, setCartela] = useState([]);
