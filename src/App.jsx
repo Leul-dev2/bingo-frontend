@@ -24,9 +24,6 @@ const App = () => {
         />
         <Route path="/winnerPage" element={<WinnerPage />} />
 
-
-
-
         {/* Routes WITH Nav */}
         <Route path="/" element={<Layout />}>
           <Route
