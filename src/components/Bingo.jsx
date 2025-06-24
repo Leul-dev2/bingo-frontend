@@ -425,7 +425,6 @@ const startGame = async () => {
       </div>
     
     </div>
-        <Nav />
 
     </>
 
