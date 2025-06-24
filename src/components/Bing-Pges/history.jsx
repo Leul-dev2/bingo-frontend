@@ -6,8 +6,6 @@ const historyTabs = ['Recent Games', 'My Games'];
 const betTabs = ['10 Birr', '20 Birr', '50 Birr', '100 Birr'];
 const betValues = ['10', '20', '50', '100'];
 
-const resultTabs = ['All', 'Win', 'Lose'];
-
 export default function History() {
   const [searchParams] = useSearchParams();
   const urlTelegramId = searchParams.get("user");
@@ -15,7 +13,6 @@ export default function History() {
 
   const [activeTab, setActiveTab] = useState(0);
   const [activeBet, setActiveBet] = useState(0);
-  const [activeResult, setActiveResult] = useState(0); // 0 = All, 1 = Win, 2 = Lose
   const [search, setSearch] = useState('');
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -26,7 +23,7 @@ export default function History() {
 
   useEffect(() => {
     const fetchGames = async () => {
-      if (!telegramId || (activeTab === 0 && !selectedBet)) return;
+      if (!telegramId || !selectedBet) return;
       setLoading(true);
 
       try {
@@ -46,31 +43,15 @@ export default function History() {
     fetchGames();
   }, [activeTab, activeBet]);
 
-
-
-  const filteredGames = games
-    .filter(g =>
-      g.ref.toLowerCase().includes(search.toLowerCase()) ||
-      g.id?.toString().includes(search)
-    )
-    .filter(g => {
-      if (activeTab === 1) {
-        if (activeResult === 1) return Number(g.win) > 0;
-        if (activeResult === 2) return Number(g.win) === 0 || null || undefined ;
-      }
-      if (activeTab === 0) {
-        return g.bet == selectedBet; // make sure it matches the selected birr amount
-      }
-      return true;
-    });
-
-   
-
-
+  const filteredGames = games.filter(g =>
+    g.ref.toLowerCase().includes(search.toLowerCase()) ||
+    g.id.toString().includes(search)
+  );
 
   return (
     <div className="min-h-screen flex flex-col bg-purple-200">
-      
+    
+
       {/* Title */}
       <div className="px-4 mt-4 flex items-center justify-center space-x-2">
         <h2 className="text-2xl font-semibold text-white">Bingo History</h2>
@@ -84,11 +65,7 @@ export default function History() {
             {historyTabs.map((tab, idx) => (
               <button
                 key={idx}
-                onClick={() => {
-                  setActiveTab(idx);
-                  setActiveBet(0);
-                  setActiveResult(0);
-                }}
+                onClick={() => setActiveTab(idx)}
                 className={`flex-1 py-2 rounded-lg text-center font-medium transition ${
                   activeTab === idx
                     ? 'bg-white text-purple-600'
@@ -100,35 +77,21 @@ export default function History() {
             ))}
           </div>
 
-          {/* Bet or Result Filter Tabs */}
+          {/* Bet Amount Tabs */}
           <div className="flex space-x-2">
-            {activeTab === 0
-              ? betTabs.map((bet, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setActiveBet(idx)}
-                    className={`flex-1 py-2 rounded-lg text-center font-medium transition ${
-                      activeBet === idx
-                        ? 'bg-white text-purple-600'
-                        : 'bg-purple-400 text-purple-100'
-                    }`}
-                  >
-                    {bet}
-                  </button>
-                ))
-              : resultTabs.map((res, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setActiveResult(idx)}
-                    className={`flex-1 py-2 rounded-lg text-center font-medium transition ${
-                      activeResult === idx
-                        ? 'bg-white text-purple-600'
-                        : 'bg-purple-400 text-purple-100'
-                    }`}
-                  >
-                    {res}
-                  </button>
-                ))}
+            {betTabs.map((bet, idx) => (
+              <button
+                key={idx}
+                onClick={() => setActiveBet(idx)}
+                className={`flex-1 py-2 rounded-lg text-center font-medium transition ${
+                  activeBet === idx
+                    ? 'bg-white text-purple-600'
+                    : 'bg-purple-400 text-purple-100'
+                }`}
+              >
+                {bet}
+              </button>
+            ))}
           </div>
 
           {/* Search Input */}
@@ -176,21 +139,14 @@ export default function History() {
                       <Clock size={16} />
                       <span>{game.time}</span>
                     </div>
+                   <div
+                className={`mt-1 px-3 py-1 rounded-full text-white text-sm font-semibold ${
+                  Number(game.win) > 0 ? 'bg-green-400' : 'bg-red-500'
+                }`}
+              >
+                {game.win} birr
+                  </div>
 
-                    {activeTab === 1 ? (
-                      <>
-                        <div className={`mt-1 px-3 py-1 rounded-full text-sm font-semibold ${
-                          Number(game.win) > 0 ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-                        }`}>
-                          {Number(game.win) > 0 ? 'WIN ✅' : 'LOSE ❌'}
-                        </div>
-                        <div className="text-xs text-white font-medium">{game.win} birr</div>
-                      </>
-                    ) : (
-                      <div className="mt-1 px-3 py-1 bg-green-400 rounded-full text-white text-sm font-semibold">
-                        {game.win} birr
-                      </div>
-                    )}
                   </div>
                 </div>
               ))
