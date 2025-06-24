@@ -2,9 +2,7 @@ import bingoCards from "../assets/bingoCards.json"; // Import the JSON file
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { io } from "socket.io-client";
-import Nav from "./Bing-Pges/NavLink";
 
-//      
 
 // Initialize socket connection
 const socket = io("https://bingobot-backend-bwdo.onrender.com");
