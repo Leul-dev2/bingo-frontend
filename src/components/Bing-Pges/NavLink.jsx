@@ -14,7 +14,7 @@ export default function Nav() {
 
   return (
     <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 flex justify-around items-center py-2">
-<Link to={`/?user=${telegramId}&game=${gameChoice}`} className={getLinkClass("/")}>
+<Link to={`/?user=${telegramId}&game=${gameId}`} className={getLinkClass("/")}>
         <span className="text-xl">🎮</span>
         <span>Game</span>
       </Link>
