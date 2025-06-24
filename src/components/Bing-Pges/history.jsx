@@ -1,31 +1,51 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, RefreshCw, Search, Gamepad, Clock, Wallet, User, Award, Calendar } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { ChevronLeft, RefreshCw, Search, Clock, Award, Calendar } from 'lucide-react';
 
 const historyTabs = ['Recent Games', 'My Games'];
 const betTabs = ['10 Birr', '20 Birr', '50 Birr', '100 Birr'];
+const betValues = ['10', '20', '50', '100'];
 
 export default function History() {
+  const [searchParams] = useSearchParams();
+  const urlTelegramId = searchParams.get("user");
+  const urlGameChoice = searchParams.get("game");
+
   const [activeTab, setActiveTab] = useState(0);
   const [activeBet, setActiveBet] = useState(0);
   const [search, setSearch] = useState('');
   const [games, setGames] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const telegramId = urlTelegramId || localStorage.getItem("telegramId");
+  const gameChoice = urlGameChoice || localStorage.getItem("gameChoice");
+  const selectedBet = betValues[activeBet];
 
   useEffect(() => {
-    // TODO: fetch(`/api/history?tab=${activeTab}&bet=${activeBet}`)
-    const staticGames = [
-      { id: '1', user: 'mitu', ref: 'YX6622', board: 39, calls: 14, date: '6/23/2025', time: '03:15 PM', win: 384 },
-      { id: '2', user: 'MAX IMPACT', ref: 'PE2333', board: 36, calls: 19, date: '6/23/2025', time: '03:14 PM', win: 304 },
-      { id: '3', user: 'mitu', ref: 'KT7437', board: 11, calls: 21, date: '6/23/2025', time: '03:13 PM', win: 344 },
-      { id: '4', user: 'Semhal', ref: 'NZ5857', board: 28, calls: 17, date: '6/23/2025', time: '03:12 PM', win: 0 },
-      // ... more entries as needed
-    ];
-    setTimeout(() => setGames(staticGames), 300);
+    const fetchGames = async () => {
+      if (!telegramId || !selectedBet) return;
+      setLoading(true);
+
+      try {
+        const res = await fetch(
+          `https://bingobot-backend-bwdo.onrender.com/api/history?user=${telegramId}&bet=${selectedBet}&tab=${activeTab}`
+        );
+        const data = await res.json();
+        setGames(data);
+      } catch (err) {
+        console.error('Failed to fetch history:', err);
+        setGames([]);
+      }
+
+      setLoading(false);
+    };
+
+    fetchGames();
   }, [activeTab, activeBet]);
 
-  // filter by game number in ref or id
   const filteredGames = games.filter(g =>
     g.ref.toLowerCase().includes(search.toLowerCase()) ||
-    g.id.includes(search)
+    g.id.toString().includes(search)
   );
 
   return (
@@ -34,7 +54,7 @@ export default function History() {
       <header className="flex items-center px-4 py-2 bg-purple-600 text-white">
         <button><ChevronLeft size={24} /></button>
         <h1 className="flex-1 text-center font-semibold">Addis Bingo</h1>
-        <button><RefreshCw size={24} /></button>
+        <button onClick={() => window.location.reload()}><RefreshCw size={24} /></button>
       </header>
 
       {/* Title */}
@@ -93,42 +113,47 @@ export default function History() {
 
           {/* Games List */}
           <div className="space-y-3">
-            {filteredGames.map(game => (
-              <div
-                key={game.id}
-                className="bg-purple-400 rounded-lg flex justify-between p-4"
-              >
-                {/* Left Side: User & Details */}
-                <div className="flex items-start space-x-4">
-                  <Award className="text-yellow-400 shrink-0" size={28} />
-                  <div>
-                    <div className="font-semibold text-white text-lg">{game.user}</div>
-                    <div className="text-sm text-purple-200">Refs: {game.ref}</div>
-                    <div className="text-sm text-purple-200">Board #{game.board}</div>
-                    <div className="text-sm text-purple-200">{game.calls} calls</div>
+            {loading ? (
+              <div className="text-center text-white font-semibold">Loading...</div>
+            ) : filteredGames.length === 0 ? (
+              <div className="text-center text-white font-semibold">No history found.</div>
+            ) : (
+              filteredGames.map(game => (
+                <div
+                  key={game.ref}
+                  className="bg-purple-400 rounded-lg flex justify-between p-4"
+                >
+                  {/* Left Side */}
+                  <div className="flex items-start space-x-4">
+                    <Award className="text-yellow-400 shrink-0" size={28} />
+                    <div>
+                      <div className="font-semibold text-white text-lg">{game.user}</div>
+                      <div className="text-sm text-purple-200">Refs: {game.ref}</div>
+                      <div className="text-sm text-purple-200">Board #{game.board}</div>
+                      <div className="text-sm text-purple-200">{game.calls} calls</div>
+                    </div>
                   </div>
-                </div>
 
-                {/* Right Side: Date, Time & Winnings */}
-                <div className="flex flex-col items-end space-y-2">
-                  <div className="flex items-center space-x-1 text-white text-sm">
-                    <Calendar size={16} />
-                    <span>{game.date}</span>
-                  </div>
-                  <div className="flex items-center space-x-1 text-white text-sm">
-                    <Clock size={16} />
-                    <span>{game.time}</span>
-                  </div>
-                  <div className="mt-1 px-3 py-1 bg-green-400 rounded-full text-white text-sm font-semibold">
-                    {game.win} birr
+                  {/* Right Side */}
+                  <div className="flex flex-col items-end space-y-2">
+                    <div className="flex items-center space-x-1 text-white text-sm">
+                      <Calendar size={16} />
+                      <span>{game.date}</span>
+                    </div>
+                    <div className="flex items-center space-x-1 text-white text-sm">
+                      <Clock size={16} />
+                      <span>{game.time}</span>
+                    </div>
+                    <div className="mt-1 px-3 py-1 bg-green-400 rounded-full text-white text-sm font-semibold">
+                      {game.win} birr
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </main>
-
     </div>
   );
 }
