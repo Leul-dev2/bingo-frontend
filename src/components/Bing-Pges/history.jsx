@@ -139,13 +139,20 @@ export default function History() {
                       <Clock size={16} />
                       <span>{game.time}</span>
                     </div>
-                      <div
-                          className={`mt-1 px-3 py-1 rounded-full text-white text-sm font-semibold ${
-                            Number(game.win) > 0 ? 'bg-green-400' : 'bg-red-500'
-                          }`}
-                        >
-                          {Number(game.win) > 0 ? 'WIN ✅' : 'LOSE ❌'} {game.win} birr
-                        </div>
+                     
+                     
+                    <div className="flex items-center space-x-2">
+  <span
+    className={`px-2 py-0.5 rounded-full text-white text-xs font-bold ${
+      Number(game.win) > 0 ? 'bg-green-600' : 'bg-red-600'
+    }`}
+  >
+    {Number(game.win) > 0 ? 'WIN ✅' : 'LOSE ❌'}
+  </span>
+  <span className="px-3 py-1 rounded-full bg-purple-700 text-white text-sm font-semibold">
+    {game.win} birr
+  </span>
+</div>
 
 
                   </div>
