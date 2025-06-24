@@ -53,8 +53,11 @@ export default function History() {
     )
     .filter(g => {
       if (activeTab === 1) {
-        if (activeResult === 1) return g.win > 0;
-        if (activeResult === 2) return g.win === 0;
+        if (activeResult === 1) return Number(g.win) > 0;
+        if (activeResult === 2) return !g.win || Number(g.win) === 0;
+      }
+      if (activeTab === 0) {
+        return g.bet == selectedBet; // make sure it matches the selected birr amount
       }
       return true;
     });
@@ -171,9 +174,9 @@ export default function History() {
                     {activeTab === 1 ? (
                       <>
                         <div className={`mt-1 px-3 py-1 rounded-full text-sm font-semibold ${
-                          game.win > 0 ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+                          Number(game.win) > 0 ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
                         }`}>
-                          {game.win > 0 ? 'WIN ✅' : 'LOSE ❌'}
+                          {Number(game.win) > 0 ? 'WIN ✅' : 'LOSE ❌'}
                         </div>
                         <div className="text-xs text-white font-medium">{game.win} birr</div>
                       </>
