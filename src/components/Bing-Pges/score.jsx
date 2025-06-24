@@ -42,12 +42,7 @@ const res = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/Score?ti
 
   return (
     <div className="min-h-screen flex flex-col bg-purple-200">
-      {/* Header */}
-      <header className="flex items-center px-4 py-2 bg-purple-600 text-white">
-        <button><ChevronLeft size={24} /></button>
-        <h1 className="flex-1 text-center font-semibold">Addis Bingo</h1>
-        <button><ListChecks size={24} /></button>
-      </header>
+     
 
       {/* Scoreboard */}
       <main className="flex-1 p-4">
@@ -84,14 +79,13 @@ const res = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/Score?ti
             </button>
           </div>
 
-          {/* Initial Circles (Top 5 letters) */}
-          <div className="flex justify-center space-x-2">
-            {filtered.slice(0, 5).map((p, i) => (
-              <div key={i} className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold">
-                {p.name.charAt(0).toUpperCase()}
-              </div>
-            ))}
-          </div>
+         {/* Show only the first player's full name */}
+{filtered.length > 0 && (
+  <div className="text-center text-white font-bold text-lg mb-4">
+    Top Player: {filtered[0].name}
+  </div>
+)}
+
 
           {/* Players List */}
           {loading ? (
