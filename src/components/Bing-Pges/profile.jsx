@@ -47,11 +47,7 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-[#C597E6]">
-      {/* Header */}
-      <div className="bg-[#1E1E2D] text-white px-4 py-3 flex justify-between items-center">
-        <h1 className="text-lg font-semibold">Addis Bingo</h1>
-        <RefreshCw size={20} />
-      </div>
+    
 
       {/* Avatar + Username */}
       <div className="flex flex-col items-center py-6">
@@ -59,7 +55,7 @@ export default function Profile() {
           {username?.charAt(0)?.toUpperCase() || 'M'}
         </div>
         <div className="mt-2 text-white font-semibold text-lg">
-          {username || 'M'}
+          {username || 'NOT FOUND'}
         </div>
       </div>
 
