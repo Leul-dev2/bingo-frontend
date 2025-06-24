@@ -8,25 +8,31 @@ export default function Wallet() {
   const [balance, setBalance] = useState(0);
   const [bonus, setBonus] = useState(0);
   const [coins, setCoins] = useState(0);
+  const [telegramId, setTelegramId] = useState('');
 
   useEffect(() => {
-    // TODO: fetch(`/api/wallet`) to get { balance, bonus, coins }
-    // Simulate async load:
-    setTimeout(() => {
-      setBalance(0);
-      setBonus(0);
-      setCoins(3);
-    }, 300);
+    const storedId = localStorage.getItem('telegramId');
+    setTelegramId(storedId);
+
+    const fetchWallet = async () => {
+      try {
+        const res = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/wallet/${storedId}`);
+        const data = await res.json();
+        setBalance(data.balance);
+        setBonus(data.bonus);
+        setCoins(data.coins);
+      } catch (err) {
+        console.error('Wallet fetch failed:', err);
+      }
+    };
+
+    if (storedId) {
+      fetchWallet();
+    }
   }, []);
 
   return (
     <div className="min-h-screen flex flex-col bg-purple-200">
-      {/* Header */}
-      <header className="flex items-center px-4 py-2 bg-purple-600 text-white">
-        <button><ChevronLeft size={24} /></button>
-        <h1 className="flex-1 text-center font-semibold">Addis Bingo</h1>
-        <button><RefreshCw size={24} /></button>
-      </header>
 
       {/* Title */}
       <div className="px-4 mt-4 flex items-center justify-center space-x-2">
@@ -36,11 +42,12 @@ export default function Wallet() {
 
       <main className="flex-1 p-4 space-y-4">
         <div className="bg-purple-300 rounded-xl p-4 space-y-4">
+
           {/* Phone & Verification */}
           <div className="flex items-center justify-between bg-purple-200 rounded-lg p-3">
             <div className="flex items-center space-x-2 text-white">
               <User size={20} />
-              <span className="font-medium">0902464535</span>
+              <span className="font-medium">{telegramId || 'Loading...'}</span>
             </div>
             <div className="flex items-center space-x-1 text-green-400 font-medium">
               <CheckCircle size={18} />
@@ -108,8 +115,6 @@ export default function Wallet() {
           )}
         </div>
       </main>
-
-    
     </div>
   );
 }
