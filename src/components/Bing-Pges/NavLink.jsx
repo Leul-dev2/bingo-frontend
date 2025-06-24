@@ -1,14 +1,11 @@
 import { Link, useLocation } from "react-router-dom";
-import {  useSearchParams } from "react-router-dom";
-
-
 
 export default function Nav() {
   const location = useLocation();
-     const [searchParams] = useSearchParams();
-  const telegramId = searchParams.get("user"); // Get telegramId from URL query parameters
 
-  // Helper to apply active styles if the route matches current location
+  const telegramId = localStorage.getItem("telegramId");
+  const gameChoice = localStorage.getItem("gameChoice");
+
   const getLinkClass = (path) =>
     location.pathname === path
       ? "flex flex-col items-center text-purple-500 text-xs font-semibold"
@@ -16,10 +13,13 @@ export default function Nav() {
 
   return (
     <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 flex justify-around items-center py-2">
-   <Link to={`/?telegramId=${telegramId}`} className={getLinkClass("/")}>
-  <span className="text-xl">🎮</span>
-  <span>Game</span>
-</Link>
+      <Link
+        to={`/?user=${telegramId}&game=${gameChoice}`}
+        className={getLinkClass("/")}
+      >
+        <span className="text-xl">🎮</span>
+        <span>Game</span>
+      </Link>
 
       <Link to="/score" className={getLinkClass("/score")}>
         <span className="text-xl">🏆</span>
