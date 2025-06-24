@@ -3,9 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 export default function Nav() {
   const location = useLocation();
 
-  const telegramId = localStorage.getItem("telegramId");
-  const gameChoice = localStorage.getItem("gameChoice");
-
+  // Helper to apply active styles if the route matches current location
   const getLinkClass = (path) =>
     location.pathname === path
       ? "flex flex-col items-center text-purple-500 text-xs font-semibold"
@@ -13,10 +11,7 @@ export default function Nav() {
 
   return (
     <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 flex justify-around items-center py-2">
-      <Link
-        to={`/?user=${telegramId}&game=${gameChoice}`}
-        className={getLinkClass("/")}
-      >
+      <Link to="/" className={getLinkClass("/")}>
         <span className="text-xl">🎮</span>
         <span>Game</span>
       </Link>
