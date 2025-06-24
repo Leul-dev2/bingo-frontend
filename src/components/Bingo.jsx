@@ -9,7 +9,7 @@ const socket = io("https://bingobot-backend-bwdo.onrender.com");
 
 function Bingo() {
 ///////saving teh tegram id and gamechoice in localstaoge /////////////////////////////////////////////////////
-  const [searchParams] = useSearchParams();
+ const [searchParams] = useSearchParams();
 const urlTelegramId = searchParams.get("user");
 const urlGameId = searchParams.get("game");
 
