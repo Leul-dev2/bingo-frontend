@@ -141,15 +141,15 @@ export default function History() {
                     </div>
                      
                      
-                    <div className="flex items-center space-x-2">
+                 <div className="flex flex-col items-end space-y-1">
   <span
-    className={`px-2 py-0.5 rounded-full text-white text-xs font-bold ${
-      Number(game.win) > 0 ? 'bg-green-600' : 'bg-red-600'
+    className={`px-3 py-1 rounded-full text-white text-sm font-semibold ${
+      Number(game.win) > 0 ? 'bg-green-500' : 'bg-red-500'
     }`}
   >
     {Number(game.win) > 0 ? 'WIN ✅' : 'LOSE ❌'}
   </span>
-  <span className="px-3 py-1 rounded-full bg-purple-700 text-white text-sm font-semibold">
+  <span className="text-white text-sm font-semibold">
     {game.win} birr
   </span>
 </div>
