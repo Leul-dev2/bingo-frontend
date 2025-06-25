@@ -34,16 +34,26 @@ export default function Profile() {
     }
   };
 
+
   const fetchGameStats = async (id) => {
-    try {
-      const res = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/profile/${id}`);
-      const data = await res.json();
-      setGamesWon(data.gamesWon || 0);
+  try {
+    const res = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/profile/${id}`);
+    const data = await res.json();
+
+    if (data.success) {
       setUsername(data.username || '');
-    } catch (err) {
-      console.error('Profile stats fetch error:', err);
+      setGamesWon(data.gamesWon || 0);
+      setBalance(data.balance || 0);
+      setBonus(data.bonus || 0);
+      setCoins(data.coins || 0);
+    } else {
+      console.error('Profile data error:', data.message);
     }
-  };
+  } catch (err) {
+    console.error('Profile stats fetch error:', err);
+  }
+};
+
 
   return (
     <div className="min-h-screen bg-[#C597E6]">
