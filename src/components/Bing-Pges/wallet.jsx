@@ -4,31 +4,49 @@ import { ChevronLeft, RefreshCw, User, CheckCircle, Calendar, Clock } from 'luci
 const tabs = ['Balance', 'History'];
 
 export default function Wallet() {
+  const [searchParams] = useSearchParams();
+  const urlTelegramId = searchParams.get("user");
   const [activeTab, setActiveTab] = useState(0);
   const [balance, setBalance] = useState(0);
-  const [bonus, setBonus] = useState(0); // Optional, can default to 0
-  const [coins, setCoins] = useState(0); // Optional, can default to 0
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [bonus, setBonus] = useState(0);
+  const [coins, setCoins] = useState(0);
+  const [phoneNumber, setPhoneNumber] = useState("");
 
+  // Sync URL params with localStorage, prioritize URL param if present
   useEffect(() => {
-    const storedId = localStorage.getItem('telegramId');
-    if (!storedId) return;
+    const storedTelegramId = localStorage.getItem("telegramId");
+
+    if (urlTelegramId && urlTelegramId !== storedTelegramId) {
+      localStorage.setItem("telegramId", urlTelegramId);
+    }
+  }, [urlTelegramId]);
+
+  // Determine the telegramId to use: prefer URL param, fallback to localStorage
+  const telegramId = urlTelegramId || localStorage.getItem("telegramId");
+
+  // Fetch wallet data when telegramId changes or at mount
+  useEffect(() => {
+    if (!telegramId) return;
 
     const fetchWallet = async () => {
       try {
-        const res = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/wallet?telegramId=${storedId}`);
+        const res = await fetch(
+          `https://bingobot-backend-bwdo.onrender.com/api/wallet?telegramId=${telegramId}`
+        );
         const data = await res.json();
-        console.log("Wallet data:", data); // 🔍 Debugging
+        console.log("Wallet data:", data);
 
         setBalance(data.balance || 0);
-        setPhoneNumber(data.phoneNumber || 'Unknown');
+        setPhoneNumber(data.phoneNumber || "Unknown");
+        setBonus(data.bonus || 0);
+        setCoins(data.coins || 0);
       } catch (err) {
-        console.error('Wallet fetch failed:', err);
+        console.error("Wallet fetch failed:", err);
       }
     };
 
     fetchWallet();
-  }, []);
+  }, [telegramId]);
 
   return (
     <div className="min-h-screen flex flex-col bg-purple-200">
