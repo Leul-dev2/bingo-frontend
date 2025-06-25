@@ -57,11 +57,7 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-[#C597E6]">
-      {/* Header */}
-      <div className="bg-[#1E1E2D] text-white px-4 py-3 flex justify-between items-center">
-        <h1 className="text-lg font-semibold">Addis Bingo</h1>
-        <RefreshCw size={20} />
-      </div>
+     
 
       {/* Avatar + Username */}
       <div className="flex flex-col items-center py-6">
