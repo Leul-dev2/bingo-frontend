@@ -6,35 +6,32 @@ const tabs = ['Balance', 'History'];
 export default function Wallet() {
   const [activeTab, setActiveTab] = useState(0);
   const [balance, setBalance] = useState(0);
-  const [bonus, setBonus] = useState(0);
-  const [coins, setCoins] = useState(0);
-  const [telegramId, setTelegramId] = useState('');
+  const [bonus, setBonus] = useState(0); // Optional, can default to 0
+  const [coins, setCoins] = useState(0); // Optional, can default to 0
   const [phoneNumber, setPhoneNumber] = useState('');
-
 
   useEffect(() => {
     const storedId = localStorage.getItem('telegramId');
-    setTelegramId(storedId);
-const fetchWallet = async () => {
-  try {
-    const res = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/wallet?telegramId=${storedId}`);
-    const data = await res.json();
-    setBalance(data.balance || 0);
-    setPhoneNumber(data.phoneNumber || '');
-  } catch (err) {
-    console.error('Wallet fetch failed:', err);
-  }
-};
+    if (!storedId) return;
 
+    const fetchWallet = async () => {
+      try {
+        const res = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/wallet?telegramId=${storedId}`);
+        const data = await res.json();
+        console.log("Wallet data:", data); // 🔍 Debugging
 
-    if (storedId) {
-      fetchWallet();
-    }
+        setBalance(data.balance || 0);
+        setPhoneNumber(data.phoneNumber || 'Unknown');
+      } catch (err) {
+        console.error('Wallet fetch failed:', err);
+      }
+    };
+
+    fetchWallet();
   }, []);
 
   return (
     <div className="min-h-screen flex flex-col bg-purple-200">
-
       {/* Title */}
       <div className="px-4 mt-4 flex items-center justify-center space-x-2">
         <h2 className="text-2xl font-semibold text-white">Wallet</h2>
@@ -43,16 +40,12 @@ const fetchWallet = async () => {
 
       <main className="flex-1 p-4 space-y-4">
         <div className="bg-purple-300 rounded-xl p-4 space-y-4">
-
           {/* Phone & Verification */}
           <div className="flex items-center justify-between bg-purple-200 rounded-lg p-3">
-            
-                            <div className="flex items-center space-x-2 text-white">
-                  <User size={20} />
-                  <span className="font-medium">{phoneNumber || 'Loading...'}</span>
-                </div>
-
-
+            <div className="flex items-center space-x-2 text-white">
+              <User size={20} />
+              <span className="font-medium">{phoneNumber || 'Loading...'}</span>
+            </div>
             <div className="flex items-center space-x-1 text-green-400 font-medium">
               <CheckCircle size={18} />
               <span>Verified</span>
