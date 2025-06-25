@@ -72,7 +72,7 @@ export default function Profile() {
       {/* Stats Boxes */}
       <div className="grid grid-cols-2 gap-4 px-6 pb-4">
         <div className="bg-[#B57FD6] p-4 rounded-xl text-white text-center">
-          <div className="text-2xl">👛</div>
+          <div className="text-2xl">💳</div>
           <p className="text-sm mt-2">Balance</p>
           <p className="text-lg font-semibold">{balance} Birr</p>
         </div>
@@ -113,29 +113,6 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* Bottom Tab Navigation */}
-      <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 flex justify-around items-center py-2">
-        <div className="flex flex-col items-center text-purple-500 text-xs font-semibold">
-          <span className="text-xl">🎮</span>
-          <span>Game</span>
-        </div>
-        <div className="flex flex-col items-center text-gray-500 text-xs font-semibold">
-          <span className="text-xl">🏆</span>
-          <span>Scores</span>
-        </div>
-        <div className="flex flex-col items-center text-gray-500 text-xs font-semibold">
-          <span className="text-xl">⏳</span>
-          <span>History</span>
-        </div>
-        <div className="flex flex-col items-center text-gray-500 text-xs font-semibold">
-          <span className="text-xl">👛</span>
-          <span>Wallet</span>
-        </div>
-        <div className="flex flex-col items-center text-purple-500 text-xs font-semibold">
-          <span className="text-xl">👤</span>
-          <span>Profile</span>
-        </div>
-      </div>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, RefreshCw, User, CheckCircle, Calendar, Clock } from 'lucide-react';
+import {  RefreshCw, User, CheckCircle, Calendar, Clock } from 'lucide-react';
+import {  useSearchParams } from "react-router-dom";
 
 const tabs = ['Balance', 'History'];
 
