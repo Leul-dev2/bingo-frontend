@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
-import { RefreshCw, User, CheckCircle } from 'lucide-react';
+import { FaSyncAlt, FaUser, FaCheckCircle } from 'react-icons/fa';
 
 export default function Profile() {
   const [searchParams] = useSearchParams();
@@ -21,19 +21,27 @@ export default function Profile() {
     setTelegramId(id);
     setLoading(true);
 
-    // Fetch profile and wallet in parallel
-    Promise.all([
-      fetch(`https://bingobot-backend-bwdo.onrender.com/api/profile/${id}`).then(res => res.json()),
-      fetch(`https://bingobot-backend-bwdo.onrender.com/api/wallet/${id}`).then(res => res.json())
-    ])
-      .then(([profileData, walletData]) => {
-        setUsername(profileData.username || '');
-        setGamesWon(profileData.gamesWon || 0);
-        setBalance(walletData.balance || 0);
-        setBonus(walletData.bonus || 0);
-        setCoins(walletData.coins || 0);
+    // Fetch wallet then profile stats
+    fetch(`https://bingobot-backend-bwdo.onrender.com/api/wallet/${id}`)
+      .then(res => res.json())
+      .then(data => {
+        setBalance(data.balance || 0);
+        setBonus(data.bonus || 0);
+        setCoins(data.coins || 0);
       })
-      .catch(err => console.error('Fetch error:', err))
+      .catch(err => console.error('Wallet fetch error:', err));
+
+    fetch(`https://bingobot-backend-bwdo.onrender.com/api/profile/${id}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setUsername(data.username || '');
+          setGamesWon(data.gamesWon || 0);
+        } else {
+          console.error('Profile data error:', data.message);
+        }
+      })
+      .catch(err => console.error('Profile fetch error:', err))
       .finally(() => setLoading(false));
   }, [urlTelegramId]);
 
@@ -48,7 +56,7 @@ export default function Profile() {
             className="p-2 bg-purple-600 text-white rounded-lg shadow-md"
             onClick={() => window.location.reload()}
           >
-            <RefreshCw />
+            <FaSyncAlt />
           </motion.button>
         </div>
 
@@ -59,10 +67,10 @@ export default function Profile() {
           className="flex flex-col items-center py-4"
         >
           <div className="w-20 h-20 rounded-full bg-gradient-to-br from-yellow-300 to-orange-500 flex items-center justify-center text-white text-4xl font-bold shadow-lg">
-            {username.charAt(0).toUpperCase() || 'M'}
+            {loading ? '...' : (username.charAt(0).toUpperCase() || 'U')}
           </div>
           <div className="mt-2 text-purple-700 font-semibold text-lg">
-            {username || 'User'}
+            {loading ? 'Loading...' : username}
           </div>
         </motion.div>
 
@@ -74,10 +82,10 @@ export default function Profile() {
           className="grid grid-cols-2 gap-4"
         >
           {[
-            { label: 'Balance', value: balance, icon: '💳', color: 'from-purple-500 to-purple-700' },
-            { label: 'Bonus Wallet', value: bonus, icon: '🎁', color: 'from-green-400 to-green-600' },
-            { label: 'Total Coins', value: coins, icon: '🪙', color: 'from-yellow-400 to-yellow-600' },
-            { label: 'Games Won', value: gamesWon, icon: '🏆', color: 'from-blue-400 to-blue-600' }
+            { label: 'Balance', value: balance, icon: <FaUser />, color: 'from-purple-500 to-purple-700' },
+            { label: 'Bonus Wallet', value: bonus, icon: <FaUser />, color: 'from-green-400 to-green-600' },
+            { label: 'Coins', value: coins, icon: <FaUser />, color: 'from-yellow-400 to-yellow-600' },
+            { label: 'Games Won', value: gamesWon, icon: <FaUser />, color: 'from-blue-400 to-blue-600' }
           ].map((stat, idx) => (
             <motion.div
               key={stat.label}
@@ -88,7 +96,7 @@ export default function Profile() {
             >
               <div className="text-3xl">{stat.icon}</div>
               <div className="mt-2 text-sm">{stat.label}</div>
-              <div className="text-xl font-bold">{loading ? '...' : `${stat.value}`}</div>
+              <div className="text-xl font-bold">{loading ? '...' : stat.value}</div>
             </motion.div>
           ))}
         </motion.div>
@@ -100,7 +108,9 @@ export default function Profile() {
           transition={{ delay: 0.6 }}
           className="bg-white rounded-2xl p-4 space-y-2 shadow-inner"
         >
-          <div className="text-purple-700 font-semibold">Settings</div>
+          <div className="text-purple-700 font-semibold flex items-center">
+            <FaUser className="mr-2" />Settings
+          </div>
           {['Sound', 'Dark Mode', 'Invite Friends'].map((item, idx) => (
             <motion.div
               key={item}
