@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
-import { RefreshCw, User, CheckCircle, Calendar, Clock } from 'lucide-react';
+import { RefreshCw, User, CheckCircle, Calendar, Clock,FaWallet } from 'lucide-react';
 
 const tabs = ['Balance', 'History'];
 
