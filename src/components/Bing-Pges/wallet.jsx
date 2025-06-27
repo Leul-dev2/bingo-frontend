@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
-import { RefreshCw, User, CheckCircle, Calendar, Clock,FaWallet } from 'lucide-react';
+import { FaSyncAlt, FaUser, FaWallet, FaCoins, FaGift } from 'react-icons/fa';
 
 const tabs = ['Balance', 'History'];
 
@@ -27,24 +27,17 @@ export default function Wallet() {
   useEffect(() => {
     if (!telegramId) return;
 
-    const fetchWallet = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(
-          `https://bingobot-backend-bwdo.onrender.com/api/wallet?telegramId=${telegramId}`
-        );
-        const data = await res.json();
+    setLoading(true);
+    fetch(`https://bingobot-backend-bwdo.onrender.com/api/wallet?telegramId=${telegramId}`)
+      .then(res => res.json())
+      .then(data => {
         setBalance(data.balance || 0);
-        setPhoneNumber(data.phoneNumber || 'Unknown');
         setBonus(data.bonus || 0);
         setCoins(data.coins || 0);
-      } catch (err) {
-        console.error('Wallet fetch failed:', err);
-      }
-      setLoading(false);
-    };
-
-    fetchWallet();
+        setPhoneNumber(data.phoneNumber || 'Unknown');
+      })
+      .catch(err => console.error('Wallet fetch failed:', err))
+      .finally(() => setLoading(false));
   }, [telegramId]);
 
   return (
@@ -58,18 +51,18 @@ export default function Wallet() {
             className="p-2 bg-purple-600 text-white rounded-lg shadow-md"
             onClick={() => window.location.reload()}
           >
-            <RefreshCw />
+            <FaSyncAlt />
           </motion.button>
         </div>
 
         {/* Phone & Verification */}
         <div className="flex items-center justify-between bg-purple-200 rounded-lg p-3">
           <div className="flex items-center space-x-2 text-white">
-            <User size={20} />
+            <FaUser className="text-xl" />
             <span className="font-medium">{loading ? 'Loading...' : phoneNumber}</span>
           </div>
           <div className="flex items-center space-x-1 text-green-400 font-medium">
-            <CheckCircle size={18} />
+            <FaSyncAlt />
             <span>Verified</span>
           </div>
         </div>
@@ -109,47 +102,50 @@ export default function Wallet() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-4"
+            className="space-y-6"
           >
-            {/* Main Balance */}
-           <motion.div
-  whileHover={{ scale: 1.02 }}
-  className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl p-5 shadow-lg flex items-center justify-between"
->
-  <div className="flex items-center space-x-3">
-    <FaWallet className="text-white text-3xl" />
-    <span className="text-white font-bold text-lg">Main Balance</span>
-  </div>
-  <span className="text-white font-extrabold text-3xl">
-    {loading ? '...' : `${balance} Birr`}
-  </span>
-</motion.div>
-
+            {/* Main Balance Card */}
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl p-5 shadow-lg flex items-center justify-between"
+            >
+              <div className="flex items-center space-x-3">
+                <FaWallet className="text-white text-3xl" />
+                <span className="text-white font-bold text-lg">Main Balance</span>
+              </div>
+              <span className="text-white font-extrabold text-3xl">
+                {balance} Birr
+              </span>
+            </motion.div>
 
             {/* Bonus & Coins */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between bg-purple-200 rounded-lg p-3">
-                <div className="flex items-center space-x-2 text-white">
-                  <Calendar size={18} />
-                  <span>Bonus Balance</span>
+            <div className="space-y-4">
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                className="bg-gradient-to-r from-green-400 to-green-600 rounded-xl p-4 flex items-center justify-between text-white shadow-md"
+              >
+                <div className="flex items-center space-x-2">
+                  <FaGift /> <span>Bonus Balance</span>
                 </div>
-                <span className="text-green-400 font-medium">{bonus} Birr</span>
-              </div>
-              <div className="flex items-center justify-between bg-purple-200 rounded-lg p-3">
-                <div className="flex items-center space-x-2 text-white">
-                  <Clock size={18} />
-                  <span>Coins</span>
+                <span className="font-bold">{bonus} Birr</span>
+              </motion.div>
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                className="bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-xl p-4 flex items-center justify-between text-white shadow-md"
+              >
+                <div className="flex items-center space-x-2">
+                  <FaCoins /> <span>Coins</span>
                 </div>
-                <span className="text-yellow-300 font-medium">{coins}</span>
-              </div>
+                <span className="font-bold">{coins}</span>
+              </motion.div>
             </div>
 
             {/* Convert Coin Button */}
             <motion.button
               whileTap={{ scale: 0.95 }}
-              className="w-full py-3 bg-green-400 rounded-lg text-white font-medium flex items-center justify-center space-x-2 shadow-md"
+              className="w-full py-3 bg-green-400 rounded-lg text-white font-semibold flex items-center justify-center space-x-2 shadow-md"
             >
-              <Clock size={18} />
+              <FaSyncAlt />
               <span>Convert Coin</span>
             </motion.button>
           </motion.div>
