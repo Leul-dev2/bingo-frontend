@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
-import { FaSyncAlt, FaUser, FaCheckCircle } from 'react-icons/fa';
+import { FaSyncAlt, FaUser } from 'react-icons/fa';
 
 export default function Profile() {
   const [searchParams] = useSearchParams();
@@ -21,8 +21,10 @@ export default function Profile() {
     setTelegramId(id);
     setLoading(true);
 
-    // Fetch wallet then profile stats
-    fetch(`https://bingobot-backend-bwdo.onrender.com/api/wallet/${id}`)
+    // Fetch wallet data (query param) then fetch profile stats
+    const fetchWallet = fetch(
+      `https://bingobot-backend-bwdo.onrender.com/api/wallet?telegramId=${id}`
+    )
       .then(res => res.json())
       .then(data => {
         setBalance(data.balance || 0);
@@ -31,7 +33,9 @@ export default function Profile() {
       })
       .catch(err => console.error('Wallet fetch error:', err));
 
-    fetch(`https://bingobot-backend-bwdo.onrender.com/api/profile/${id}`)
+    const fetchProfile = fetch(
+      `https://bingobot-backend-bwdo.onrender.com/api/profile/${id}`
+    )
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -41,8 +45,10 @@ export default function Profile() {
           console.error('Profile data error:', data.message);
         }
       })
-      .catch(err => console.error('Profile fetch error:', err))
-      .finally(() => setLoading(false));
+      .catch(err => console.error('Profile fetch error:', err));
+
+    // Wait for both
+    Promise.all([fetchWallet, fetchProfile]).finally(() => setLoading(false));
   }, [urlTelegramId]);
 
   return (
@@ -111,7 +117,7 @@ export default function Profile() {
           <div className="text-purple-700 font-semibold flex items-center">
             <FaUser className="mr-2" />Settings
           </div>
-          {['Sound', 'Dark Mode', 'Invite Friends'].map((item, idx) => (
+          {['🔊 Sound', '🌙 Dark Mode', '👥 Invite Friends'].map((item, idx) => (
             <motion.div
               key={item}
               initial={{ x: -10, opacity: 0 }}
@@ -119,8 +125,8 @@ export default function Profile() {
               transition={{ delay: 0.7 + idx * 0.1 }}
               className="flex justify-between items-center p-3 border-b last:border-b-0 border-purple-200"
             >
-              <span>{item === 'Invite Friends' ? '👥 ' + item : item === 'Sound' ? '🔊 ' + item : '🌙 ' + item}</span>
-              <span className="opacity-60">{item === 'Invite Friends' ? 'Share >' : 'Toggle'}</span>
+              <span>{item}</span>
+              <span className="opacity-60">{item.includes('Invite') ? 'Share >' : 'Toggle'}</span>
             </motion.div>
           ))}
         </motion.div>

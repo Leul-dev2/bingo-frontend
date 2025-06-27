@@ -111,11 +111,14 @@ export default function Wallet() {
             animate={{ opacity: 1, y: 0 }}
             className="space-y-4"
           >
-            {/* Main Balance */}
-            <div className="flex justify-between items-center">
-              <div className="text-white font-semibold text-lg">Main Balance</div>
-              <div className="text-white font-bold text-2xl">{balance} Birr</div>
-            </div>
+             <motion.div whileHover={{ scale: 1.02 }} className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl p-5 shadow-lg flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <FaWallet className="text-white text-3xl" />
+                <span className="text-white font-bold text-lg">Main Balance</span>
+              </div>
+              <span className="text-white font-extrabold text-3xl">{loading ? '...' : `${balance} Birr`}</span>
+            </motion.div>
+
 
             {/* Bonus & Coins */}
             <div className="space-y-2">
