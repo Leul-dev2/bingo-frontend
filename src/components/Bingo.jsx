@@ -32,8 +32,12 @@ const telegramId = urlTelegramId || localStorage.getItem("telegramId");
 const gameId = urlGameId || localStorage.getItem("gameChoice");
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   const navigate = useNavigate();
-  const [cartelaId, setCartelaId] = useState(null);
-  const [cartela, setCartela] = useState([]);
+const [cartelaId, setCartelaId] = useState(() => {
+  const saved = localStorage.getItem("mySelectedCardId");
+  return saved ? Number(saved) : null;
+});
+
+const [cartela, setCartela] = useState([]);
   const [gameStatus, setGameStatus] = useState("");
   const [userBalance, setUserBalance] = useState(null);
   const [alertMessage, setAlertMessage] = useState("");
@@ -72,17 +76,26 @@ useEffect(() => {
    localStorage.setItem("telegramId", telegramId);
 
 
-  // Setup all socket listeners first
 const handleCardSelections = (cards) => {
   console.log("💡 Initial card selections received:", cards);
   const reformatted = {};
 
+  const myCardId = Number(localStorage.getItem("mySelectedCardId"));
+
   for (const [cardId, telegramId] of Object.entries(cards)) {
-    reformatted[telegramId] = parseInt(cardId); // Ensure same type as num
+    const parsedCardId = parseInt(cardId);
+
+    // Skip your own card if it matches saved one
+    if (telegramId === localStorage.getItem("telegramId") && parsedCardId === myCardId) {
+      continue;
+    }
+
+    reformatted[telegramId] = parsedCardId;
   }
 
   setOtherSelectedCards(reformatted);
 };
+
 
   socket.on("userconnected", (res) => {
     setResponse(res.telegramId);
@@ -126,6 +139,7 @@ const handleCardSelections = (cards) => {
       setOtherSelectedCards({});
       setCartela([]);
       setCartelaId(null);
+      localStorage.removeItem("mySelectedCardId"); 
       console.log("🔄 Cards have been reset for this game.");
     }
   });
@@ -392,27 +406,29 @@ const startGame = async () => {
       </div>
 
 <div className="grid grid-cols-10 gap-1 py-1 px-2 max-w-lg w-full text-xs">
-   {numbers.map((num) => {
+  {numbers.map((num) => {
     const isMyCard = cartelaId === num;
-    const isOtherCard = Object.values(otherSelectedCards).includes(num);
-    //const isOtherCard = (num) => Object.keys(otherSelectedCards).includes(num.toString());
-    // const isOtherCard = otherSelectedCards.hasOwnProperty(num.toString());
+    const isTakenByOthers =
+      Object.values(otherSelectedCards).includes(num) && !isMyCard;
 
     return (
       <button
         key={num}
         onClick={() => handleNumberClick(num)}
-        disabled={isOtherCard}
-        className={`w-8 h-8 flex items-center justify-center rounded-md border border-gray-300 font-bold cursor-pointer transition-all duration-200 text-xs
-          ${isMyCard ? "bg-green-500 text-white"
-            : isOtherCard ? "bg-yellow-400 text-black"
-            : "bg-purple-100 text-black"}`}
+        disabled={isTakenByOthers}
+        className={`w-8 h-8 flex items-center justify-center rounded-md border font-bold cursor-pointer transition-all duration-200 text-xs
+          ${isMyCard
+            ? "bg-green-500 text-white border-green-600"
+            : isTakenByOthers
+            ? "bg-gray-300 text-gray-500 cursor-not-allowed border-gray-400"
+            : "bg-purple-100 text-black border-gray-300 hover:bg-purple-200"}`}
       >
         {num}
       </button>
     );
   })}
-    </div>
+</div>
+
 
       {cartela.length > 0 && (
         <div className="grid grid-cols-5 gap-1 p-2 bg-transparent text-white">
