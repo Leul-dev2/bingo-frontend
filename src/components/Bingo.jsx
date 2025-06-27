@@ -272,6 +272,7 @@ useEffect(() => {
   socket.on("gameEnded", () => {
     setGameStarted(false);
     setAlertMessage("");
+     localStorage.removeItem("mySelectedCardId")
   });
 
   return () => socket.off("gameEnded");
