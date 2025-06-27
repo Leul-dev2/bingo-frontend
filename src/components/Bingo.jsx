@@ -30,10 +30,12 @@ useEffect(() => {
 // Use URL value if available, otherwise fallback to localStorage
 const telegramId = urlTelegramId || localStorage.getItem("telegramId");
 const gameId = urlGameId || localStorage.getItem("gameChoice");
+
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Existing effect to load saved card on mount
 useEffect(() => {
-  const savedId = localStorage.getItem("mySelectedCardId");
+  const savedId = sessionStorage.getItem("mySelectedCardId");
   if (savedId) {
     const selectedCard = bingoCards.find(card => card.id === Number(savedId));
     if (selectedCard) {
@@ -42,20 +44,6 @@ useEffect(() => {
     }
   }
 }, []);
-
-// New effect to clear saved card on tab/window close
-useEffect(() => {
-  const handleUnload = () => {
-    localStorage.removeItem("mySelectedCardId");
-  };
-
-  window.addEventListener("beforeunload", handleUnload);
-
-  return () => {
-    window.removeEventListener("beforeunload", handleUnload);
-  };
-}, []);
-
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -165,7 +153,7 @@ const handleCardSelections = (cards) => {
 
 
   // ✅ Re-emit saved card if returning to the page (to prevent it from looking "taken")
-const mySavedCardId = localStorage.getItem("mySelectedCardId");
+const mySavedCardId = sessionStorage.getItem("mySelectedCardId");
 const mySavedCard = bingoCards.find(card => card.id === Number(mySavedCardId));
 if (mySavedCard) {
   socket.emit("cardSelected", {
@@ -220,7 +208,7 @@ if (mySavedCard) {
       setCartela(selectedCard.card);
       setCartelaId(number);
       setGameStatus("Ready to Start");
-    localStorage.setItem("mySelectedCardId", number);  
+    sessionStorage.setItem("mySelectedCardId", number);  
     socket.emit("cardSelected", {
         telegramId,
         gameId,
@@ -301,7 +289,7 @@ useEffect(() => {
   socket.on("gameEnded", () => {
     setGameStarted(false);
     setAlertMessage("");
-     localStorage.removeItem("mySelectedCardId")
+     sessionStorage.removeItem("mySelectedCardId")
   });
 
   return () => socket.off("gameEnded");
