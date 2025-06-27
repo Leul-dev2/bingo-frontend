@@ -31,7 +31,7 @@ useEffect(() => {
 const telegramId = urlTelegramId || localStorage.getItem("telegramId");
 const gameId = urlGameId || localStorage.getItem("gameChoice");
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+// Existing effect to load saved card on mount
 useEffect(() => {
   const savedId = localStorage.getItem("mySelectedCardId");
   if (savedId) {
@@ -42,6 +42,20 @@ useEffect(() => {
     }
   }
 }, []);
+
+// New effect to clear saved card on tab/window close
+useEffect(() => {
+  const handleUnload = () => {
+    localStorage.removeItem("mySelectedCardId");
+  };
+
+  window.addEventListener("beforeunload", handleUnload);
+
+  return () => {
+    window.removeEventListener("beforeunload", handleUnload);
+  };
+}, []);
+
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
