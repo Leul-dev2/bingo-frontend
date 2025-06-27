@@ -31,6 +31,21 @@ useEffect(() => {
 const telegramId = urlTelegramId || localStorage.getItem("telegramId");
 const gameId = urlGameId || localStorage.getItem("gameChoice");
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+useEffect(() => {
+  const savedId = localStorage.getItem("mySelectedCardId");
+  if (savedId) {
+    const selectedCard = bingoCards.find(card => card.id === Number(savedId));
+    if (selectedCard) {
+      setCartelaId(Number(savedId));
+      setCartela(selectedCard.card);
+    }
+  }
+}, []);
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   const navigate = useNavigate();
   const [cartelaId, setCartelaId] = useState(null);
   const [cartela, setCartela] = useState([]);
@@ -408,9 +423,11 @@ const startGame = async () => {
 <div className="grid grid-cols-10 gap-1 py-1 px-2 max-w-lg w-full text-xs">
    {numbers.map((num) => {
     const isMyCard = cartelaId === num;
-    const isOtherCard = Object.values(otherSelectedCards).includes(num);
-    //const isOtherCard = (num) => Object.keys(otherSelectedCards).includes(num.toString());
-    // const isOtherCard = otherSelectedCards.hasOwnProperty(num.toString());
+  const isOtherCard =
+  Object.entries(otherSelectedCards).some(
+    ([id, card]) => Number(card) === num && id !== telegramId
+  );
+
 
     return (
       <button
