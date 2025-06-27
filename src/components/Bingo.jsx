@@ -191,8 +191,8 @@ if (mySavedCard) {
       setCartela(selectedCard.card);
       setCartelaId(number);
       setGameStatus("Ready to Start");
-      // Emit selected card event to the server
-      socket.emit("cardSelected", {
+    localStorage.setItem("mySelectedCardId", number);  
+    socket.emit("cardSelected", {
         telegramId,
         gameId,
         cardId: number,
