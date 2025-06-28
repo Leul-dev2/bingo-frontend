@@ -68,12 +68,13 @@ export default function Profile({ setIsBlackToggleOn, isBlackToggleOn }) {
 
   /////////////////////////////////////////////////////////////////////////
  
-  const handleInvite = () => {
+ const handleInvite = () => {
   const inviteLink = 'https://t.me/@bossbingosbot'; // replace with your bot link
   const shareText = encodeURIComponent('Check out this awesome bot: ' + inviteLink);
-  const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${shareText}`;
+  const telegramShareUrl = `https://t.me/share/url?text=${shareText}`; // Removed `url` param
   window.open(telegramShareUrl, '_blank');
 };
+
 
 ////////////////////////////////////////////////////////////////////
   // Dynamic style classes based on toggle
