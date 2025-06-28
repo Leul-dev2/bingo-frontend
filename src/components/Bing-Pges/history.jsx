@@ -162,7 +162,10 @@ export default function History() {
                     >
                       {Number(game.win) > 0 ? 'WIN ✅' : 'LOSE ❌'}
                     </span>
-                    <span className="text-gray-700 text-sm font-semibold"> {Number(game.win) > 0 ? `${game.win}` : urlGameChoice} :birr</span>
+                  <span className="text-sm text-gray-700 font-semibold">
+                      {game.winAmount > 0 ? `${game.winAmount}` : `${game.stake}`} :birr
+                  </span>
+
                   </div>
                 </motion.li>
               ))}
