@@ -67,10 +67,14 @@ export default function Profile({ setIsBlackToggleOn, isBlackToggleOn }) {
   }, [urlTelegramId]);
 
   /////////////////////////////////////////////////////////////////////////
+ 
   const handleInvite = () => {
-    const inviteLink = 'https://t.me/@bossbimgosbot';
-    window.open(inviteLink, '_blank');
-  };
+  const inviteLink = 'https://t.me/@bossbimgosbot'; // replace with your bot link
+  const shareText = encodeURIComponent('Check out this awesome bot: ' + inviteLink);
+  const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${shareText}`;
+  window.open(telegramShareUrl, '_blank');
+};
+
 ////////////////////////////////////////////////////////////////////
   // Dynamic style classes based on toggle
   const bgGradient = isBlackToggleOn
