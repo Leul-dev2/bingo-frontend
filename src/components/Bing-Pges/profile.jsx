@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import { FaSyncAlt, FaUser } from 'react-icons/fa';
 
-export default function Profile() {
+export default function Profile({ setIsBlackToggleOn, isBlackToggleOn }) {
   const [searchParams] = useSearchParams();
   const urlTelegramId = searchParams.get('user');
 
@@ -15,6 +15,22 @@ export default function Profile() {
   const [gamesWon, setGamesWon] = useState(0);
   const [loading, setLoading] = useState(true);
 
+  // On mount, initialize toggle from localStorage
+  useEffect(() => {
+    const storedToggle = localStorage.getItem('blackToggle');
+    if (storedToggle !== null) {
+      setIsBlackToggleOn(storedToggle === 'true');
+    }
+  }, [setIsBlackToggleOn]);
+
+  // Handler updates state and localStorage
+  const toggleBlackToggle = () => {
+    setIsBlackToggleOn((prev) => {
+      localStorage.setItem('blackToggle', String(!prev));
+      return !prev;
+    });
+  };
+
   useEffect(() => {
     const id = urlTelegramId || localStorage.getItem('telegramId');
     if (!id) return;
@@ -25,19 +41,19 @@ export default function Profile() {
     const fetchWallet = fetch(
       `https://bingobot-backend-bwdo.onrender.com/api/wallet?telegramId=${id}`
     )
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         setBalance(data.balance || 0);
         setBonus(data.bonus || 0);
         setCoins(data.coins || 0);
       })
-      .catch(err => console.error('Wallet fetch error:', err));
+      .catch((err) => console.error('Wallet fetch error:', err));
 
     const fetchProfile = fetch(
       `https://bingobot-backend-bwdo.onrender.com/api/profile/${id}`
     )
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         if (data.success) {
           setUsername(data.username || '');
           setGamesWon(data.gamesWon || 0);
@@ -45,18 +61,36 @@ export default function Profile() {
           console.error('Profile data error:', data.message);
         }
       })
-      .catch(err => console.error('Profile fetch error:', err));
+      .catch((err) => console.error('Profile fetch error:', err));
 
-    // Wait for both
     Promise.all([fetchWallet, fetchProfile]).finally(() => setLoading(false));
   }, [urlTelegramId]);
 
+  // Dynamic style classes based on toggle
+  const bgGradient = isBlackToggleOn
+    ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900'
+    : 'bg-gradient-to-br from-purple-200 via-purple-300 to-purple-200';
+
+  const cardBg = isBlackToggleOn
+    ? 'bg-white/10 backdrop-blur-md'
+    : 'bg-white/80 backdrop-blur-md';
+
+  const cardShadow = isBlackToggleOn
+    ? 'shadow-[0_0_15px_3px_rgba(255,255,255,0.15)]'
+    : 'shadow-xl';
+
+  const headerText = isBlackToggleOn ? 'text-indigo-300' : 'text-purple-700';
+
+  const borderColor = isBlackToggleOn ? 'border-gray-700' : 'border-purple-200';
+
+  const toggleBorderColor = isBlackToggleOn ? 'bg-white/20' : 'bg-gray-300';
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-200 via-purple-300 to-purple-200 p-4">
-      <div className="max-w-lg mx-auto bg-white/80 backdrop-blur-md rounded-2xl shadow-xl p-6 space-y-6">
+    <div className={`min-h-screen ${bgGradient} p-4`}>
+      <div className={`max-w-lg mx-auto rounded-2xl p-6 space-y-6 ${cardBg} ${cardShadow}`}>
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold text-purple-700">Profile</h1>
+          <h1 className={`text-xl font-bold ${headerText}`}>Profile</h1>
           <motion.button
             whileTap={{ rotate: 360 }}
             className="p-2 bg-purple-600 text-white rounded-lg shadow-md"
@@ -73,9 +107,9 @@ export default function Profile() {
           className="flex flex-col items-center py-4"
         >
           <div className="w-20 h-20 rounded-full bg-gradient-to-br from-yellow-300 to-orange-500 flex items-center justify-center text-white text-4xl font-bold shadow-lg">
-            {loading ? '...' : (username.charAt(0).toUpperCase() || 'U')}
+            {loading ? '...' : username.charAt(0).toUpperCase() || 'U'}
           </div>
-          <div className="mt-2 text-purple-700 font-semibold text-lg">
+          <div className={`mt-2 font-semibold text-lg ${headerText}`}>
             {loading ? 'Loading...' : username}
           </div>
         </motion.div>
@@ -109,26 +143,25 @@ export default function Profile() {
 
         {/* Settings */}
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
-          className="bg-white rounded-2xl p-4 space-y-2 shadow-inner"
+          initial={{ x: -10, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ delay: 1.1 }}
+          className={`flex justify-between items-center p-3 border-t mt-4 ${borderColor}`}
         >
-          <div className="text-purple-700 font-semibold flex items-center">
-            <FaUser className="mr-2" />Settings
-          </div>
-          {['🔊 Sound', '🌙 Dark Mode', '👥 Invite Friends'].map((item, idx) => (
-            <motion.div
-              key={item}
-              initial={{ x: -10, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ delay: 0.7 + idx * 0.1 }}
-              className="flex justify-between items-center p-3 border-b last:border-b-0 border-purple-200"
-            >
-              <span>{item}</span>
-              <span className="opacity-60">{item.includes('Invite') ? 'Share >' : 'Toggle'}</span>
-            </motion.div>
-          ))}
+          <span className={headerText}>🖤 Black Toggle</span>
+          <button
+            onClick={toggleBlackToggle}
+            aria-pressed={isBlackToggleOn}
+            className={`w-12 h-6 rounded-full relative transition-colors duration-300 focus:outline-none ${
+              isBlackToggleOn ? 'bg-black' : toggleBorderColor
+            }`}
+          >
+            <span
+              className={`block w-6 h-6 bg-white rounded-full shadow-md transform transition-transform duration-300 ${
+                isBlackToggleOn ? 'translate-x-6' : 'translate-x-0'
+              }`}
+            />
+          </button>
         </motion.div>
       </div>
     </div>

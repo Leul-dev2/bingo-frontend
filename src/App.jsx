@@ -1,4 +1,4 @@
-import React , { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Bingo from "./components/Bingo";
 import BingoGame from "./components/nextpg";
@@ -13,6 +13,17 @@ const App = () => {
   const [cartela, setCartela] = useState([]);
   const [selectedNumber, setSelectedNumber] = useState(null);
 
+  const [isBlackToggleOn, setIsBlackToggleOn] = useState(() => {
+    // Read from localStorage on first load
+    const saved = localStorage.getItem("blackToggle");
+    return saved === "true"; // defaults to false
+  });
+
+  useEffect(() => {
+    // Update localStorage whenever it changes
+    localStorage.setItem("blackToggle", String(isBlackToggleOn));
+  }, [isBlackToggleOn]);
+
   return (
     <Router>
       <Routes>
@@ -24,15 +35,29 @@ const App = () => {
         <Route path="/winnerPage" element={<WinnerPage />} />
 
         {/* Routes WITH Nav */}
-        <Route path="/" element={<Layout />}>
+        <Route path="/" element={<Layout isBlackToggleOn={isBlackToggleOn} />}>
           <Route
             index
-            element={<Bingo setCartela={setCartela} setSelectedNumber={setSelectedNumber} />}
+            element={
+              <Bingo
+                setCartela={setCartela}
+                setSelectedNumber={setSelectedNumber}
+                isBlackToggleOn={isBlackToggleOn}
+              />
+            }
           />
-          <Route path="score" element={<Score />} />
-          <Route path="history" element={<History />} />
-          <Route path="wallet" element={<Wallet />} />
-          <Route path="profile" element={<Profile />} />
+          <Route path="score" element={<Score isBlackToggleOn={isBlackToggleOn} />} />
+          <Route path="history" element={<History isBlackToggleOn={isBlackToggleOn} />} />
+          <Route path="wallet" element={<Wallet isBlackToggleOn={isBlackToggleOn} />} />
+          <Route
+            path="profile"
+            element={
+              <Profile
+                setIsBlackToggleOn={setIsBlackToggleOn}
+                isBlackToggleOn={isBlackToggleOn}
+              />
+            }
+          />
         </Route>
       </Routes>
     </Router>

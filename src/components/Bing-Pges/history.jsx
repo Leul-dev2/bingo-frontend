@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import { ChevronLeft, RefreshCw, Search, Clock, Award, Calendar } from 'lucide-react';
 
@@ -7,7 +7,7 @@ const historyTabs = ['Recent Games', 'My Games'];
 const betTabs = ['10 Birr', '20 Birr', '50 Birr', '100 Birr'];
 const betValues = ['10', '20', '50', '100'];
 
-export default function History() {
+export default function History({ isBlackToggleOn }) {
   const [searchParams] = useSearchParams();
   const urlTelegramId = searchParams.get('user');
   const urlGameChoice = searchParams.get('game');
@@ -46,33 +46,60 @@ export default function History() {
       g.id.toString().includes(search)
     );
 
+  // Backgrounds and text colors based on toggle
+  const containerBg = isBlackToggleOn
+    ? 'bg-gradient-to-br from-gray-900 via-black to-gray-900'
+    : 'bg-gradient-to-br from-purple-200 via-purple-300 to-purple-200';
+
+  const cardBg = isBlackToggleOn ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-800';
+
+  const activeBtnBg = isBlackToggleOn ? 'bg-indigo-700 text-white shadow-inner' : 'bg-purple-600 text-white shadow-inner';
+  const inactiveBtnBg = isBlackToggleOn ? 'bg-gray-700 text-gray-300' : 'bg-purple-100 text-purple-700';
+
+  const textPrimary = isBlackToggleOn ? 'text-gray-100' : 'text-purple-700';
+  const textSecondary = isBlackToggleOn ? 'text-gray-400' : 'text-purple-500';
+  const textBody = isBlackToggleOn ? 'text-gray-300' : 'text-gray-800';
+  const textSubtle = isBlackToggleOn ? 'text-gray-500' : 'text-gray-500';
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-200 via-purple-300 to-purple-200 p-4">
-      <div className="max-w-lg mx-auto bg-white/80 backdrop-blur-md rounded-2xl shadow-xl p-6 space-y-6">
+    <div className={`min-h-screen p-4 ${containerBg}`}>
+      <div className={`max-w-lg mx-auto backdrop-blur-md rounded-2xl shadow-xl p-6 space-y-6 ${cardBg}`}>
         {/* Header */}
         <div className="flex items-center justify-between">
-          <motion.button whileTap={{ scale: 0.9 }} className="p-2 bg-purple-600 text-white rounded-lg shadow-md" onClick={() => setActiveTab(0)}>
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            className="p-2 bg-purple-600 text-white rounded-lg shadow-md"
+            onClick={() => setActiveTab(0)}
+          >
             <ChevronLeft />
           </motion.button>
-          <h1 className="text-xl font-bold text-purple-700">Bingo History</h1>
-          <motion.button whileTap={{ rotate: 360 }} className="p-2 bg-purple-600 text-white rounded-lg shadow-md" onClick={() => setActiveBet(activeBet)}>
+          <h1 className={`text-xl font-bold ${textPrimary}`}>Bingo History</h1>
+          <motion.button
+            whileTap={{ rotate: 360 }}
+            className="p-2 bg-purple-600 text-white rounded-lg shadow-md"
+            onClick={() => setActiveBet(activeBet)}
+          >
             <RefreshCw />
           </motion.button>
         </div>
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute top-1/2 left-4 transform -translate-y-1/2 text-purple-500" />
+          <Search className={`absolute top-1/2 left-4 transform -translate-y-1/2 ${textSecondary}`} />
           <input
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search by ref or ID..."
-            className="w-full pl-12 pr-4 py-2 rounded-lg border border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className={`w-full pl-12 pr-4 py-2 rounded-lg border focus:outline-none focus:ring-2 ${
+              isBlackToggleOn
+                ? 'border-gray-600 bg-gray-900 text-gray-200 focus:ring-indigo-600'
+                : 'border-purple-300 bg-white text-gray-800 focus:ring-purple-500'
+            }`}
           />
         </div>
 
-        {/* Tabs */}
+        {/* History Tabs */}
         <div className="flex space-x-2 overflow-auto">
           {historyTabs.map((tab, idx) => (
             <motion.button
@@ -80,9 +107,7 @@ export default function History() {
               onClick={() => setActiveTab(idx)}
               whileTap={{ scale: 0.95 }}
               className={`flex-1 text-center py-2 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === idx
-                  ? 'bg-purple-600 text-white shadow-inner'
-                  : 'bg-purple-100 text-purple-700'
+                activeTab === idx ? activeBtnBg : inactiveBtnBg
               }`}
             >
               {tab}
@@ -90,6 +115,7 @@ export default function History() {
           ))}
         </div>
 
+        {/* Bet Tabs */}
         <div className="flex space-x-2 overflow-auto">
           {betTabs.map((bet, idx) => (
             <motion.button
@@ -97,9 +123,7 @@ export default function History() {
               onClick={() => setActiveBet(idx)}
               whileTap={{ scale: 0.95 }}
               className={`flex-1 text-center py-2 rounded-lg text-sm font-medium transition-colors ${
-                activeBet === idx
-                  ? 'bg-purple-600 text-white shadow-inner'
-                  : 'bg-purple-100 text-purple-700'
+                activeBet === idx ? activeBtnBg : inactiveBtnBg
               }`}
             >
               {bet}
@@ -107,14 +131,18 @@ export default function History() {
           ))}
         </div>
 
-        {/* Games List or Loading Animation */}
+        {/* Games List or Loading */}
         <div>
           {loading ? (
             <div className="flex justify-center py-10 space-x-3">
               {[...Array(4)].map((_, i) => (
                 <motion.div
                   key={i}
-                  className="w-8 h-8 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full shadow-md"
+                  className={`w-8 h-8 rounded-full shadow-md animate-pulse ${
+                    isBlackToggleOn
+                      ? 'bg-gray-700'
+                      : 'bg-gradient-to-br from-purple-400 to-pink-400'
+                  }`}
                   initial={{ scale: 0.6, opacity: 0.7 }}
                   animate={{ scale: [0.6, 1, 0.6], opacity: [0.7, 1, 0.7] }}
                   transition={{ repeat: Infinity, duration: 1, delay: i * 0.15 }}
@@ -123,7 +151,7 @@ export default function History() {
             </div>
           ) : filteredGames.length === 0 ? (
             <motion.div
-              className="text-center text-purple-600 font-semibold py-10"
+              className={`text-center font-semibold py-10 ${textPrimary}`}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
             >
@@ -137,22 +165,22 @@ export default function History() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.05 }}
-                  className="bg-white rounded-lg p-4 shadow-md flex justify-between"
+                  className={`rounded-lg p-4 shadow-md flex justify-between ${cardBg}`}
                 >
                   <div className="flex items-start space-x-3">
                     <Award className="text-yellow-400" size={28} />
                     <div>
-                      <div className="font-semibold text-gray-800 text-lg">{game.user}</div>
-                      <div className="text-sm text-gray-500">Refs: {game.ref}</div>
-                      <div className="text-sm text-gray-500">Board #{game.board}</div>
-                      <div className="text-sm text-gray-500">{game.calls} calls</div>
+                      <div className={`font-semibold ${textBody} text-lg`}>{game.user}</div>
+                      <div className={`text-sm ${textSubtle}`}>Refs: {game.ref}</div>
+                      <div className={`text-sm ${textSubtle}`}>Board #{game.board}</div>
+                      <div className={`text-sm ${textSubtle}`}>{game.calls} calls</div>
                     </div>
                   </div>
                   <div className="flex flex-col items-end space-y-2">
-                    <div className="flex items-center space-x-1 text-gray-500 text-sm">
+                    <div className={`flex items-center space-x-1 text-sm ${textSubtle}`}>
                       <Calendar size={16} /> <span>{game.date}</span>
                     </div>
-                    <div className="flex items-center space-x-1 text-gray-500 text-sm">
+                    <div className={`flex items-center space-x-1 text-sm ${textSubtle}`}>
                       <Clock size={16} /> <span>{game.time}</span>
                     </div>
                     <span
@@ -162,10 +190,7 @@ export default function History() {
                     >
                       {Number(game.win) > 0 ? 'WIN ✅' : 'LOSE ❌'}
                     </span>
-                  <span className="text-sm text-gray-700 font-semibold">
-                      {game.winAmount > 0 ? `${game.winAmount}` : `${game.stake}`} :birr
-                  </span>
-
+                    <span className={`${textBody} text-sm font-semibold`}>{game.win} birr</span>
                   </div>
                 </motion.li>
               ))}
