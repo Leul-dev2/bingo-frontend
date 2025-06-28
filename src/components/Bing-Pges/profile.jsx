@@ -69,7 +69,7 @@ export default function Profile({ setIsBlackToggleOn, isBlackToggleOn }) {
   /////////////////////////////////////////////////////////////////////////
  
   const handleInvite = () => {
-  const inviteLink = 'https://t.me/@bossbimgosbot'; // replace with your bot link
+  const inviteLink = 'https://t.me/@bossbingosbot'; // replace with your bot link
   const shareText = encodeURIComponent('Check out this awesome bot: ' + inviteLink);
   const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${shareText}`;
   window.open(telegramShareUrl, '_blank');
