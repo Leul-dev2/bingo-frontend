@@ -66,6 +66,12 @@ export default function Profile({ setIsBlackToggleOn, isBlackToggleOn }) {
     Promise.all([fetchWallet, fetchProfile]).finally(() => setLoading(false));
   }, [urlTelegramId]);
 
+  /////////////////////////////////////////////////////////////////////////
+  const handleInvite = () => {
+    const inviteLink = 'https://t.me/@bossbimgosbot';
+    window.open(inviteLink, '_blank');
+  };
+////////////////////////////////////////////////////////////////////
   // Dynamic style classes based on toggle
   const bgGradient = isBlackToggleOn
     ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900'
@@ -139,6 +145,21 @@ export default function Profile({ setIsBlackToggleOn, isBlackToggleOn }) {
               <div className="text-xl font-bold">{loading ? '...' : stat.value}</div>
             </motion.div>
           ))}
+        </motion.div>
+
+        {/* Invite Button */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.2 }}
+          className="mt-6 flex justify-center"
+        >
+          <button
+            onClick={handleInvite}
+            className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg shadow-md transition-all"
+          >
+            📢 Invite Friends
+          </button>
         </motion.div>
 
         {/* Settings */}
