@@ -29,6 +29,19 @@ const BingoGame = () => {
 
   const hasJoinedRef = useRef(false);
 
+
+
+
+  ////////////////////////////////////////////////////////////////////////////////
+
+  const handleLeave = () => {
+  sessionStorage.removeItem("mySelectedCardId"); // Clear the selected card
+  navigate("/"); // Navigate back to home page
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+
   // 1️⃣ Connect socket and joinGame
   useEffect(() => {
     if (!socket.connected) {
@@ -461,6 +474,7 @@ useEffect(() => {
           <button className="w-1/2 bg-blue-500 px-4 py-2 text-white rounded-lg text-lg">
             Refresh
           </button>
+<<<<<<< HEAD
           <button
             onClick={() => {
               socket.emit("playerLeave", { gameId, telegramId }, () => {
@@ -469,6 +483,9 @@ useEffect(() => {
             }}
             className="w-1/2 bg-green-500 px-4 py-2 text-white rounded-lg text-lg"
           >
+=======
+          <button onClick={handleLeave} className="w-1/2 bg-green-500 px-4 py-2 text-white rounded-lg text-lg">
+>>>>>>> b39c30d9ec24b62b1d9623dee71f1a7f183bc031
             Leave
 </button>
 
