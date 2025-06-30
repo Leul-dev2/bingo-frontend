@@ -406,7 +406,7 @@ const startGame = async () => {
     setAlertMessage("Error connecting to the backend");
     console.error("Connection error:", error);
   } finally {
-    setIsStarting(false); // Re-enable button after request finishes
+    //setIsStarting(false); // Re-enable button after request finishes
   }
 };
 
