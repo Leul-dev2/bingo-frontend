@@ -344,8 +344,6 @@ useEffect(() => {
 const startGame = async () => {
   if (isStarting) return;
 
-  setIsStarting(true); // Block double-clicking
-
   try {
     // Step 1: Check if a game is already running
     const statusRes = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/games/${gameId}/status`);
@@ -353,7 +351,6 @@ const startGame = async () => {
 
     if (statusData.exists && statusData.isActive) {
       alert("🚫 A game is already running or being initialized. Please wait.");
-      setIsStarting(false);
       return;
     }
 
@@ -368,49 +365,47 @@ const startGame = async () => {
 
     const data = await response.json();
 
-    if (response.ok && data.success) {
-      // Step 3: Game is ready, join the socket room now
-      socket.emit("joinGame", { gameId, telegramId });
-
-      // Step 4: Listen for player count updates
-      socket.off("playerCountUpdate").on("playerCountUpdate", ({ playerCount }) => {
-        console.log(`Players in the game room ${gameId}: ${playerCount}`);
-        setPlayerCount(playerCount);
-      });
-
-      // Step 5: Listen for gameId confirmation and navigate
-      socket.off("gameId").on("gameId", (res) => {
-        const { gameId: receivedGameId, telegramId: receivedTelegramId } = res;
-
-        if (receivedGameId && receivedTelegramId) {
-          navigate("/game", {
-            state: {
-              gameId: receivedGameId,
-              telegramId: receivedTelegramId,
-              cartela,
-              playerCount,
-            },
-          });
-          // No need to setIsStarting(false) here because you're navigating away
-        } else {
-          setAlertMessage("Invalid game or user data received!");
-          setIsStarting(false); // Allow retry on invalid data
-        }
-      });
-
-    } else {
-      // Backend rejected the request
+    if (!(response.ok && data.success)) {
       setAlertMessage(data.error || "Error starting the game");
       console.error("Game start error:", data.error);
-      setIsStarting(false); // Allow retry if start failed
+      return;
     }
+
+    // Step 3: Game is ready, join the socket room now
+    socket.emit("joinGame", { gameId, telegramId });
+
+    // Step 4: Listen for player count updates
+    socket.off("playerCountUpdate").on("playerCountUpdate", ({ playerCount }) => {
+      console.log(`Players in the game room ${gameId}: ${playerCount}`);
+      setPlayerCount(playerCount);
+    });
+
+    // Step 5: Listen for gameId confirmation and navigate
+    socket.off("gameId").on("gameId", (res) => {
+      const { gameId: receivedGameId, telegramId: receivedTelegramId } = res;
+
+      if (receivedGameId && receivedTelegramId) {
+        setIsStarting(true); // Disable button now, just before navigation
+        navigate("/game", {
+          state: {
+            gameId: receivedGameId,
+            telegramId: receivedTelegramId,
+            cartela,
+            playerCount,
+          },
+        });
+      } else {
+        setAlertMessage("Invalid game or user data received!");
+        setIsStarting(false); // Allow retry on invalid data
+      }
+    });
 
   } catch (error) {
     setAlertMessage("Error connecting to the backend");
     console.error("Connection error:", error);
-    setIsStarting(false); // Allow retry on network error
   }
 };
+
 
 
 
