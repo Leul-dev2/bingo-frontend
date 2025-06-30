@@ -324,7 +324,7 @@ const startGame = async () => {
 
   try {
     // 🧠 Step 1: Check if a game is already running
-    const statusRes = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/games/${gameId}/status`);
+    const statusRes = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/games/${gameId}/status/${telegramId}`);
     const statusData = await statusRes.json();
 
     if (statusData.exists && statusData.isActive) {
