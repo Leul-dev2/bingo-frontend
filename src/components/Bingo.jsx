@@ -344,17 +344,20 @@ useEffect(() => {
 const startGame = async () => {
   if (isStarting) return;
 
+  setIsStarting(true); // Block double-clicking
+
   try {
-    // Step 1: Check if a game is already running
+    // 🧠 Step 1: Check if a game is already running
     const statusRes = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/games/${gameId}/status`);
     const statusData = await statusRes.json();
 
     if (statusData.exists && statusData.isActive) {
       alert("🚫 A game is already running or being initialized. Please wait.");
+      setIsStarting(false);
       return;
     }
 
-    // Step 2: Start game - backend checks player balance and game state
+    // 🟢 Step 2: Start game - backend checks player balance and game state
     const response = await fetch("https://bingobot-backend-bwdo.onrender.com/api/games/start", {
       method: "POST",
       headers: {
@@ -365,48 +368,47 @@ const startGame = async () => {
 
     const data = await response.json();
 
-    if (!(response.ok && data.success)) {
+    if (response.ok && data.success) {
+      // ✅ Step 3: Game is ready, join the socket room now
+      socket.emit("joinGame", { gameId, telegramId });
+
+      // ✅ Step 4: Listen for player count updates
+      socket.off("playerCountUpdate").on("playerCountUpdate", ({ playerCount }) => {
+        console.log(`Players in the game room ${gameId}: ${playerCount}`);
+        setPlayerCount(playerCount);
+      });
+
+      // ✅ Step 5: Listen for gameId confirmation and navigate
+      socket.off("gameId").on("gameId", (res) => {
+        const { gameId: receivedGameId, telegramId: receivedTelegramId } = res;
+
+        if (receivedGameId && receivedTelegramId) {
+          navigate("/game", {
+            state: {
+              gameId: receivedGameId,
+              telegramId: receivedTelegramId,
+              cartela,
+              playerCount,
+            },
+          });
+        } else {
+          setAlertMessage("Invalid game or user data received!");
+        }
+      });
+
+    } else {
+      // 🚨 Backend rejected the request
       setAlertMessage(data.error || "Error starting the game");
       console.error("Game start error:", data.error);
-      return;
     }
-
-    // Step 3: Game is ready, join the socket room now
-    socket.emit("joinGame", { gameId, telegramId });
-
-    // Step 4: Listen for player count updates
-    socket.off("playerCountUpdate").on("playerCountUpdate", ({ playerCount }) => {
-      console.log(`Players in the game room ${gameId}: ${playerCount}`);
-      setPlayerCount(playerCount);
-    });
-
-    // Step 5: Listen for gameId confirmation and navigate
-    socket.off("gameId").on("gameId", (res) => {
-      const { gameId: receivedGameId, telegramId: receivedTelegramId } = res;
-
-      if (receivedGameId && receivedTelegramId) {
-        setIsStarting(true); // Disable button now, just before navigation
-        navigate("/game", {
-          state: {
-            gameId: receivedGameId,
-            telegramId: receivedTelegramId,
-            cartela,
-            playerCount,
-          },
-        });
-      } else {
-        setAlertMessage("Invalid game or user data received!");
-        setIsStarting(false); // Allow retry on invalid data
-      }
-    });
 
   } catch (error) {
     setAlertMessage("Error connecting to the backend");
     console.error("Connection error:", error);
+  } finally {
+    setIsStarting(false); // Re-enable button after request finishes
   }
 };
-
-
 
 
   return (
