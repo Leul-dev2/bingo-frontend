@@ -1,6 +1,7 @@
 import bingoCards from "../assets/bingoCards.json"; // Import the JSON file
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { io } from "socket.io-client";
 
 
@@ -12,7 +13,7 @@ function Bingo({isBlackToggleOn}) {
  const [searchParams] = useSearchParams();
 const urlTelegramId = searchParams.get("user");
 const urlGameId = searchParams.get("game");
-
+const location = useLocation();
 // Store only if changed
 useEffect(() => {
   const storedTelegramId = localStorage.getItem("telegramId");
@@ -267,37 +268,6 @@ useEffect(() => {
 }, []);
 
 
-  // useEffect(() => {
-  //   // Handle your own card confirmation
-  //   socket.on('cardConfirmed', (data) => {
-  //     setCartela(data.card);
-  //     setCartelaId(data.cardId);
-  //     setGameStatus("Ready to Start");
-  //   });
-  
-  //   // Handle other users' selected cards
-  //   socket.on('otherCardSelected', ({ telegramId, cardId }) => {
-  //     setOtherSelectedCards(prev => ({
-  //       ...prev,
-  //       [telegramId]: cardId,
-  //     }));
-  //   });
-
-  //   socket.on("gameid", (data) => {
-  //       setCount(data.numberOfPlayers);
-      
-  //   });
-
-  
-  //   return () => {
-  //     socket.off('cardConfirmed');
-  //     socket.off('otherCardSelected');
-  //     socket.off("gameid");
-  //   };
-  // }, [socket]);
-  
-  
-
   const resetGame = () => {
     setCartelaId(null);
     setCartela([]);
@@ -339,6 +309,12 @@ useEffect(() => {
 }, [gameId]);
 
 
+useEffect(() => {
+  if (location.pathname === "/game") {
+    setIsStarting(false); // Reset only after page switches
+  }
+}, [location.pathname]);
+
 
   // 🟢 Join Game & Emit to Socket
 const startGame = async () => {
@@ -347,7 +323,7 @@ const startGame = async () => {
   setIsStarting(true); // Block double-clicking
 
   try {
-    // Step 1: Check if a game is already running
+    // 🧠 Step 1: Check if a game is already running
     const statusRes = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/games/${gameId}/status`);
     const statusData = await statusRes.json();
 
@@ -357,7 +333,7 @@ const startGame = async () => {
       return;
     }
 
-    // Step 2: Start game - backend checks player balance and game state
+    // 🟢 Step 2: Start game - backend checks player balance and game state
     const response = await fetch("https://bingobot-backend-bwdo.onrender.com/api/games/start", {
       method: "POST",
       headers: {
@@ -369,16 +345,16 @@ const startGame = async () => {
     const data = await response.json();
 
     if (response.ok && data.success) {
-      // Step 3: Game is ready, join the socket room now
+      // ✅ Step 3: Game is ready, join the socket room now
       socket.emit("joinGame", { gameId, telegramId });
 
-      // Step 4: Listen for player count updates
+      // ✅ Step 4: Listen for player count updates
       socket.off("playerCountUpdate").on("playerCountUpdate", ({ playerCount }) => {
         console.log(`Players in the game room ${gameId}: ${playerCount}`);
         setPlayerCount(playerCount);
       });
 
-      // Step 5: Listen for gameId confirmation and navigate
+      // ✅ Step 5: Listen for gameId confirmation and navigate
       socket.off("gameId").on("gameId", (res) => {
         const { gameId: receivedGameId, telegramId: receivedTelegramId } = res;
 
@@ -391,27 +367,22 @@ const startGame = async () => {
               playerCount,
             },
           });
-          // Don't setIsStarting(false) here — keep it true until unmount/navigation
         } else {
           setAlertMessage("Invalid game or user data received!");
-          setIsStarting(false); // Re-enable button if invalid data
         }
       });
 
     } else {
-      // Backend rejected the request
+      // 🚨 Backend rejected the request
       setAlertMessage(data.error || "Error starting the game");
       console.error("Game start error:", data.error);
-      setIsStarting(false); // Re-enable button on backend error
     }
 
   } catch (error) {
     setAlertMessage("Error connecting to the backend");
     console.error("Connection error:", error);
-    setIsStarting(false); // Re-enable button on network error
-  }
+  } 
 };
-
 
 
   return (
