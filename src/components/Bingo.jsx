@@ -272,6 +272,7 @@ useEffect(() => {
     setCartelaId(null);
     setCartela([]);
     setGameStatus("");
+    fetchUserData(telegramId);
   };
 
 
