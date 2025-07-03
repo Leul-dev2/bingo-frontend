@@ -402,6 +402,9 @@ const startGame = async () => {
       </div>
     </div>
   )}
+     <button onClick={()=>navigate('/PaymentForm')} className={`bg-red-500 text-white px-3 py-1 rounded-lg shadow-md text-sm`}>
+      payment
+    </button> 
 
   <div className="flex justify-around w-full max-w-lg mb-2">
     <div className={`${cardBg} ${cardText} px-10 py-1 rounded-3xl text-center font-bold text-sm`}>
@@ -463,9 +466,7 @@ const startGame = async () => {
       {isStarting ? "Starting..." : "Start Game"}
     </button>
 
-      <button onClick={()=>navigate('/PaymentForm')} className={`bg-red-500 text-white px-3 py-1 rounded-lg shadow-md text-sm`}>
-      payment
-    </button> 
+     
   </div>
 </div>
 
