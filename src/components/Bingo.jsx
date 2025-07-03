@@ -1,6 +1,7 @@
 import bingoCards from "../assets/bingoCards.json"; // Import the JSON file
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { io } from "socket.io-client";
 
 
@@ -12,7 +13,7 @@ function Bingo({isBlackToggleOn}) {
  const [searchParams] = useSearchParams();
 const urlTelegramId = searchParams.get("user");
 const urlGameId = searchParams.get("game");
-
+const location = useLocation();
 // Store only if changed
 useEffect(() => {
   const storedTelegramId = localStorage.getItem("telegramId");
@@ -267,41 +268,11 @@ useEffect(() => {
 }, []);
 
 
-  // useEffect(() => {
-  //   // Handle your own card confirmation
-  //   socket.on('cardConfirmed', (data) => {
-  //     setCartela(data.card);
-  //     setCartelaId(data.cardId);
-  //     setGameStatus("Ready to Start");
-  //   });
-  
-  //   // Handle other users' selected cards
-  //   socket.on('otherCardSelected', ({ telegramId, cardId }) => {
-  //     setOtherSelectedCards(prev => ({
-  //       ...prev,
-  //       [telegramId]: cardId,
-  //     }));
-  //   });
-
-  //   socket.on("gameid", (data) => {
-  //       setCount(data.numberOfPlayers);
-      
-  //   });
-
-  
-  //   return () => {
-  //     socket.off('cardConfirmed');
-  //     socket.off('otherCardSelected');
-  //     socket.off("gameid");
-  //   };
-  // }, [socket]);
-  
-  
-
   const resetGame = () => {
     setCartelaId(null);
     setCartela([]);
     setGameStatus("");
+    fetchUserData(telegramId);
   };
 
 
@@ -338,6 +309,12 @@ useEffect(() => {
   return () => clearInterval(interval);
 }, [gameId]);
 
+
+useEffect(() => {
+  if (location.pathname === "/game") {
+    setIsStarting(false); // Reset only after page switches
+  }
+}, [location.pathname]);
 
 
   // 🟢 Join Game & Emit to Socket
@@ -405,9 +382,7 @@ const startGame = async () => {
   } catch (error) {
     setAlertMessage("Error connecting to the backend");
     console.error("Connection error:", error);
-  } finally {
-    setIsStarting(false); // Re-enable button after request finishes
-  }
+  } 
 };
 
 

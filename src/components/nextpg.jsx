@@ -29,19 +29,6 @@ const BingoGame = () => {
 
   const hasJoinedRef = useRef(false);
 
-
-
-
-  ////////////////////////////////////////////////////////////////////////////////
-
-  const handleLeave = () => {
-  sessionStorage.removeItem("mySelectedCardId"); // Clear the selected card
-  navigate("/"); // Navigate back to home page
-};
-
-
-////////////////////////////////////////////////////////////////////////////////
-
   // 1️⃣ Connect socket and joinGame
   useEffect(() => {
     if (!socket.connected) {
@@ -265,6 +252,17 @@ useEffect(() => {
     }
   };
 
+  const handleLeave = () => {
+  socket.emit("playerLeave", { gameId, playerId });
+
+  socket.emit("checkPlayerCount", { gameId }, (response) => {
+    if (response.playerCount === 0) {
+      socket.emit("setGameInactive", { gameId });
+    }
+    navigate("/");
+  });
+};
+
 
 
 //console.log("card numbersss", cartela);
@@ -463,9 +461,17 @@ useEffect(() => {
           <button className="w-1/2 bg-blue-500 px-4 py-2 text-white rounded-lg text-lg">
             Refresh
           </button>
-          <button onClick={handleLeave} className="w-1/2 bg-green-500 px-4 py-2 text-white rounded-lg text-lg">
+          <button
+            onClick={() => {
+              socket.emit("playerLeave", { gameId, telegramId }, () => {
+                navigate("/");
+              });
+            }}
+            className="w-1/2 bg-green-500 px-4 py-2 text-white rounded-lg text-lg"
+          >
             Leave
           </button>
+
         </div>
       </div>
     </div>
