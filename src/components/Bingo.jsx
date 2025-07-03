@@ -269,7 +269,6 @@ useEffect(() => {
 
 
   const resetGame = () => {
-    navigate('/PaymentForm')
     setCartelaId(null);
     setCartela([]);
     setGameStatus("");
