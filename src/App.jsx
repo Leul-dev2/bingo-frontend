@@ -7,7 +7,9 @@ import History from "./components/Bing-Pges/history";
 import Profile from "./components/Bing-Pges/profile";
 import Score from "./components/Bing-Pges/score";
 import Wallet from "./components/Bing-Pges/wallet";
-import Layout from "./components/Bing-Pges/Layout"; // Layout renders Nav + Outlet
+import Layout from "./components/Bing-Pges/Layout"; 
+import  PaymentSuccess from './components/payment/PaymentSuccess';
+import  PaymentForm  from './components/payment/paymentForm';
 
 const App = () => {
   const [cartela, setCartela] = useState([]);
@@ -33,6 +35,8 @@ const App = () => {
           element={<BingoGame cartela={cartela} selectedNumber={selectedNumber} />}
         />
         <Route path="/winnerPage" element={<WinnerPage />} />
+         <Route path="/PaymentForm" element={<PaymentForm />} />
+        <Route path="/payment-success" element={<PaymentSuccess />} />
 
         {/* Routes WITH Nav */}
         <Route path="/" element={<Layout isBlackToggleOn={isBlackToggleOn} />}>
