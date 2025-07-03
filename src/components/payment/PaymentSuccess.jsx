@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
-function PaymentSuccess() {
+function PaymentSucces() {
   const [status, setStatus] = useState("⏳ Checking payment status...");
   const [txRef, setTxRef] = useState(null);
   const [amount, setAmount] = useState(null);

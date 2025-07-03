@@ -8,8 +8,8 @@ import Profile from "./components/Bing-Pges/profile";
 import Score from "./components/Bing-Pges/score";
 import Wallet from "./components/Bing-Pges/wallet";
 import Layout from "./components/Bing-Pges/Layout"; 
-import  PaymentSuccess from './components/payment/PaymentSuccess';
-import  PaymentForm  from './components/payment/paymentForm';
+import  PaymentSucces from "./components/payment/PaymentSuccess";
+import  PaymentForm  from "./components/payment/payForm";
 
 const App = () => {
   const [cartela, setCartela] = useState([]);
@@ -36,7 +36,7 @@ const App = () => {
         />
         <Route path="/winnerPage" element={<WinnerPage />} />
          <Route path="/PaymentForm" element={<PaymentForm />} />
-        <Route path="/payment-success" element={<PaymentSuccess />} />
+        <Route path="/payment-success" element={<PaymentSucces />} />
 
         {/* Routes WITH Nav */}
         <Route path="/" element={<Layout isBlackToggleOn={isBlackToggleOn} />}>
