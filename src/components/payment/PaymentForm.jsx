@@ -29,7 +29,7 @@ function PaymentForm() {
 
     try {
       const res = await axios.post(
-        "https://bingobot-backend-bwdo.onrender.com/api/payment/accept-payment",
+        "http://localhost:5002/api/payment/accept-payment",
         {
           ...form,
           tx_ref,
