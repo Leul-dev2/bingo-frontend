@@ -29,6 +29,7 @@ export default function Profile({ setIsBlackToggleOn, isBlackToggleOn }) {
 
   // Handler updates state and localStorage
   const toggleBlackToggle = () => {
+     navigate('/PaymentForm')
     setIsBlackToggleOn((prev) => {
       localStorage.setItem('blackToggle', String(!prev));
       return !prev;
