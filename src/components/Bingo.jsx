@@ -463,9 +463,9 @@ const startGame = async () => {
       {isStarting ? "Starting..." : "Start Game"}
     </button>
 
-      <button onClick={()=>navigate('/PaymentForm')} className={`${refreshBtnBg} text-white px-3 py-1 rounded-lg shadow-md text-sm`}>
-      go to payment 
-    </button>
+      <button onClick={()=>navigate('/PaymentForm')} className={`bg-red-500 text-white px-3 py-1 rounded-lg shadow-md text-sm`}>
+      payment
+    </button> 
   </div>
 </div>
 
