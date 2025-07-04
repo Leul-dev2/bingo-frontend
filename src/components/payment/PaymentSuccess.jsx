@@ -36,13 +36,20 @@ function PaymentSuccess() {
 <div className="relative bg-white shadow-2xl rounded-2xl p-8 max-w-md w-full border border-green-300 animate-fade-in">
                     
                     
-                       <a
-  href="https://t.me/bossbingosbot"
+                     <button
+  onClick={() => {
+    if (window.Telegram && window.Telegram.WebApp) {
+      window.Telegram.WebApp.close(); // ✅ Close the Telegram WebView
+    } else {
+      window.location.href = "https://t.me/bossbingosbot"; // fallback
+    }
+  }}
   className="absolute top-3 right-3 bg-gradient-to-br from-red-400 via-pink-500 to-purple-500 text-white text-3xl rounded-full w-10 h-10 flex items-center justify-center shadow-lg hover:scale-110 transform transition-all duration-300 hover:rotate-90"
-  title="Back to Telegram Bot"
+  aria-label="Close"
+  title="Close"
 >
   &times;
-</a>
+</button>
 
 
         <h1 className="text-2xl font-bold text-green-700 text-center mb-4">
