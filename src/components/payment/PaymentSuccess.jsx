@@ -34,6 +34,16 @@ function PaymentSuccess() {
   return (
     <div className="min-h-screen flex flex-col justify-center items-center bg-gradient-to-br from-green-100 via-white to-blue-100 px-6">
       <div className="bg-white shadow-2xl rounded-2xl p-8 max-w-md w-full border border-green-300 animate-fade-in">
+        
+      {/* ✅ CLOSE BUTTON (X) */}
+<button
+  onClick={() => window.close()}
+  className="absolute top-3 right-3 text-gray-400 hover:text-red-500 text-xl font-bold"
+  aria-label="Close"
+>
+  ×
+</button>
+
         <h1 className="text-2xl font-bold text-green-700 text-center mb-4">
           Payment Status
         </h1>
