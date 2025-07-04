@@ -34,16 +34,18 @@ function PaymentSuccess() {
   return (
     <div className="min-h-screen flex flex-col justify-center items-center bg-gradient-to-br from-green-100 via-white to-blue-100 px-6">
 <div className="relative bg-white shadow-2xl rounded-2xl p-8 max-w-md w-full border border-green-300 animate-fade-in">
-        
-                        {/* Close (×) Button */}
-                  <button
-                    onClick={() => window.close()}
-                    className="absolute top-3 right-3 text-gray-400 hover:text-red-500 text-2xl font-bold transition duration-200"
-                    aria-label="Close"
-                    title="Close"
-                  >
-                    &times;
-                  </button>
+                            {/*  Close (×) Button */}
+                    <button
+                      onClick={() => {
+                        window.location.href = 'https://t.me/bossbingosbot';
+                      }}
+                      className="absolute top-3 right-3 bg-gradient-to-br from-red-400 via-pink-500 to-purple-500 text-white text-3xl rounded-full w-10 h-10 flex items-center justify-center shadow-lg hover:scale-110 transform transition-all duration-300 hover:rotate-90"
+                      aria-label="Close"
+                      title="Back to Telegram Bot"
+                    >
+                      &times;
+                    </button>
+
 
 
         <h1 className="text-2xl font-bold text-green-700 text-center mb-4">
