@@ -7,13 +7,13 @@ function SaveAndRedirect() {
   const [form, setForm] = useState({
     amount: "",
     currency: "ETB",
-    email: "",
     first_name: "",
     last_name: "",
     phone_number: "",
     telegramId: "",
     username: "",
   });
+
   const [txRef, setTxRef] = useState("");
   const [loading, setLoading] = useState(false);
 
