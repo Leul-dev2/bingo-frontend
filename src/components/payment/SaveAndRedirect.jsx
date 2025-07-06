@@ -12,22 +12,26 @@ function SaveAndRedirect() {
     last_name: "",
     phone_number: "",
     telegramId: "",
+    username: "",
   });
+
   const [loading, setLoading] = useState(false);
+  const [txRef, setTxRef] = useState("");
 
   useEffect(() => {
-    const tx_ref = searchParams.get("tx_ref");
     const telegramId = searchParams.get("telegramId");
     const amount = searchParams.get("amount");
 
-    if (!tx_ref || !telegramId || !amount) {
+    if (!telegramId || !amount) {
       console.error("❌ Missing required query parameters.");
       return;
     }
 
-    localStorage.setItem("tx_ref", tx_ref);
+    const generatedTxRef = `telegram_${telegramId}_${Date.now()}`;
+    setTxRef(generatedTxRef);
+    localStorage.setItem("tx_ref", generatedTxRef);
 
-    // ✅ Fetch user info from your backend
+    // Fetch user info
     const fetchUser = async () => {
       try {
         const res = await axios.get(
@@ -35,10 +39,11 @@ function SaveAndRedirect() {
         );
         const user = res.data;
 
-        setForm((prevForm) => ({
-          ...prevForm,
+        setForm((prev) => ({
+          ...prev,
           amount,
           telegramId,
+          username: user.username || "TelegramUser",
           email: `${user.username || "user"}@telegram.com`,
           first_name: user.username || "TelegramUser",
           last_name: "Telegram",
@@ -63,11 +68,11 @@ function SaveAndRedirect() {
     try {
       await axios.post("https://chapa-backend.onrender.com/accept-payment", {
         ...form,
-        tx_ref: localStorage.getItem("tx_ref"),
+        tx_ref: txRef,
       });
 
       alert("✅ Payment initiated! Redirecting...");
-      window.location.href = `tg://resolve?domain=bingobosssbot`; // ✅ redirect to your bot
+      window.location.href = `tg://resolve?domain=bingobosssbot`;
     } catch (err) {
       console.error("❌ Failed to send payment:", err);
       alert("❌ Failed to initiate payment. Please try again.");
@@ -86,28 +91,26 @@ function SaveAndRedirect() {
           Confirm Payment
         </h2>
 
-        {[
-          { name: "first_name", label: "First Name", type: "text" },
-          { name: "last_name", label: "Last Name", type: "text" },
-          { name: "email", label: "Email", type: "email" },
-          { name: "phone_number", label: "Phone Number", type: "tel" },
-          { name: "amount", label: "Amount (ETB)", type: "number", min: 1 },
-        ].map(({ name, label, type, min }) => (
-          <label key={name} className="block mb-4">
-            <span className="text-gray-700 font-semibold block mb-1">
-              {label}
-            </span>
-            <input
-              name={name}
-              type={type}
-              min={min}
-              value={form[name]}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-            />
-          </label>
-        ))}
+        {/* 👤 Show username only (read-only) */}
+        <div className="mb-6 text-center text-lg font-semibold text-gray-800">
+          User: <span className="text-blue-600">@{form.username}</span>
+        </div>
+
+        {/* 💵 Editable Amount Only */}
+        <label className="block mb-6">
+          <span className="text-gray-700 font-semibold block mb-1">
+            Amount (ETB)
+          </span>
+          <input
+            name="amount"
+            type="number"
+            min={1}
+            value={form.amount}
+            onChange={handleChange}
+            required
+            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
+        </label>
 
         <button
           type="submit"
