@@ -66,12 +66,10 @@ function SaveAndRedirect() {
     setLoading(true);
 
     try {
-      await axios.post("https://chapa-backend.onrender.com/accept-payment", {
+      await axios.post("https://bingobot-backend-bwdo.onrender.com/api/payment/accept-payment", {
         ...form,
         tx_ref: txRef,
       });
-
-      alert("✅ Payment initiated successfully!");
     } catch (err) {
       console.error("❌ Failed to send payment:", err);
       alert("❌ Failed to initiate payment. Please try again.");
