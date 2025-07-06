@@ -14,9 +14,8 @@ function SaveAndRedirect() {
     telegramId: "",
     username: "",
   });
-
-  const [loading, setLoading] = useState(false);
   const [txRef, setTxRef] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const telegramId = searchParams.get("telegramId");
@@ -27,11 +26,12 @@ function SaveAndRedirect() {
       return;
     }
 
+    // ✅ Create tx_ref dynamically in frontend
     const generatedTxRef = `telegram_${telegramId}_${Date.now()}`;
     setTxRef(generatedTxRef);
     localStorage.setItem("tx_ref", generatedTxRef);
 
-    // Fetch user info
+    // ✅ Fetch user info
     const fetchUser = async () => {
       try {
         const res = await axios.get(
@@ -39,8 +39,8 @@ function SaveAndRedirect() {
         );
         const user = res.data;
 
-        setForm((prev) => ({
-          ...prev,
+        setForm((prevForm) => ({
+          ...prevForm,
           amount,
           telegramId,
           username: user.username || "TelegramUser",
@@ -71,8 +71,7 @@ function SaveAndRedirect() {
         tx_ref: txRef,
       });
 
-      alert("✅ Payment initiated! Redirecting...");
-      window.location.href = `tg://resolve?domain=bingobosssbot`;
+      alert("✅ Payment initiated successfully!");
     } catch (err) {
       console.error("❌ Failed to send payment:", err);
       alert("❌ Failed to initiate payment. Please try again.");
@@ -91,12 +90,10 @@ function SaveAndRedirect() {
           Confirm Payment
         </h2>
 
-        {/* 👤 Show username only (read-only) */}
         <div className="mb-6 text-center text-lg font-semibold text-gray-800">
           User: <span className="text-blue-600">@{form.username}</span>
         </div>
 
-        {/* 💵 Editable Amount Only */}
         <label className="block mb-6">
           <span className="text-gray-700 font-semibold block mb-1">
             Amount (ETB)
