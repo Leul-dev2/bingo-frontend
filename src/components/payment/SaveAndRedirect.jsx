@@ -14,9 +14,8 @@ function SaveAndRedirect() {
     username: "",
   });
 
-  const [txRef, setTxRef] = useState("");
   const [loading, setLoading] = useState(false);
-  const [userReady, setUserReady] = useState(false); // ✅ Block premature submit
+  const [userReady, setUserReady] = useState(false);
 
   useEffect(() => {
     const telegramId = searchParams.get("telegramId");
@@ -28,12 +27,6 @@ function SaveAndRedirect() {
       console.error("❌ Missing required query parameters.");
       return;
     }
-
-    // ✅ Generate tx_ref
-    const generatedTxRef = `telegram_${telegramId}_${Date.now()}`;
-    setTxRef(generatedTxRef);
-    localStorage.setItem("tx_ref", generatedTxRef);
-    console.log("✅ Generated tx_ref:", generatedTxRef);
 
     const fetchUser = async () => {
       try {
@@ -58,7 +51,7 @@ function SaveAndRedirect() {
           return newForm;
         });
 
-        setUserReady(true); // ✅ Enable submit
+        setUserReady(true);
       } catch (err) {
         console.error("❌ Error fetching user info:", err);
       }
@@ -77,43 +70,44 @@ function SaveAndRedirect() {
     e.preventDefault();
 
     if (!userReady) {
-      alert("User info not yet loaded. Please wait a moment.");
+      alert("User info not yet loaded. Please wait.");
       return;
     }
 
-    // ✅ Form validation
     if (!form.amount || !form.first_name || !form.last_name || !form.phone_number) {
-      console.error("❌ Missing required fields in form");
       alert("❌ Please fill all required fields before submitting.");
       return;
     }
 
     setLoading(true);
-    console.log("📤 Submitting payment with form data:", { ...form, tx_ref: txRef });
+
+    // 🔄 Fresh tx_ref for every attempt
+    const tx_ref = `${form.first_name}-${Date.now()}`;
+    localStorage.setItem("tx_ref", tx_ref);
+    console.log("🚀 handleSubmit fired with tx_ref:", tx_ref);
 
     try {
-      const response = await axios.post(
+      const res = await axios.post(
         "https://bingobot-backend-bwdo.onrender.com/api/payment/accept-payment",
         {
           ...form,
-          tx_ref: txRef,
+          tx_ref,
         }
       );
 
-      console.log("✅ Payment API response:", response.data);
+      const redirectUrl = res?.data?.data?.checkout_url;
 
-      // ✅ Redirect to Chapa
-      if (response.data?.status === "success" && response.data.data?.checkout_url) {
-        const checkoutUrl = response.data.data.checkout_url;
-        console.log("🔗 Redirecting to:", checkoutUrl);
-        window.location.href = checkoutUrl;
+      if (redirectUrl) {
+        console.log("🔗 Redirecting to:", redirectUrl);
+        window.location.href = redirectUrl; // ✅ redirect to Chapa
       } else {
-        alert("❌ Payment initialization failed. Please try again.");
+        console.error("❌ No redirect URL returned.");
+        alert("Something went wrong. Please try again.");
+        setLoading(false);
       }
     } catch (err) {
-      console.error("❌ Failed to send payment:", err.response?.data || err.message);
-      alert("❌ Failed to initiate payment. Please try again.");
-    } finally {
+      console.error("❌ Payment init failed:", err.response?.data || err.message);
+      alert("❌ Failed to initiate payment.");
       setLoading(false);
     }
   };
@@ -149,14 +143,14 @@ function SaveAndRedirect() {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || !userReady}
           className={`w-full py-3 font-semibold text-white rounded-md transition ${
-            loading
+            loading || !userReady
               ? "bg-green-400 cursor-not-allowed"
               : "bg-green-600 hover:bg-green-700"
           }`}
         >
-          {loading ? "Processing..." : "Pay Now"}
+          {!userReady ? "Loading..." : loading ? "Processing..." : "Pay Now"}
         </button>
       </form>
     </div>
