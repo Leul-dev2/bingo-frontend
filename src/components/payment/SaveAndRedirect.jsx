@@ -16,6 +16,7 @@ function SaveAndRedirect() {
 
   const [txRef, setTxRef] = useState("");
   const [loading, setLoading] = useState(false);
+  const [userReady, setUserReady] = useState(false); // ✅ Block premature submit
 
   useEffect(() => {
     const telegramId = searchParams.get("telegramId");
@@ -56,6 +57,8 @@ function SaveAndRedirect() {
           console.log("🧾 Final form after user fetch:", newForm);
           return newForm;
         });
+
+        setUserReady(true); // ✅ Enable submit
       } catch (err) {
         console.error("❌ Error fetching user info:", err);
       }
@@ -72,17 +75,21 @@ function SaveAndRedirect() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
 
-    console.log("📤 Submitting payment with form data:", { ...form, tx_ref: txRef });
+    if (!userReady) {
+      alert("User info not yet loaded. Please wait a moment.");
+      return;
+    }
 
-    // ✅ Frontend form validation
+    // ✅ Form validation
     if (!form.amount || !form.first_name || !form.last_name || !form.phone_number) {
       console.error("❌ Missing required fields in form");
       alert("❌ Please fill all required fields before submitting.");
-      setLoading(false);
       return;
     }
+
+    setLoading(true);
+    console.log("📤 Submitting payment with form data:", { ...form, tx_ref: txRef });
 
     try {
       const response = await axios.post(
@@ -92,7 +99,17 @@ function SaveAndRedirect() {
           tx_ref: txRef,
         }
       );
+
       console.log("✅ Payment API response:", response.data);
+
+      // ✅ Redirect to Chapa
+      if (response.data?.status === "success" && response.data.data?.checkout_url) {
+        const checkoutUrl = response.data.data.checkout_url;
+        console.log("🔗 Redirecting to:", checkoutUrl);
+        window.location.href = checkoutUrl;
+      } else {
+        alert("❌ Payment initialization failed. Please try again.");
+      }
     } catch (err) {
       console.error("❌ Failed to send payment:", err.response?.data || err.message);
       alert("❌ Failed to initiate payment. Please try again.");
