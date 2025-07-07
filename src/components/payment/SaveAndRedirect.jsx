@@ -21,34 +21,41 @@ function SaveAndRedirect() {
     const telegramId = searchParams.get("telegramId");
     const amount = searchParams.get("amount");
 
+    console.log("🔍 Query params:", { telegramId, amount });
+
     if (!telegramId || !amount) {
       console.error("❌ Missing required query parameters.");
       return;
     }
 
-    // ✅ Create tx_ref dynamically in frontend
+    // ✅ Generate tx_ref
     const generatedTxRef = `telegram_${telegramId}_${Date.now()}`;
     setTxRef(generatedTxRef);
     localStorage.setItem("tx_ref", generatedTxRef);
+    console.log("✅ Generated tx_ref:", generatedTxRef);
 
-    // ✅ Fetch user info
     const fetchUser = async () => {
       try {
         const res = await axios.get(
           `https://bingobot-backend-bwdo.onrender.com/api/payment/userinfo?telegramId=${telegramId}`
         );
         const user = res.data;
+        console.log("✅ User info fetched:", user);
 
-        setForm((prevForm) => ({
-          ...prevForm,
-          amount,
-          telegramId,
-          username: user.username || "TelegramUser",
-          email: `${user.username || "user"}@telegram.com`,
-          first_name: user.username || "TelegramUser",
-          last_name: "Telegram",
-          phone_number: user.phoneNumber || "",
-        }));
+        setForm((prevForm) => {
+          const newForm = {
+            ...prevForm,
+            amount,
+            telegramId,
+            username: user.username || "TelegramUser",
+            email: `${user.username || "user"}@telegram.com`,
+            first_name: user.username || "TelegramUser",
+            last_name: "Telegram",
+            phone_number: user.phoneNumber || "",
+          };
+          console.log("🧾 Final form after user fetch:", newForm);
+          return newForm;
+        });
       } catch (err) {
         console.error("❌ Error fetching user info:", err);
       }
@@ -58,20 +65,36 @@ function SaveAndRedirect() {
   }, []);
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    console.log(`✏️ Updating form field: ${name} = ${value}`);
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
+    console.log("📤 Submitting payment with form data:", { ...form, tx_ref: txRef });
+
+    // ✅ Frontend form validation
+    if (!form.amount || !form.first_name || !form.last_name || !form.phone_number) {
+      console.error("❌ Missing required fields in form");
+      alert("❌ Please fill all required fields before submitting.");
+      setLoading(false);
+      return;
+    }
+
     try {
-      await axios.post("https://bingobot-backend-bwdo.onrender.com/api/payment/accept-payment", {
-        ...form,
-        tx_ref: txRef,
-      });
+      const response = await axios.post(
+        "https://bingobot-backend-bwdo.onrender.com/api/payment/accept-payment",
+        {
+          ...form,
+          tx_ref: txRef,
+        }
+      );
+      console.log("✅ Payment API response:", response.data);
     } catch (err) {
-      console.error("❌ Failed to send payment:", err);
+      console.error("❌ Failed to send payment:", err.response?.data || err.message);
       alert("❌ Failed to initiate payment. Please try again.");
     } finally {
       setLoading(false);
