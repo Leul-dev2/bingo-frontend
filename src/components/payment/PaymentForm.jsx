@@ -5,7 +5,6 @@ function PaymentForm() {
   const [form, setForm] = useState({
     amount: "",
     currency: "ETB",
-    email: "",
     first_name: "",
     last_name: "",
     phone_number: "",
