@@ -81,6 +81,8 @@ function SaveAndRedirect() {
 
     setLoading(true);
 
+
+    localStorage.removeItem("tx_ref");
     // 🔄 Fresh tx_ref for every attempt
     const tx_ref = `${form.first_name}-${Date.now()}`;
     localStorage.setItem("tx_ref", tx_ref);
@@ -92,6 +94,7 @@ function SaveAndRedirect() {
         {
           ...form,
           tx_ref,
+          telegramId: form.telegramId,
         }
       );
 
@@ -137,6 +140,7 @@ function SaveAndRedirect() {
             value={form.amount}
             onChange={handleChange}
             required
+            readOnly 
             className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
           />
         </label>
