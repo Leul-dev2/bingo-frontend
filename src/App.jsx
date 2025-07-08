@@ -11,11 +11,11 @@ import Layout from "./components/Bing-Pges/Layout";
 import  PaymentSuccess from "./components/payment/PaymentSuccess";
 import  PaymentForm  from "./components/payment/PaymentForm";
 import SaveAndRedirect from "./components/payment/SaveAndRedirect"
+import Instruction from "./components/instruction/instruction";
 
 const App = () => {
   const [cartela, setCartela] = useState([]);
   const [selectedNumber, setSelectedNumber] = useState(null);
-
   const [isBlackToggleOn, setIsBlackToggleOn] = useState(() => {
     // Read from localStorage on first load
     const saved = localStorage.getItem("blackToggle");
@@ -39,6 +39,8 @@ const App = () => {
          <Route path="/PaymentForm" element={<PaymentForm />} />
         <Route path="/payment-success" element={<PaymentSuccess />} />
         <Route path="/save-and-redirect" element={<SaveAndRedirect />} />
+        <Route path="/instruction" element={<Instruction />} />
+
 
 
         {/* Routes WITH Nav */}
