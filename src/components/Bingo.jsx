@@ -123,13 +123,13 @@ const handleCardSelections = (cards) => {
   }
 
   setOtherSelectedCards(reformatted);
-  setIsSocketReady(true); // ✅ Allow card selection now
 };
 
 
   socket.on("userconnected", (res) => {
     setResponse(res.telegramId);
   });
+
 
   socket.on("balanceUpdated", (newBalance) => {
     setUserBalance(newBalance);
@@ -140,6 +140,10 @@ const handleCardSelections = (cards) => {
   });
 
   socket.on("currentCardSelections", handleCardSelections);
+  socket.on("connect", () => {
+      console.log("✅ Socket connected:", socket.id);
+      setIsSocketReady(true); // ✅ Set flag to true
+    });
 
   socket.on("cardConfirmed", (data) => {
     setCartela(data.card);
