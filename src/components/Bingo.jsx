@@ -63,6 +63,8 @@ useEffect(() => {
   const [gameStarted, setGameStarted] = useState(false);
   const [countdown, setCountdown] = useState(null);
   const [isStarting, setIsStarting] = useState(false);
+  const [isSocketReady, setIsSocketReady] = useState(false);
+
   
 const bgGradient = isBlackToggleOn
   ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900'
@@ -117,11 +119,13 @@ const handleCardSelections = (cards) => {
   const reformatted = {};
 
   for (const [cardId, telegramId] of Object.entries(cards)) {
-    reformatted[telegramId] = parseInt(cardId); // Ensure same type as num
+    reformatted[telegramId] = parseInt(cardId); // Ensure same type
   }
 
   setOtherSelectedCards(reformatted);
+  setIsSocketReady(true); // ✅ Allow card selection now
 };
+
 
   socket.on("userconnected", (res) => {
     setResponse(res.telegramId);
@@ -224,23 +228,31 @@ if (mySavedCard) {
   
 
   // 🟢 Select a bingo card
-  const handleNumberClick = (number) => {
-    const selectedCard = bingoCards.find(card => card.id === number);
-    if (selectedCard) {
-      setCartela(selectedCard.card);
-      setCartelaId(number);
-      setGameStatus("Ready to Start");
-    sessionStorage.setItem("mySelectedCardId", number);  
+ const handleNumberClick = (number) => {
+  if (!isSocketReady) {
+    console.warn("Socket not ready. Please wait...");
+    return;
+  }
+
+  const selectedCard = bingoCards.find(card => card.id === number);
+
+  if (selectedCard) {
+    setCartela(selectedCard.card);
+    setCartelaId(number);
+    setGameStatus("Ready to Start");
+
+    sessionStorage.setItem("mySelectedCardId", number);
+
     socket.emit("cardSelected", {
-        telegramId,
-        gameId,
-        cardId: number,
-        card: selectedCard.card,
-      });      
-    } else {
-      console.error("Card not found for ID:", number);
-    }
-  };
+      telegramId,
+      gameId,
+      cardId: number,
+      card: selectedCard.card,
+    });
+  } else {
+    console.error("Card not found for ID:", number);
+  }
+};
 
 
 useEffect(() => {
@@ -430,7 +442,7 @@ const startGame = async () => {
         <button
           key={num}
           onClick={() => handleNumberClick(num)}
-          disabled={isOtherCard}
+          disabled={!isSocketReady || isOtherCard} // 🚫 Disable until socket is ready or card is taken
           className={`w-8 h-8 flex items-center justify-center rounded-md border border-gray-300 font-bold cursor-pointer transition-all duration-200 text-xs
             ${isMyCard ? myCardBg : isOtherCard ? otherCardBg : defaultCardBg}`}
         >
