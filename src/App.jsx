@@ -12,6 +12,7 @@ import  PaymentSuccess from "./components/payment/PaymentSuccess";
 import  PaymentForm  from "./components/payment/PaymentForm";
 import SaveAndRedirect from "./components/payment/SaveAndRedirect"
 import Instruction from "./components/instruction/instruction";
+import WithdrawForm from "./components/payment/WithdrawalForm";
 
 const App = () => {
   const [cartela, setCartela] = useState([]);
@@ -40,6 +41,8 @@ const App = () => {
         <Route path="/payment-success" element={<PaymentSuccess />} />
         <Route path="/save-and-redirect" element={<SaveAndRedirect />} />
         <Route path="/instruction" element={<Instruction />} />
+        <Route path="/withdrwal-Form" element={<WithdrawForm />} />
+
 
 
 
