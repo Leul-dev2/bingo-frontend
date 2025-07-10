@@ -1,83 +1,212 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
+
+// ✅ Unified Awash Color Theme for All
+const banks = {
+  "946": {
+    logo: "/CBE-new.png",
+    primaryColor: "#7F3F98",
+    secondaryColor: "#F5EDF9",
+  },
+  "855": {
+    logo: "/telebirr-new.webp",
+    primaryColor: "#7F3F98",
+    secondaryColor: "#F5EDF9",
+  },
+  "656": {
+    name: "Awash Bank",
+    logo: "/Awash_International_Bank.png",
+    primaryColor: "#7F3F98",       // Official purple
+    secondaryColor: "#F5EDF9",     // Light lavender (unchanged)
+  },
+  "772": {
+    logo: "/bank_of_abyssinia-new.svg",
+    primaryColor: "#7F3F98",
+    secondaryColor: "#F5EDF9",
+  },
+};
 
 export default function WithdrawForm() {
+  const [searchParams] = useSearchParams();
   const [telegramId, setTelegramId] = useState("");
   const [bankId, setBankId] = useState("");
+  const [bank, setBank] = useState(null);
+  const [loading, setLoading] = useState(true);
+
   const [accountName, setAccountName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [amount, setAmount] = useState("");
+  const [btnHover, setBtnHover] = useState(false);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    setTelegramId(params.get("user") || "");
-    setBankId(params.get("bank") || "");
+    const user = searchParams.get("user") || "";
+    const bankParam = searchParams.get("bank") || "";
+
+    if (!/^\d+$/.test(user) || !banks[bankParam]) {
+      setLoading(false);
+      return;
+    }
+
+    setTelegramId(user);
+    setBankId(bankParam);
+    setBank(banks[bankParam]);
+    setLoading(false);
   }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validation here...
+    if (!telegramId || !bankId || !accountName || !accountNumber || !amount) {
+      alert("❌ Please fill in all fields.");
+      return;
+    }
 
-    const body = {
-      telegramId,
-      bank_code: bankId,
-      account_name: accountName,
-      account_number: accountNumber,
-      amount,
-    };
+    if (!/^\d+$/.test(accountNumber)) {
+      alert("❌ Account number must be numeric.");
+      return;
+    }
 
-    // POST withdrawal request to your backend endpoint
-    const res = await fetch("https://your-backend.com/api/request-withdrawal", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    const amt = parseFloat(amount);
+    if (isNaN(amt) || amt <= 0) {
+      alert("❌ Invalid amount.");
+      return;
+    }
 
-    const data = await res.json();
-    if (res.ok) {
-      alert("Withdrawal request sent successfully!");
-    } else {
-      alert("Error: " + data.message);
+  const body = {
+  telegramId,
+  bank_code: bankId,
+  account_name: accountName,
+  account_number: accountNumber,
+  amount: amt,
+  currency: "ETB",
+  reference: `withdrawal-${telegramId}-${Date.now()}`,
+};
+
+
+    try {
+      const res = await fetch("https://bingobot-backend-bwdo.onrender.com/api/payment/request-withdrawal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        alert("✅ Withdrawal request sent successfully!");
+      } else {
+        alert("❌ Error: " + data.message);
+      }
+    } catch (error) {
+      alert("❌ Network error: " + error.message);
     }
   };
 
+  if (loading) {
+    return <p className="p-6 text-center text-gray-500 animate-pulse">⏳ Loading withdrawal form...</p>;
+  }
+
+  if (!bank) {
+    return (
+      <div className="p-6 text-center text-red-600 font-semibold space-y-4">
+        <p>⚠️ Something went wrong.</p>
+        <p>We couldn’t verify the bank details from the link. Please go back to Telegram and try again.</p>
+        <a
+          href="https://t.me/bingobosssbot"
+          className="text-white bg-red-500 px-4 py-2 rounded hover:bg-red-600 inline-block"
+        >
+          🔁 Retry via Bot
+        </a>
+      </div>
+    );
+  }
+
   return (
-    <form onSubmit={handleSubmit}>
-      <h1>Withdrawal Form</h1>
-      <p>Bank Code: {bankId}</p>
+    <div
+      className="max-w-md mx-auto p-6 rounded-xl shadow-xl mt-12"
+      style={{ backgroundColor: bank.secondaryColor }}
+    >
+      {/* ✅ Bank Logo Full Width */}
+     {/* ✅ Bank Logo + Name only for Awash */}
+<div className="w-full mb-8 text-center">
+  <img
+    src={bank.logo}
+    alt="Bank Logo"
+    className="w-full h-auto object-contain max-h-24 sm:max-h-28 mx-auto"
+  />
+  {bankId === "656" && bank.name && (
+    <h1
+      className="text-xl font-bold mt-2"
+      style={{ color: bank.primaryColor }}
+    >
+      {bank.name}
+    </h1>
+  )}
+</div>
 
-      <label>
-        Account Holder Name:
-        <input
-          type="text"
-          value={accountName}
-          onChange={(e) => setAccountName(e.target.value)}
-          required
-        />
-      </label>
 
-      <label>
-        Account Number:
-        <input
-          type="text"
-          value={accountNumber}
-          onChange={(e) => setAccountNumber(e.target.value)}
-          required
-        />
-      </label>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <input type="hidden" value={telegramId} name="telegramId" />
 
-      <label>
-        Amount:
-        <input
-          type="number"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          required
-          min="1"
-        />
-      </label>
+        <div>
+          <label htmlFor="accountName" className="block text-gray-700 font-medium mb-1">
+            Account Holder Name
+          </label>
+          <input
+            id="accountName"
+            type="text"
+            value={accountName}
+            onChange={(e) => setAccountName(e.target.value)}
+            required
+            placeholder="e.g., Mulugeta Bekele"
+            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+        </div>
 
-      <button type="submit">Request Withdrawal</button>
-    </form>
+      <div>
+  <label htmlFor="accountNumber" className="block text-gray-700 font-medium mb-1">
+    {bankId === "855" ? "Phone Number" : "Account Number"}
+  </label>
+  <input
+    id="accountNumber"
+    type="text"
+    value={accountNumber}
+    onChange={(e) => setAccountNumber(e.target.value)}
+    required
+    placeholder={bankId === "855" ? "e.g., 0912345678" : "e.g., 100012345678"}
+    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+  />
+</div>
+
+
+        <div>
+          <label htmlFor="amount" className="block text-gray-700 font-medium mb-1">
+            Amount (ETB)
+          </label>
+          <input
+            id="amount"
+            type="number"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            required
+            min="1"
+            placeholder="e.g., 500"
+            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+        </div>
+
+        <button
+          type="submit"
+          className="w-full font-bold py-3 rounded-md transition duration-200"
+          style={{
+            backgroundColor: btnHover ? "#333" : bank.primaryColor,
+            color: "white",
+          }}
+          onMouseEnter={() => setBtnHover(true)}
+          onMouseLeave={() => setBtnHover(false)}
+        >
+          🚀 Request Withdrawal
+        </button>
+      </form>
+    </div>
   );
 }
