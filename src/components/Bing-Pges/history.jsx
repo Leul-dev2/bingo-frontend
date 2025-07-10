@@ -190,7 +190,9 @@ export default function History({ isBlackToggleOn }) {
                     >
                       {Number(game.win) > 0 ? 'WIN ✅' : 'LOSE ❌'}
                     </span>
-                    <span className={`${textBody} text-sm font-semibold`}>{game.win} birr</span>
+<span className={`${textBody} text-sm font-semibold`}>
+  {Number(game.win) > 0 ? `+${game.win} birr` : `-${Math.abs(game.win)} birr`}
+</span>
                   </div>
                 </motion.li>
               ))}
