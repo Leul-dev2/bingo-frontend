@@ -178,15 +178,15 @@ export default function Profile({ setIsBlackToggleOn, isBlackToggleOn }) {
   transition={{ delay: 1.3 }}
   className="mt-2 flex justify-center"
 >
- // Navigation button:
-<button
-  onClick={() =>
-    navigate('/PaymentForm', { state: { telegramId: '593680186' } })
-  }
+<a
+  href={`https://bossbingo.netlify.app/PaymentForm?user=${telegramId}`}
+  target="_blank"
+  rel="noopener noreferrer"
   className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-md transition-all"
 >
   💳 Go to Payment
-</button>
+</a>
+
 
 </motion.div>
 
