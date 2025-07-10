@@ -91,6 +91,7 @@ export default function WithdrawForm() {
       });
 
       const data = await res.json();
+      
       if (res.ok) {
         alert("✅ Withdrawal request sent successfully!");
       } else {

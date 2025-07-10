@@ -8,11 +8,12 @@ import Profile from "./components/Bing-Pges/profile";
 import Score from "./components/Bing-Pges/score";
 import Wallet from "./components/Bing-Pges/wallet";
 import Layout from "./components/Bing-Pges/Layout"; 
-import  PaymentSuccess from "./components/payment/PaymentSuccess";
-import  PaymentForm  from "./components/payment/PaymentForm";
-import SaveAndRedirect from "./components/payment/SaveAndRedirect"
+import  PaymentSuccess from "./components/payment/CheckDeposite";
+import  PaymentForm  from "./components/payment/DepositeForm";
+import SaveAndRedirect from "./components/payment/DepsoiteForm-bot"
 import Instruction from "./components/instruction/instruction";
 import WithdrawForm from "./components/payment/WithdrawalForm";
+import CheckWithdrawalPage from "./components/payment/CheckWithdrwal";
 
 const App = () => {
   const [cartela, setCartela] = useState([]);
@@ -42,6 +43,8 @@ const App = () => {
         <Route path="/save-and-redirect" element={<SaveAndRedirect />} />
         <Route path="/instruction" element={<Instruction />} />
         <Route path="/withdrwal-Form" element={<WithdrawForm />} />
+        <Route path="/Check-Withdraw" element={<CheckWithdrawalPage />} />
+
 
 
 
