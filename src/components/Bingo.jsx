@@ -140,10 +140,10 @@ const handleCardSelections = (cards) => {
   });
 
   socket.on("currentCardSelections", handleCardSelections);
-  socket.on("connect", () => {
-      console.log("✅ Socket connected:", socket.id);
-      setIsSocketReady(true); // ✅ Set flag to true
-    });
+  // socket.on("connect", () => {
+  //     console.log("✅ Socket connected:", socket.id);
+  //     setIsSocketReady(true); // ✅ Set flag to true
+  //   });
 
   socket.on("cardConfirmed", (data) => {
     setCartela(data.card);
@@ -233,10 +233,10 @@ if (mySavedCard) {
 
   // 🟢 Select a bingo card
  const handleNumberClick = (number) => {
-  if (!isSocketReady) {
-    console.warn("Socket not ready. Please wait...");
-    return;
-  }
+  // if (!isSocketReady) {
+  //   console.warn("Socket not ready. Please wait...");
+  //   return;
+  // }
 
   const selectedCard = bingoCards.find(card => card.id === number);
 
@@ -446,7 +446,7 @@ const startGame = async () => {
         <button
           key={num}
           onClick={() => handleNumberClick(num)}
-          disabled={!isSocketReady || isOtherCard} // 🚫 Disable until socket is ready or card is taken
+          disabled={isOtherCard} // 🚫 Disable until socket is ready or card is taken
           className={`w-8 h-8 flex items-center justify-center rounded-md border border-gray-300 font-bold cursor-pointer transition-all duration-200 text-xs
             ${isMyCard ? myCardBg : isOtherCard ? otherCardBg : defaultCardBg}`}
         >
