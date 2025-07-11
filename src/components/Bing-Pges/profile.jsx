@@ -178,12 +178,14 @@ export default function Profile({ setIsBlackToggleOn, isBlackToggleOn }) {
   transition={{ delay: 1.3 }}
   className="mt-2 flex justify-center"
 >
-  <button
-    onClick={() => navigate('/PaymentForm')}
-    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-md transition-all"
-  >
-    💳 Go to Payment
-  </button>
+<button
+  onClick={() => navigate(`/PaymentForm?user=${telegramId}`)}
+  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-md transition-all"
+>
+  💳 Go to Payment
+</button>
+
+
 </motion.div>
 
 
