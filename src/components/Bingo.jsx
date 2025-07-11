@@ -151,6 +151,25 @@ const handleCardSelections = (cards) => {
     setGameStatus("Ready to Start");
   });
 
+
+  // ⚠️ Notify if the card is already taken by someone else
+socket.on("cardUnavailable", ({ cardId }) => {
+  setAlertMessage(`🚫 Card ${cardId} is already taken by another player.`);
+  // Optionally, clear the UI selection
+  setCartela([]);
+  setCartelaId(null);
+  sessionStorage.removeItem("mySelectedCardId");
+});
+
+// ⚠️ Notify on Redis race condition (lock issue)
+socket.on("cardError", ({ message }) => {
+  setAlertMessage(message || "Card selection failed.");
+  setCartela([]);
+  setCartelaId(null);
+  sessionStorage.removeItem("mySelectedCardId");
+});
+
+
   socket.on("otherCardSelected", ({ telegramId, cardId }) => {
     setOtherSelectedCards((prev) => ({
       ...prev,
