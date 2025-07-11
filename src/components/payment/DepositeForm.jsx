@@ -63,6 +63,16 @@ function PaymentForm() {
       return;
     }
 
+
+       const amount = parseFloat(form.amount);
+  if (isNaN(amount) || amount < 50) {
+    alert("❌ Minimum deposit is 50 Birr.");
+    return;
+  }
+
+
+
+
     if (!form.amount || !form.first_name || !form.phone_number) {
       alert("❌ Please enter an amount.");
       return;
@@ -116,7 +126,7 @@ function PaymentForm() {
           <input
             name="amount"
             type="number"
-            min={1}
+            min={50}
             value={form.amount}
             onChange={handleChange}
             required
