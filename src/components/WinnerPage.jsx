@@ -10,19 +10,22 @@ const WinnerPage = () => {
 
   // Function to render Bingo board with highlighted winning numbers
   const renderBingoBoard = (board, winnerPattern) => {
-    return (
-      <div className="grid grid-cols-5 gap-2 mt-6">
-        {board.map((cell, index) => (
-          <div
-            key={index}
-            className={`text-center p-4 border-2 rounded-lg ${winnerPattern[index] ? 'bg-yellow-500 text-white' : 'bg-white'}`}
-          >
-            {cell.value === "FREE" ? "FREE" : cell.value} {/* Display cell value or "FREE" */}
-          </div>
-        ))}
-      </div>
-    );
-  };
+  const flatBoard = board.flat(); // Flatten 2D array into 1D
+
+  return (
+    <div className="grid grid-cols-5 gap-2 mt-6">
+      {flatBoard.map((cell, index) => (
+        <div
+          key={index}
+          className={`text-center p-4 border-2 rounded-lg ${winnerPattern[index] ? 'bg-yellow-500 text-white' : 'bg-white'}`}
+        >
+          {cell === 0 ? "FREE" : cell}
+        </div>
+      ))}
+    </div>
+  );
+};
+
 
  function playAgain() {
   const myTelegramId = localStorage.getItem("telegramId");
@@ -57,7 +60,7 @@ const WinnerPage = () => {
       <div className="grid grid-cols-5 gap-2 mt-4">
         {winnerPattern.map((isWinning, index) => {
           const flatBoard = board?.flat() || [];
-          const number = flatBoard[index]?.value || "?";
+          const number = flatBoard[index] ?? "?";
 
           return (
             <div
@@ -65,7 +68,8 @@ const WinnerPage = () => {
               className={`w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center font-bold text-sm sm:text-lg border rounded-lg shadow-md 
               ${isWinning ? "bg-green-500 text-black" : "bg-gray-200"}`}
             >
-              {number}
+            {number === 0 ? "FREE" : number}
+
             </div>
           );
         })}
