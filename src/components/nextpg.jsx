@@ -298,7 +298,6 @@ useEffect(() => {
 
 useEffect(() => {
   const handleWinnerFound = ({ winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId }) => {
-    //alert("winner found");
     navigate("/winnerPage", {
       state: {
         winnerName,
@@ -313,12 +312,19 @@ useEffect(() => {
     });
   };
 
+  const handleWinnerError = ({ message }) => {
+    alert(message || "Winner verification failed. Please try again.");
+  };
+
   socket.on("winnerConfirmed", handleWinnerFound);
+  socket.on("winnerError", handleWinnerError);
 
   return () => {
     socket.off("winnerConfirmed", handleWinnerFound);
+    socket.off("winnerError", handleWinnerError);
   };
 }, [navigate]);
+
 
 
   
