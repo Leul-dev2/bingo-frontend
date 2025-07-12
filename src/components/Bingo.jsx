@@ -399,6 +399,7 @@ const startGame = async () => {
             state: {
               gameId: receivedGameId,
               telegramId: receivedTelegramId,
+              cartelaId,
               cartela,
               playerCount,
             },
