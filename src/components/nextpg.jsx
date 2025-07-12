@@ -243,13 +243,20 @@ useEffect(() => {
       winnerPattern[index] = true;
     });
 
-    if (winCount > 0) {
-      // alert(`Bingo! Winning Pattern: ${lastMatchedPattern}`);
-      declareWinner(winnerPattern, telegramId);
-      return lastMatchedPattern;
-    } else {
-      alert("You are not a winner yet! Keep playing.");
-    }
+    // if (winCount > 0) {
+    //   // alert(`Bingo! Winning Pattern: ${lastMatchedPattern}`);
+    //   declareWinner(winnerPattern, telegramId);
+    //   return lastMatchedPattern;
+    // } else {
+    //   alert("You are not a winner yet! Keep playing.");
+    // }
+
+    socket.emit("checkWinner", {
+      telegramId,
+      gameId,
+      cartelaId,          // player card ID
+    });
+
   };
 
   const handleLeave = () => {
@@ -267,26 +274,26 @@ useEffect(() => {
 
 //console.log("card numbersss", cartela);
 
-const declareWinner = (winnerPattern, telegramId) => {
-  const board = cartela.map((row, rowIndex) =>
-    row.map((num, colIndex) => ({
-      value: num,
-      selected: selectedNumbers.has(num),
-      isWinning: lastWinnerCells.some(([r, c]) => r === rowIndex && c === colIndex)
-    }))
-  );
+// const declareWinner = (winnerPattern, telegramId) => {
+//   const board = cartela.map((row, rowIndex) =>
+//     row.map((num, colIndex) => ({
+//       value: num,
+//       selected: selectedNumbers.has(num),
+//       isWinning: lastWinnerCells.some(([r, c]) => r === rowIndex && c === colIndex)
+//     }))
+//   );
 
-  const winnerData = {
-    telegramId,
-    gameId,
-    board,
-    winnerPattern,
-    cartelaId
-  };
+//   const winnerData = {
+//     telegramId,
+//     gameId,
+//     board,
+//     winnerPattern,
+//     cartelaId
+//   };
 
-  // Send all winner data to backend
-  socket.emit("winner", winnerData);
-};
+//   // Send all winner data to backend
+//   socket.emit("winner", winnerData);
+// };
 
 
 useEffect(() => {
@@ -306,10 +313,10 @@ useEffect(() => {
     });
   };
 
-  socket.on("winnerfound", handleWinnerFound);
+  socket.on("winnerConfirmed", handleWinnerFound);
 
   return () => {
-    socket.off("winnerfound", handleWinnerFound);
+    socket.off("winnerConfirmed", handleWinnerFound);
   };
 }, [navigate]);
 
