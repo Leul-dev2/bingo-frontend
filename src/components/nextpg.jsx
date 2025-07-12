@@ -29,6 +29,15 @@ const BingoGame = () => {
 
   const hasJoinedRef = useRef(false);
 
+  useEffect(() => {
+  if (!cartelaId || isNaN(Number(cartelaId))) {
+    console.error("❌ cartelaId is missing or invalid in location.state");
+    alert("Something went wrong. Please reselect your card.");
+    navigate("/"); // or redirect to card selection
+    }
+  }, [cartelaId]);
+
+
   // 1️⃣ Connect socket and joinGame
   useEffect(() => {
     if (!socket.connected) {
