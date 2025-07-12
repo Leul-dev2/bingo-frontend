@@ -254,7 +254,7 @@ useEffect(() => {
     socket.emit("checkWinner", {
       telegramId,
       gameId,
-      cartelaId,          // player card ID
+      cartelaId: Number(cartelaId),          // player card ID
     });
 
   };
