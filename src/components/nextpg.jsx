@@ -135,29 +135,24 @@ useEffect(() => {
   //   }
   // }, [randomNumber]);
 
-  const handleCartelaClick = (num) => {
-    setSelectedNumbers((prev) => {
-      const newSelection = new Set(prev);
+ const handleCartelaClick = (num) => {
+  setSelectedNumbers((prev) => {
+    const newSelection = new Set(prev);
+    if (newSelection.has(num)) {
+      newSelection.delete(num);
+    } else {
+      newSelection.add(num);
+    }
+    localStorage.setItem("selectedNumbers", JSON.stringify([...newSelection]));
+    return newSelection;
+  });
+};
+
   
-      if (newSelection.has(num)) {
-        newSelection.delete(num); // Unmark if already selected
-      } else {
-        newSelection.add(num); // Mark the number
-      }
-  
-      //console.log("Marked numbers inside handleclick:", newSelection);
-      localStorage.setItem("selectedNumbers", JSON.stringify([...newSelection]));
-      
-      // Check win after every selection
-    //  setTimeout(() => checkForWin(newSelection), 100);
-      
-      return newSelection;
-    });
-  };
-  
-  const checkForWin = (selectedNumbers, telegramId) => {
-    const markedNumbers = new Set(selectedNumbers); // Marked numbers by the player
+  const checkForWin = (selectedSet, telegramId) => {
+    const markedNumbers = new Set(selectedSet);
     const drawnNumbers = new Set(randomNumber); // Numbers that have been drawn
+    const selectedArray = Array.from(selectedSet); // 🔁 Convert Set to Array
 
     let matchedCellsGlobal = [];
     let lastWinnerCells = [];
@@ -263,10 +258,21 @@ useEffect(() => {
     socket.emit("checkWinner", {
       telegramId,
       gameId,
-      cartelaId,          // player card ID
+      cartelaId, 
+      selectedNumbers: selectedArray,        // player card ID
     });
 
+  console.log("Sending to backend:", {
+  telegramId,
+  gameId,
+  cartelaId,
+  selectedNumbers: selectedArray
+});
+
+
   };
+
+
 
   const handleLeave = () => {
   socket.emit("playerLeave", { gameId, playerId });
