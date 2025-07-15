@@ -1,5 +1,5 @@
 import bingoCards from "../assets/bingoCards.json"; // Import the JSON file
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useLocation } from "react-router-dom";
 import { io } from "socket.io-client";
@@ -14,6 +14,9 @@ function Bingo({isBlackToggleOn}) {
 const urlTelegramId = searchParams.get("user");
 const urlGameId = searchParams.get("game");
 const location = useLocation();
+const emitLockRef = useRef(false); // prevents double emit
+
+
 // Store only if changed
 useEffect(() => {
   const storedTelegramId = localStorage.getItem("telegramId");
@@ -263,6 +266,7 @@ useEffect(() => {
   useEffect(() => {
     if (!socket) return;
     const handleCardAvailable = ({ cardId }) => {
+      emitLockRef.current = false; 
       setOtherSelectedCards((prevCards) => {
         const updated = { ...prevCards };
         for (const key in updated) {
@@ -285,12 +289,16 @@ useEffect(() => {
 
   // 🟢 Select a bingo card
  const handleNumberClick = (number) => {
+  if (emitLockRef.current) return; // 🚫 Prevent double emit
+
   // if (!isSocketReady) {
   //   console.warn("Socket not ready. Please wait...");
   //   return;
   // }
 
   const selectedCard = bingoCards.find(card => card.id === number);
+
+   emitLockRef.current = true; // ✅ LOCK IMMEDIATELY
 
   if (selectedCard) {
     setCartela(selectedCard.card);
@@ -337,6 +345,7 @@ useEffect(() => {
 
 
   const resetGame = () => {
+    emitLockRef.current = false; 
     setCartelaId(null);
     setCartela([]);
     setGameStatus("");
@@ -499,7 +508,7 @@ const startGame = async () => {
         <button
           key={num}
           onClick={() => handleNumberClick(num)}
-          disabled={isOtherCard} // 🚫 Disable until socket is ready or card is taken
+          disabled={isOtherCard || emitLockRef.current} // 🚫 Disable until socket is ready or card is taken
           className={`w-8 h-8 flex items-center justify-center rounded-md border border-gray-300 font-bold cursor-pointer transition-all duration-200 text-xs
             ${isMyCard ? myCardBg : isOtherCard ? otherCardBg : defaultCardBg}`}
         >
