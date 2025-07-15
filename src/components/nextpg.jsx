@@ -491,7 +491,7 @@ useEffect(() => {
           </button>
           <button
             onClick={() => {
-              socket.emit("playerLeave", { gameId, telegramId }, () => {
+             socket.emit("playerLeave", { gameId: String(gameId), telegramId }, () => {
                 navigate("/");
               });
             }}
