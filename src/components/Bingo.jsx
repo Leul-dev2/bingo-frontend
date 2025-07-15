@@ -197,26 +197,21 @@ socket.on("cardError", ({ message }) => {
   });
 
   // Emit after all listeners are set up
-socket.emit("joinUser", { telegramId });
+  socket.emit("joinUser", { telegramId });
+  socket.emit("userJoinedGame", { telegramId, gameId });
 
-// Step 1: Join game and wait a bit before re-emitting card
-socket.emit("userJoinedGame", { telegramId, gameId });
 
-// Step 2: Re-emit saved card only **after** re-joining
-setTimeout(() => {
-  const mySavedCardId = sessionStorage.getItem("mySelectedCardId");
-  const mySavedCard = bingoCards.find(card => card.id === Number(mySavedCardId));
-
-  if (mySavedCard) {
-    socket.emit("cardSelected", {
-      telegramId,
-      gameId,
-      cardId: Number(mySavedCardId),
-      card: mySavedCard.card,
-    });
-  }
-}, 300); // ⏳ Wait for userJoinedGame to bind
-
+  // ✅ Re-emit saved card if returning to the page (to prevent it from looking "taken")
+const mySavedCardId = sessionStorage.getItem("mySelectedCardId");
+const mySavedCard = bingoCards.find(card => card.id === Number(mySavedCardId));
+if (mySavedCard) {
+  socket.emit("cardSelected", {
+    telegramId,
+    gameId,
+    cardId: Number(mySavedCardId),
+    card: mySavedCard.card,
+  });
+}
 //////////////////////////////////////////////////////////////
   return () => {
     socket.off("userconnected");
@@ -230,6 +225,39 @@ setTimeout(() => {
     socket.off("cardsReset");
   };
 }, [telegramId, navigate]);
+
+
+useEffect(() => {
+  const handleBeforeUnload = () => {
+    const savedCardId = sessionStorage.getItem("mySelectedCardId");
+    if (savedCardId && telegramId && gameId) {
+      socket.emit("unselectCardOnLeave", {
+        gameId,
+        telegramId,
+        cardId: Number(savedCardId),
+      });
+      sessionStorage.removeItem("mySelectedCardId");
+    }
+  };
+
+  window.addEventListener("beforeunload", handleBeforeUnload);
+
+  return () => {
+    // Component unmount cleanup
+    const savedCardId = sessionStorage.getItem("mySelectedCardId");
+    if (savedCardId && telegramId && gameId) {
+      socket.emit("unselectCardOnLeave", {
+        gameId,
+        telegramId,
+        cardId: Number(savedCardId),
+      });
+      sessionStorage.removeItem("mySelectedCardId");
+    }
+
+    window.removeEventListener("beforeunload", handleBeforeUnload);
+  };
+}, [telegramId, gameId, socket]);
+
 
 
   useEffect(() => {
