@@ -289,7 +289,11 @@ useEffect(() => {
 
   // 🟢 Select a bingo card
  const handleNumberClick = (number) => {
-  if (emitLockRef.current) return; // 🚫 Prevent double emit
+   if (emitLockRef.current && number === cartelaId) return; // prevent double click on same card
+  if (emitLockRef.current && number !== cartelaId) {
+    // Allow changing the card - unlock first so the emit can happen
+    emitLockRef.current = false;
+  }
 
   // if (!isSocketReady) {
   //   console.warn("Socket not ready. Please wait...");
@@ -508,7 +512,7 @@ const startGame = async () => {
         <button
           key={num}
           onClick={() => handleNumberClick(num)}
-          disabled={isOtherCard || emitLockRef.current} // 🚫 Disable until socket is ready or card is taken
+          disabled={isOtherCard} // 🚫 Disable until socket is ready or card is taken
           className={`w-8 h-8 flex items-center justify-center rounded-md border border-gray-300 font-bold cursor-pointer transition-all duration-200 text-xs
             ${isMyCard ? myCardBg : isOtherCard ? otherCardBg : defaultCardBg}`}
         >
