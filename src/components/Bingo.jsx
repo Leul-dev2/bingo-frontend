@@ -263,29 +263,40 @@ useEffect(() => {
 
 
 
-  useEffect(() => {
-    if (!socket) return;
-    const handleCardAvailable = ({ cardId }) => {
-      emitLockRef.current = false; 
-      setOtherSelectedCards((prevCards) => {
-        const updated = { ...prevCards };
-        for (const key in updated) {
-          if (updated[key] === cardId) {
-            delete updated[key];
-            break;  
-          }
-        }
-        return updated;
-      });
-    };
-  
-    socket.on("cardAvailable", handleCardAvailable);
-  
-    return () => {
-      socket.off("cardAvailable", handleCardAvailable);
-    };
-  }, [socket]);
-  
+useEffect(() => {
+  if (!socket) return;
+
+  const handleCardAvailable = ({ cardId }) => {
+    console.log("♻️ Card available:", cardId);
+    emitLockRef.current = false;
+
+    setOtherSelectedCards((prevCards) => {
+      const updated = { ...prevCards };
+      const keyToRemove = Object.keys(updated).find(
+        (key) =>
+          updated[key] === cardId || 
+          String(updated[key]) === String(cardId)
+      );
+
+      if (keyToRemove) {
+        delete updated[keyToRemove];
+        console.log(`✅ Removed card ${cardId} from ${keyToRemove}`);
+      } else {
+        console.log("⚠️ Card not found in otherSelectedCards:", cardId);
+      }
+
+      return updated;
+    });
+  };
+
+  socket.on("cardAvailable", handleCardAvailable);
+
+  return () => {
+    socket.off("cardAvailable", handleCardAvailable);
+  };
+}, [socket]);
+
+
 
   // 🟢 Select a bingo card
  const handleNumberClick = (number) => {
