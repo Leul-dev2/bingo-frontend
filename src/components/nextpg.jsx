@@ -268,9 +268,31 @@ useEffect(() => {
   cartelaId,
   selectedNumbers: selectedArray
 });
-
-
   };
+
+
+  useEffect(() => {
+  if (!socket) return;
+
+  socket.on("gameStateSync", (state) => {
+    setDrawnNumbers(state.drawnNumbers);
+    setGameActive(state.isActive);
+    setPrize(state.prizeAmount);
+    setWinnerPattern(state.winnerPattern);
+    setBoard(state.board);
+    setBoardNumber(state.boardNumber);
+  });
+
+  socket.on("youAreWinner", (winnerData) => {
+    navigate("/winner", { state: winnerData });
+  });
+
+  return () => {
+    socket.off("gameStateSync");
+    socket.off("youAreWinner");
+  };
+}, [socket]);
+
 
 
 
