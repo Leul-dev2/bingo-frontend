@@ -143,10 +143,10 @@ const handleCardSelections = (cards) => {
   });
 
   socket.on("currentCardSelections", handleCardSelections);
-  // socket.on("connect", () => {
-  //     console.log("✅ Socket connected:", socket.id);
-  //     setIsSocketReady(true); // ✅ Set flag to true
-  //   });
+  socket.on("connect", () => {
+      console.log("✅ Socket connected:", socket.id);
+      //setIsSocketReady(true); // ✅ Set flag to true
+    });
 
   socket.on("cardConfirmed", (data) => {
     setCartela(data.card);
