@@ -202,7 +202,7 @@ socket.on("cardError", ({ message }) => {
 
   // Emit after all listeners are set up
   socket.emit("joinUser", { telegramId });
-  socket.emit("userJoinedGame", { telegramId, gameId });
+ // socket.emit("userJoinedGame", { telegramId, gameId });
 
 
   // ✅ Re-emit saved card if returning to the page (to prevent it from looking "taken")
