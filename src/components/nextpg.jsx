@@ -307,6 +307,24 @@ useEffect(() => {
   });
 };
 
+useEffect(() => {
+  if (!socket) return;
+
+  socket.on("drawHistory", (history) => {
+    setRandomNumber(history);   // your state of drawn numbers
+    setCalledSet(new Set(history.map((num) => {
+      const letterIndex = Math.floor((num - 1) / 15);
+      const letter = ["B", "I", "N", "G", "O"][letterIndex];
+      return `${letter}-${num}`;
+    })));
+  });
+
+  return () => {
+    socket.off("drawHistory");
+  };
+}, [socket]);
+
+
 
 
 //console.log("card numbersss", cartela);
