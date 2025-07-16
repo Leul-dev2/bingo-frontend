@@ -145,6 +145,7 @@ const handleCardSelections = (cards) => {
   socket.on("currentCardSelections", handleCardSelections);
   socket.on("connect", () => {
       console.log("✅ Socket connected:", socket.id);
+      socket.emit("userJoinedGame", { telegramId, gameId });
       //setIsSocketReady(true); // ✅ Set flag to true
     });
 
@@ -155,7 +156,7 @@ const handleCardSelections = (cards) => {
   });
 
 
-  // ⚠️ Notify if the card is already taken by someone els
+  // ⚠️ Notify if the card is already taken by someone else
 socket.on("cardUnavailable", ({ cardId }) => {
   setAlertMessage(`🚫 Card ${cardId} is already taken by another player.`);
   // Optionally, clear the UI selection
