@@ -205,7 +205,8 @@ socket.on("cardError", ({ message }) => {
   socket.emit("userJoinedGame", { telegramId, gameId });
 
 
-  // ✅ Re-emit saved card if returning to the page (to prevent it from looking "taken")
+  // ✅ Re-emit saved card if returning to the page (to prevent it from looking "taken"
+  
 const mySavedCardId = sessionStorage.getItem("mySelectedCardId");
 const mySavedCard = bingoCards.find(card => card.id === Number(mySavedCardId));
 if (mySavedCard) {
