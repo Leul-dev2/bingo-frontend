@@ -464,10 +464,11 @@ useEffect(() => {
 
 
        {/* Called Numbers Section */}
+{/* Called Numbers Section */}
 <div className="bg-gray-100 p-2 rounded-lg w-full max-w-md mx-auto">
   <p className="text-center font-bold text-xs sm:text-sm md:text-base">Called Numbers</p>
   <div className="grid grid-cols-5 gap-1 mt-2 text-xs sm:text-sm">
-    {calledNumbers.map((num, i) => {
+    {[...calledSet].map((num, i) => {
       const letter = num.charAt(0);
       return (
         <div key={i} className={`p-2 text-center rounded text-white ${bingoColors[letter]} text-xs sm:text-sm`}>
@@ -477,6 +478,7 @@ useEffect(() => {
     })}
   </div>
 </div>
+
 
 {/* Bingo Card */}
 {cartela.length > 0 && (
