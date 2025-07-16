@@ -310,17 +310,22 @@ useEffect(() => {
 useEffect(() => {
   if (!socket) return;
 
-  socket.on("drawHistory", (history) => {
-    setRandomNumber(history);   // your state of drawn numbers
-    setCalledSet(new Set(history.map((num) => {
+  const handleDrawHistory = (history) => {
+    setRandomNumber(history);
+
+    const labeledSet = new Set(history.map((num) => {
       const letterIndex = Math.floor((num - 1) / 15);
       const letter = ["B", "I", "N", "G", "O"][letterIndex];
       return `${letter}-${num}`;
-    })));
-  });
+    }));
+
+    setCalledSet(labeledSet);
+  };
+
+  socket.on("drawHistory", handleDrawHistory);
 
   return () => {
-    socket.off("drawHistory");
+    socket.off("drawHistory", handleDrawHistory);
   };
 }, [socket]);
 
