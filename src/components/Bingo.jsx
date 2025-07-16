@@ -155,7 +155,7 @@ const handleCardSelections = (cards) => {
   });
 
 
-  // ⚠️ Notify if the card is already taken by someone else
+  // ⚠️ Notify if the card is already taken by someone els
 socket.on("cardUnavailable", ({ cardId }) => {
   setAlertMessage(`🚫 Card ${cardId} is already taken by another player.`);
   // Optionally, clear the UI selection
