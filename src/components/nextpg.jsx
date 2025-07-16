@@ -307,22 +307,33 @@ useEffect(() => {
   });
 };
 
-// useEffect(() => {
-//   if (!socket) return;
+useEffect(() => {
+  if (!socket) return;
 
-//   socket.on("drawHistory", (history) => {
-//     setRandomNumber(history);   // your state of drawn numbers
-//     setCalledSet(new Set(history.map((num) => {
-//       const letterIndex = Math.floor((num - 1) / 15);
-//       const letter = ["B", "I", "N", "G", "O"][letterIndex];
-//       return `${letter}-${num}`;
-//     })));
-//   });
+  socket.on("drawHistory", (history) => {
+    if (history.length > 0 && typeof history[0] === "object") {
+      // history is array of objects { number, label }
+      const numbers = history.map(item => item.number);
+      const labels = history.map(item => item.label);
 
-//   return () => {
-//     socket.off("drawHistory");
-//   };
-// }, [socket]);
+      setRandomNumber(numbers);
+      setCalledSet(new Set(labels));
+    } else {
+      // fallback if just array of numbers
+      setRandomNumber(history);
+      setCalledSet(new Set(history.map(num => {
+        const letterIndex = Math.floor((num - 1) / 15);
+        const letter = ["B", "I", "N", "G", "O"][letterIndex];
+        return `${letter}-${num}`;
+      })));
+    }
+  });
+
+  return () => {
+    socket.off("drawHistory");
+  };
+}, [socket]);
+
 
 
 
