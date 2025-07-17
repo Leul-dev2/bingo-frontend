@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import axios from "axios";
 
+const MIN_DEPOSIT = 50; // ✅ Centralized constant
+
 function PaymentForm() {
   const [searchParams] = useSearchParams();
   const telegramId = searchParams.get("user");
@@ -63,23 +65,25 @@ function PaymentForm() {
       return;
     }
 
+    const amount = parseFloat(form.amount);
+    if (isNaN(amount) || amount < MIN_DEPOSIT) {
+      alert(`❌ Minimum deposit is ${MIN_DEPOSIT} Birr.`);
+      return;
+    }
 
-       const amount = parseFloat(form.amount);
-  if (isNaN(amount) || amount < 50) {
-    alert("❌ Minimum deposit is 50 Birr.");
-    return;
-  }
+    if (!form.first_name || !form.phone_number) {
+      alert("❌ Please complete all fields.");
+      return;
+    }
 
-
-
-
-    if (!form.amount || !form.first_name || !form.phone_number) {
-      alert("❌ Please enter an amount.");
+    // ✅ Phone number format validation
+    if (!/^09\d{8}$/.test(form.phone_number)) {
+      alert("❌ Invalid phone number format. Use 09XXXXXXXX.");
       return;
     }
 
     setLoading(true);
-     localStorage.removeItem("tx_ref");
+    localStorage.removeItem("tx_ref");
     const tx_ref = `${form.first_name}-${Date.now()}`;
     localStorage.setItem("tx_ref", tx_ref);
 
@@ -126,10 +130,23 @@ function PaymentForm() {
           <input
             name="amount"
             type="number"
-            min={50}
+            min={MIN_DEPOSIT}
             value={form.amount}
             onChange={handleChange}
             required
+            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
+        </label>
+
+        <label className="block mb-6">
+          <span className="text-gray-700 font-semibold block mb-1">Phone Number</span>
+          <input
+            name="phone_number"
+            type="tel"
+            value={form.phone_number}
+            onChange={handleChange}
+            required
+            placeholder="09XXXXXXXX"
             className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
           />
         </label>
