@@ -236,6 +236,7 @@ useEffect(() => {
   const handleBeforeUnload = () => {
     const savedCardId = sessionStorage.getItem("mySelectedCardId");
     if (savedCardId && telegramId && gameId) {
+      if (!window.location.pathname.includes("/game")) {
       socket.emit("unselectCardOnLeave", {
         gameId,
         telegramId,
@@ -243,6 +244,7 @@ useEffect(() => {
       });
       sessionStorage.removeItem("mySelectedCardId");
     }
+  }
   };
 
   window.addEventListener("beforeunload", handleBeforeUnload);
