@@ -242,6 +242,12 @@ const startBtnDisabledBg = 'bg-gray-600 cursor-not-allowed';
         };
         socket.on("connect", handleConnectForSync);
 
+        socket.on("disconnect", () => {
+          console.log("🔴 Socket disconnected — resetting sync flag.");
+          hasInitialSyncRun.current = false;
+        });
+
+
 
         fetchUserData(telegramId); // Initial fetch of user data
 
