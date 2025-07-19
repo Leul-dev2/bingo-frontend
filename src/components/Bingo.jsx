@@ -186,6 +186,7 @@ const startBtnDisabledBg = 'bg-gray-600 cursor-not-allowed';
         socket.on("gameStatusUpdate", (status) => { setGameStatus(status); });
         socket.on("currentCardSelections", handleCardSelections);
         socket.on("cardConfirmed", (data) => {
+            console.log("DEBUG: Frontend received cardConfirmed data:", data);
             setCartela(data.card);
             setCartelaId(data.cardId);
             sessionStorage.setItem("mySelectedCardId", data.cardId);
