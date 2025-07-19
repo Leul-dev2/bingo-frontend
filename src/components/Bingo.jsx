@@ -107,7 +107,7 @@ const startBtnDisabledBg = 'bg-gray-600 cursor-not-allowed';
   };
 
   // 🟢 Initial Effect to Fetch & Setup Socket
-useEffect(() => {
+ useEffect(() => {
         if (!telegramId || !gameId) {
             console.error("Missing telegramId or gameId for game page.");
             navigate('/');
@@ -116,49 +116,73 @@ useEffect(() => {
 
         localStorage.setItem("telegramId", telegramId);
 
-        // --- Define Socket Handlers ---
-        // These need to be stable or recreated. Define them INSIDE useEffect if they depend on state.
-        // If they don't depend on state/props that change frequently, you can memoize them or define outside.
-        // For simplicity, defining inside useEffect that runs once on mount is fine.
+        // --- Define Socket Handlers (memoized or stable references are good practice) ---
+        // These handlers depend on state setters, so they are generally recreated on each render
+        // unless you useCallback them. For a useEffect that runs once for setup, it's often fine.
         const handleCardSelections = (cards) => {
             console.log("💡 Initial card selections received:", cards);
             const reformatted = {};
-            for (const [cardId, id] of Object.entries(cards)) {
-                reformatted[id] = parseInt(cardId);
+            // Object.entries returns [key, value]. Here, key is cardId (string), value is telegramId (string)
+            for (const [cardId, tId] of Object.entries(cards)) {
+                reformatted[tId] = parseInt(cardId); // Store as { telegramId: cardId }
             }
             setOtherSelectedCards(reformatted);
         };
 
-        const handleConnect = () => {
-            console.log("✅ Socket connected:", socket.id);
-            // This is the ONLY place userJoinedGame should be emitted for new connections/reconnections
-            socket.emit("userJoinedGame", { telegramId, gameId });
+        const handleCardReleased = ({ telegramId: releasedTelegramId, cardId }) => {
+            console.log(`💡 Card ${cardId} released by ${releasedTelegramId}`);
+            setOtherSelectedCards((prev) => {
+                const newState = { ...prev };
+                // Ensure we delete only if the released card matches the one currently held by that user
+                if (newState[releasedTelegramId] === cardId) {
+                    delete newState[releasedTelegramId];
+                }
+                return newState;
+            });
+        };
 
-            const mySavedCardId = sessionStorage.getItem("mySelectedCardId");
-            const mySavedCard = bingoCards.find(card => card.id === Number(mySavedCardId));
-            if (mySavedCard) {
-                socket.emit("cardSelected", {
-                    telegramId,
-                    gameId,
-                    cardId: Number(mySavedCardId),
-                    card: mySavedCard.card,
-                });
+        // This function encapsulates the initial sync logic.
+        const performInitialGameSync = () => {
+            console.log("Attempting initial game sync...");
+            if (socket.connected && telegramId && gameId) {
+                // Ensure this only runs once per unique telegramId/gameId session
+                const currentSyncKey = `${telegramId}-${gameId}`;
+                if (hasInitialSyncRun.current === currentSyncKey) {
+                    console.log("Initial sync already performed for this session.");
+                    return; // Avoid duplicate emissions
+                }
+
+                console.log("Emitting userJoinedGame and re-emitting saved card...");
+                socket.emit("userJoinedGame", { telegramId, gameId });
+
+                const mySavedCardId = sessionStorage.getItem("mySelectedCardId");
+                const mySavedCard = bingoCards.find(card => card.id === Number(mySavedCardId));
+                if (mySavedCard) {
+                    socket.emit("cardSelected", {
+                        telegramId,
+                        gameId,
+                        cardId: Number(mySavedCardId),
+                        card: mySavedCard.card,
+                    });
+                }
+                // Emit joinUser if it's still necessary and separate from userJoinedGame
+                socket.emit("joinUser", { telegramId }); // Consider if this is redundant with userJoinedGame
+
+                hasInitialSyncRun.current = currentSyncKey; // Mark sync as done for this session
+            } else {
+                console.log("Socket not connected or missing data, deferring initial sync.");
             }
         };
 
         // --- Register Socket Listeners ---
-        // Ensure these are only registered once when the component mounts and socket is ready.
-        // If socket might not be immediately available, consider waiting or re-running on socket change.
-        socket.on("connect", handleConnect);
-        socket.on("userconnected", (res) => {
-            setResponse(res.telegramId);
-        });
-        socket.on("balanceUpdated", (newBalance) => {
-            setUserBalance(newBalance);
-        });
-        socket.on("gameStatusUpdate", (status) => {
-            setGameStatus(status);
-        });
+        // Register these once when the component mounts.
+        // The 'connect' event listener should preferably be in SocketContext for global management.
+        // If SocketContext handles autoConnect:true, then `socket.connected` check below will be important.
+        // If SocketContext handles `autoConnect:false` and `socket.connect()` explicitly, then `onConnect` in context handles it.
+
+        socket.on("userconnected", (res) => { setResponse(res.telegramId); });
+        socket.on("balanceUpdated", (newBalance) => { setUserBalance(newBalance); });
+        socket.on("gameStatusUpdate", (status) => { setGameStatus(status); });
         socket.on("currentCardSelections", handleCardSelections);
         socket.on("cardConfirmed", (data) => {
             setCartela(data.card);
@@ -184,20 +208,8 @@ useEffect(() => {
                 [otherId]: cardId,
             }));
         });
-        // NEW LISTENER for card released
-        socket.on("cardReleased", ({ telegramId: releasedTelegramId, cardId }) => {
-            console.log(`💡 Card ${cardId} released by ${releasedTelegramId}`);
-            setOtherSelectedCards((prev) => {
-                const newState = { ...prev };
-                if (newState[releasedTelegramId] === cardId) {
-                    delete newState[releasedTelegramId];
-                }
-                return newState;
-            });
-        });
-        socket.on("gameid", (data) => {
-            setCount(data.numberOfPlayers);
-        });
+        socket.on("cardReleased", handleCardReleased); // New listener for card release
+        socket.on("gameid", (data) => { setCount(data.numberOfPlayers); });
         socket.on("error", (err) => {
             console.error(err);
             setAlertMessage(err.message);
@@ -209,28 +221,32 @@ useEffect(() => {
                 setCartelaId(null);
                 sessionStorage.removeItem("mySelectedCardId");
                 console.log("🔄 Cards have been reset for this game.");
+                hasInitialSyncRun.current = false; // Allow re-sync on next mount if desired
             }
         });
 
-        // Initial fetch of user data
-        fetchUserData(telegramId);
+        // --- Initial Sync Logic ---
+        // Option A: If socket is already connected when component mounts
+        performInitialGameSync();
 
-        // Initial emit to join user (this is separate from game join, assuming "joinUser" is generic)
-        socket.emit("joinUser", { telegramId });
+        // Option B: If socket connects AFTER component mounts (e.g., first load or reconnect)
+        // Add a listener for the 'connect' event *here* if you want *this component* to trigger
+        // the initial sync specifically when its socket connects.
+        // IMPORTANT: If your SocketContext already emits userJoinedGame on connect,
+        // you might be duplicating. Choose one source of truth for userJoinedGame.
+        // However, if the context only handles global connection status, then this is fine.
+        const handleConnectForSync = () => {
+             console.log("Component: Socket re-connected, performing initial sync.");
+             performInitialGameSync();
+        };
+        socket.on("connect", handleConnectForSync);
 
-        // IMPORTANT: CONNECT THE SOCKET IF IT'S DISCONNECTED
-        // This is crucial if the socket instance itself disconnects on unmount.
-        // If your SocketContext already handles connection, you might not need this.
-        if (!socket.connected) {
-            socket.connect();
-        }
+
+        fetchUserData(telegramId); // Initial fetch of user data
 
         // --- Cleanup Function ---
         return () => {
-            // Only remove LISTENERS, do NOT call socket.disconnect() unless you explicitly want to
-            // end the connection when this specific component unmounts.
-            // If the socket is managed globally (e.g., via Context), you usually don't disconnect here.
-            socket.off("connect", handleConnect);
+            // Remove all specific listeners attached by this component
             socket.off("userconnected");
             socket.off("balanceUpdated");
             socket.off("gameStatusUpdate");
@@ -239,18 +255,19 @@ useEffect(() => {
             socket.off("cardUnavailable");
             socket.off("cardError");
             socket.off("otherCardSelected");
-            socket.off("cardReleased"); // Also remove this
+            socket.off("cardReleased", handleCardReleased);
             socket.off("gameid");
             socket.off("error");
             socket.off("cardsReset");
-
-            // If the socket instance is LOCAL to this component and should disconnect
-            // when this page is left, you would add:
-            // socket.disconnect();
-            // BUT: This would release the card and prevent background updates.
-            // Generally, you want the socket to persist if navigating between game pages.
+            socket.off("connect", handleConnectForSync); // Clean up this specific listener
+            // Reset the sync flag when the component unmounts
+            hasInitialSyncRun.current = false;
         };
-    }, [telegramId, gameId, bingoCards, navigate, socket]); // Add 'socket' to dependencies if it's from context // Added bingoCards to dependencies as it's used in handleConnect
+    }, [telegramId, gameId, bingoCards, navigate, socket]); // Dependencies: Add all external values used inside useEffect
+                                                         // Omitted 'isConnected' from dependencies as 'socket.connected' is checked inside.
+                                                         // Adding 'socket' ensures effect re-runs if the socket instance itself changes (unlikely with Context)
+
+ // Add 'socket' to dependencies if it's from context // Added bingoCards to dependencies as it's used in handleConnect
 
 
 
