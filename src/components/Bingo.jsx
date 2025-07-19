@@ -1,5 +1,5 @@
 import bingoCards from "../assets/bingoCards.json"; // Import the JSON file
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useLocation } from "react-router-dom";
 import { io } from "socket.io-client";
@@ -106,161 +106,195 @@ const startBtnDisabledBg = 'bg-gray-600 cursor-not-allowed';
     }
   };
 
-  // 🟢 Initial Effect to Fetch & Setup Socket
- useEffect(() => {
-        if (!telegramId || !gameId) {
-            // Redirect or show error if essential data is missing
-            console.error("Missing telegramId or gameId for game page.");
-            navigate('/'); // Or to a specific error page
-            return;
+// Assuming other imports like useState, useNavigate, socket, bingoCards, fetchUserData, etc., are present
+
+// ... (rest of your component's state and functions) ...
+
+// 🟢 Initial Effect to Fetch & Setup Socket
+useEffect(() => {
+    if (!telegramId || !gameId) {
+        // Redirect or show error if essential data is missing
+        console.error("Missing telegramId or gameId for game page.");
+        navigate('/'); // Or to a specific error page
+        return;
+    }
+
+    // Store telegramId in localStorage (if desired for persistence)
+    localStorage.setItem("telegramId", telegramId);
+
+    // --- Define Socket Handlers ---
+    // Define these outside the 'connect' handler to ensure they are set up immediately
+    // and are not redefined on every connect/reconnect (though Socket.IO usually handles this).
+
+    const handleCardSelections = (cards) => {
+        console.log("💡 Initial card selections received:", cards);
+        const reformatted = {};
+        for (const [cardId, id] of Object.entries(cards)) { // Renamed telegramId to 'id' to avoid conflict
+            reformatted[id] = parseInt(cardId);
+        }
+        setOtherSelectedCards(reformatted);
+    };
+
+    const handleConnect = () => {
+        console.log("✅ Socket connected:", socket.id);
+        // This is the ONLY place userJoinedGame should be emitted for new connections/reconnections
+        // This tells the backend "I'm here, this is my user and game, please sync my state."
+        socket.emit("userJoinedGame", { telegramId, gameId });
+
+        // After successful connection and userJoinedGame emit,
+        // Re-emit saved card if returning to the page (to prevent it from looking "taken"
+        // The backend's userJoinedGame handler will confirm this and re-emit "cardConfirmed"
+        const mySavedCardId = sessionStorage.getItem("mySelectedCardId");
+        const mySavedCard = bingoCards.find(card => card.id === Number(mySavedCardId));
+        if (mySavedCard) {
+            socket.emit("cardSelected", {
+                telegramId,
+                gameId,
+                cardId: Number(mySavedCardId),
+                card: mySavedCard.card,
+            });
+            console.log(`[Frontend] Re-emitting saved card ${mySavedCardId} on connect.`);
+        }
+    };
+    
+    // --- Register Socket Listeners ---
+    socket.on("connect", handleConnect); // Register the connection handler
+    socket.on("userconnected", (res) => {
+        setResponse(res.telegramId);
+    });
+    socket.on("balanceUpdated", (newBalance) => {
+        setUserBalance(newBalance);
+    });
+    socket.on("gameStatusUpdate", (status) => {
+        setGameStatus(status);
+    });
+    socket.on("currentCardSelections", handleCardSelections);
+    socket.on("cardConfirmed", (data) => {
+        setCartela(data.card);
+        setCartelaId(data.cardId);
+        sessionStorage.setItem("mySelectedCardId", data.cardId); // Save confirmed card
+        setGameStatus("Ready to Start"); // Assuming confirming a card means ready
+        console.log(`[Frontend] Card ${data.cardId} confirmed for ${telegramId}.`);
+    });
+    socket.on("cardUnavailable", ({ cardId }) => {
+        setAlertMessage(`🚫 Card ${cardId} is already taken by another player.`);
+        setCartela([]);
+        setCartelaId(null);
+        sessionStorage.removeItem("mySelectedCardId");
+        console.log(`[Frontend] Card ${cardId} unavailable.`);
+    });
+    socket.on("cardError", ({ message }) => {
+        setAlertMessage(message || "Card selection failed.");
+        setCartela([]);
+        setCartelaId(null);
+        sessionStorage.removeItem("mySelectedCardId");
+        console.log(`[Frontend] Card error: ${message}.`);
+    });
+    socket.on("otherCardSelected", ({ telegramId: otherId, cardId }) => { // Renamed param to avoid conflict
+        setOtherSelectedCards((prev) => ({
+            ...prev,
+            [otherId]: cardId,
+        }));
+        console.log(`[Frontend] Other player ${otherId} selected card ${cardId}.`);
+    });
+    // This event now consistently provides the unique number of players
+    socket.on("gameid", (data) => {
+        console.log(`[Frontend] Game ID: ${data.gameId}, Players: ${data.numberOfPlayers}`);
+        setCount(data.numberOfPlayers);
+    });
+    socket.on("error", (err) => {
+        console.error("Socket Error:", err);
+        setAlertMessage(err.message || "An unexpected error occurred.");
+    });
+    socket.on("cardsReset", ({ gameId: resetGameId }) => {
+        if (resetGameId === gameId) {
+            setOtherSelectedCards({});
+            setCartela([]);
+            setCartelaId(null);
+            sessionStorage.removeItem("mySelectedCardId"); // Crucial to clear on reset
+            console.log("🔄 Cards have been reset for this game.");
+        }
+    });
+    // New listener for when a card becomes available (e.g., user disconnects)
+    socket.on("cardAvailable", ({ cardId }) => {
+        console.log(`[Frontend] Card ${cardId} is now available.`);
+        // You might want to update your UI to reflect this, e.g., remove from otherSelectedCards
+        setOtherSelectedCards(prev => {
+            const newCards = { ...prev };
+            // Find and remove the entry for this cardId
+            for (const userId in newCards) {
+                if (newCards[userId] === cardId) {
+                    delete newCards[userId];
+                    break;
+                }
+            }
+            return newCards;
+        });
+    });
+
+
+    // Initial fetch of user data
+    fetchUserData(telegramId);
+    
+    // Initial emit to join user (this is separate from game join, assuming "joinUser" is generic)
+    // This might be for general user presence, not specific game lobby.
+    socket.emit("joinUser", { telegramId });    
+
+    // --- Cleanup Function ---
+    return () => {
+        // Remove all specific listeners to prevent memory leaks and duplicate listeners
+        socket.off("connect", handleConnect);
+        socket.off("userconnected");
+        socket.off("balanceUpdated");
+        socket.off("gameStatusUpdate");
+        socket.off("currentCardSelections", handleCardSelections);
+        socket.off("cardConfirmed");
+        socket.off("cardUnavailable");
+        socket.off("cardError");
+        socket.off("otherCardSelected");
+        socket.off("gameid");
+        socket.off("error");
+        socket.off("cardsReset");
+        socket.off("cardAvailable"); // Clean up new listener
+    };
+}, [telegramId, gameId, bingoCards, navigate, fetchUserData, setResponse, setUserBalance, setGameStatus, setOtherSelectedCards, setCartela, setCartelaId, setAlertMessage, setCount, socket]); // Added all state setters and socket to dependencies
+
+// This useEffect handles cleanup when navigating away or component unmounts.
+// It's a best-effort attempt, but server-side disconnect handling is more reliable.
+useEffect(() => {
+    const handleBeforeUnload = () => {
+        const savedCardId = sessionStorage.getItem("mySelectedCardId");
+        // Only emit if navigating away from the game path
+        if (savedCardId && telegramId && gameId && !window.location.pathname.includes("/game")) {
+            console.log(`[Frontend] Emitting unselectCardOnLeave for card ${savedCardId} due to navigation away.`);
+            socket.emit("unselectCardOnLeave", {
+                gameId,
+                telegramId,
+                cardId: Number(savedCardId),
+            });
+            sessionStorage.removeItem("mySelectedCardId"); // Clear immediately on client
+        }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+        // Component unmount cleanup (e.g., if the component is unmounted but not a full page unload)
+        const savedCardId = sessionStorage.getItem("mySelectedCardId");
+        if (savedCardId && telegramId && gameId) {
+            console.log(`[Frontend] Emitting unselectCardOnLeave for card ${savedCardId} due to component unmount.`);
+            socket.emit("unselectCardOnLeave", {
+                gameId,
+                telegramId,
+                cardId: Number(savedCardId),
+            });
+            sessionStorage.removeItem("mySelectedCardId");
         }
 
-        // Store telegramId in localStorage (if desired for persistence)
-        localStorage.setItem("telegramId", telegramId);
+        window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+}, [telegramId, gameId, socket]); // Dependencies for this effect
 
-        // --- Define Socket Handlers ---
-        // Define these outside the 'connect' handler to ensure they are set up immediately
-        // and are not redefined on every connect/reconnect (though Socket.IO usually handles this).
-
-        const handleCardSelections = (cards) => {
-            console.log("💡 Initial card selections received:", cards);
-            const reformatted = {};
-            for (const [cardId, id] of Object.entries(cards)) { // Renamed telegramId to 'id' to avoid conflict
-                reformatted[id] = parseInt(cardId);
-            }
-            setOtherSelectedCards(reformatted);
-        };
-
-        const handleConnect = () => {
-            console.log("✅ Socket connected:", socket.id);
-            // This is the ONLY place userJoinedGame should be emitted for new connections/reconnections
-            socket.emit("userJoinedGame", { telegramId, gameId });
-
-            // After successful connection and userJoinedGame emit,
-            // Re-emit saved card if returning to the page (to prevent it from looking "taken"
-            const mySavedCardId = sessionStorage.getItem("mySelectedCardId");
-            const mySavedCard = bingoCards.find(card => card.id === Number(mySavedCardId));
-            if (mySavedCard) {
-                socket.emit("cardSelected", {
-                    telegramId,
-                    gameId,
-                    cardId: Number(mySavedCardId),
-                    card: mySavedCard.card,
-                });
-            }
-        };
-        
-        // --- Register Socket Listeners ---
-        socket.on("connect", handleConnect); // Register the connection handler
-        socket.on("userconnected", (res) => {
-            setResponse(res.telegramId);
-        });
-        socket.on("balanceUpdated", (newBalance) => {
-            setUserBalance(newBalance);
-        });
-        socket.on("gameStatusUpdate", (status) => {
-            setGameStatus(status);
-        });
-        socket.on("currentCardSelections", handleCardSelections);
-        socket.on("cardConfirmed", (data) => {
-            setCartela(data.card);
-            setCartelaId(data.cardId);
-            sessionStorage.setItem("mySelectedCardId", data.cardId); // Save confirmed card
-            setGameStatus("Ready to Start");
-        });
-        socket.on("cardUnavailable", ({ cardId }) => {
-            setAlertMessage(`🚫 Card ${cardId} is already taken by another player.`);
-            setCartela([]);
-            setCartelaId(null);
-            sessionStorage.removeItem("mySelectedCardId");
-        });
-        socket.on("cardError", ({ message }) => {
-            setAlertMessage(message || "Card selection failed.");
-            setCartela([]);
-            setCartelaId(null);
-            sessionStorage.removeItem("mySelectedCardId");
-        });
-        socket.on("otherCardSelected", ({ telegramId: otherId, cardId }) => { // Renamed param to avoid conflict
-            setOtherSelectedCards((prev) => ({
-                ...prev,
-                [otherId]: cardId,
-            }));
-        });
-        socket.on("gameid", (data) => {
-            setCount(data.numberOfPlayers);
-        });
-        socket.on("error", (err) => {
-            console.error(err);
-            setAlertMessage(err.message);
-        });
-        socket.on("cardsReset", ({ gameId: resetGameId }) => {
-            if (resetGameId === gameId) {
-                setOtherSelectedCards({});
-                setCartela([]);
-                setCartelaId(null);
-                sessionStorage.removeItem("mySelectedCardId"); // Crucial to clear on reset
-                console.log("🔄 Cards have been reset for this game.");
-            }
-        });
-
-        // Initial fetch of user data
-        fetchUserData(telegramId);
-        
-        // Initial emit to join user (this is separate from game join, assuming "joinUser" is generic)
-        socket.emit("joinUser", { telegramId }); 
-
-        // --- Cleanup Function ---
-        return () => {
-            // Remove all specific listeners
-            socket.off("connect", handleConnect); // Remove the connection handler
-            socket.off("userconnected");
-            socket.off("balanceUpdated");
-            socket.off("gameStatusUpdate");
-            socket.off("currentCardSelections", handleCardSelections);
-            socket.off("cardConfirmed");
-            socket.off("cardUnavailable");
-            socket.off("cardError");
-            socket.off("otherCardSelected");
-            socket.off("gameid");
-            socket.off("error");
-            socket.off("cardsReset");
-        };
-    }, [telegramId, gameId, bingoCards, navigate]); // Added bingoCards to dependencies as it's used in handleConnect
-
-
-
-useEffect(() => {
-  const handleBeforeUnload = () => {
-    const savedCardId = sessionStorage.getItem("mySelectedCardId");
-    if (savedCardId && telegramId && gameId) {
-      if (!window.location.pathname.includes("/game")) {
-      socket.emit("unselectCardOnLeave", {
-        gameId,
-        telegramId,
-        cardId: Number(savedCardId),
-      });
-      sessionStorage.removeItem("mySelectedCardId");
-    }
-  }
-  };
-
-  window.addEventListener("beforeunload", handleBeforeUnload);
-
-  return () => {
-    // Component unmount cleanup
-    const savedCardId = sessionStorage.getItem("mySelectedCardId");
-    if (savedCardId && telegramId && gameId) {
-      socket.emit("unselectCardOnLeave", {
-        gameId,
-        telegramId,
-        cardId: Number(savedCardId),
-      });
-      sessionStorage.removeItem("mySelectedCardId");
-    }
-
-    window.removeEventListener("beforeunload", handleBeforeUnload);
-  };
-}, [telegramId, gameId, socket]);
 
 
 
