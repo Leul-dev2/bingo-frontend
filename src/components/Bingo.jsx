@@ -67,6 +67,7 @@ useEffect(() => {
   const [countdown, setCountdown] = useState(null);
   const [isStarting, setIsStarting] = useState(false);
   const [isSocketReady, setIsSocketReady] = useState(false);
+   const hasInitialSyncRun = useRef(false);
 
   
 const bgGradient = isBlackToggleOn
