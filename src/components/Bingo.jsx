@@ -187,8 +187,9 @@ const startBtnDisabledBg = 'bg-gray-600 cursor-not-allowed';
         socket.on("currentCardSelections", handleCardSelections);
         socket.on("cardConfirmed", (data) => {
             console.log("DEBUG: Frontend received cardConfirmed data:", data);
+            const confirmedCardId = Number(data.cardId);
+            setCartelaId(confirmedCardId);
             setCartela(data.card);
-            setCartelaId(data.cardId);
             sessionStorage.setItem("mySelectedCardId", data.cardId);
             setGameStatus("Ready to Start");
         });
@@ -351,6 +352,7 @@ useEffect(() => {
 
   // 🟢 Select a bingo card
  const handleNumberClick = (number) => {
+   console.log("Clicked button ID:", number);
    if (emitLockRef.current && number === cartelaId) return; // prevent double click on same card
   if (emitLockRef.current && number !== cartelaId) {
     // Allow changing the card - unlock first so the emit can happen
@@ -569,7 +571,7 @@ const startGame = async () => {
       const isOtherCard = Object.entries(otherSelectedCards).some(
         ([id, card]) => Number(card) === num && id !== telegramId
       );
-
+    
       return (
         <button
           key={num}
