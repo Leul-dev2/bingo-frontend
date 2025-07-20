@@ -543,6 +543,7 @@ useEffect(() => {
           <button
             onClick={() => {
              socket.emit("playerLeave", { gameId: String(gameId), telegramId }, () => {
+                console.log("player leave emited");
                 navigate("/");
               });
             }}
