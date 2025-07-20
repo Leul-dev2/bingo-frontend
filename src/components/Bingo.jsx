@@ -413,6 +413,7 @@ useEffect(() => {
 
 
   const resetGame = () => {
+    const savedCardId = sessionStorage.getItem("mySelectedCardId");
     emitLockRef.current = false; 
      fetchUserData(telegramId);
      socket.emit("unselectCardOnLeave", {
