@@ -418,6 +418,11 @@ useEffect(() => {
     setCartela([]);
     setGameStatus("");
     fetchUserData(telegramId);
+     socket.emit("unselectCardOnLeave", {
+        gameId,
+        telegramId,
+        cardId: Number(savedCardId),
+      });;
   };
 
 
