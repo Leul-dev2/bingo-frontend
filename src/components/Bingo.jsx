@@ -414,15 +414,16 @@ useEffect(() => {
 
   const resetGame = () => {
     emitLockRef.current = false; 
-    setCartelaId(null);
-    setCartela([]);
-    setGameStatus("");
-    fetchUserData(telegramId);
+     fetchUserData(telegramId);
      socket.emit("unselectCardOnLeave", {
         gameId,
         telegramId,
         cardId: Number(savedCardId),
-      });;
+      });
+    console.log("emiting the unselectCardOnLeave");
+    setCartelaId(null);
+    setCartela([]);
+    setGameStatus("");
   };
 
 
