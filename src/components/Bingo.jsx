@@ -150,6 +150,7 @@ const startBtnDisabledBg = 'bg-gray-600 cursor-not-allowed';
         // This function encapsulates the initial sync logic.
         const performInitialGameSync = () => {
             console.log("Attempting initial game sync...");
+            console.log("the real test", telegramId, gameId, socket.connected)
             if (socket.connected && telegramId && gameId) {
                 // Ensure this only runs once per unique telegramId/gameId session
                 const currentSyncKey = `${telegramId}-${gameId}`;
@@ -451,14 +452,42 @@ useEffect(() => {
 
   // Real-time update
 useEffect(() => {
-  socket.on("gameEnded", () => {
-    setGameStarted(false);
-    setAlertMessage("");
-     sessionStorage.removeItem("mySelectedCardId")
-  });
+    if (!socket) return;
 
-  return () => socket.off("gameEnded");
-}, []);
+    const handleGameEnded = () => {
+        console.log("🔥 Game ended received from server! Resetting client game state.");
+        // 1. Reset client-side game state
+        // setCartelaId(null);
+        // setCartela([]);
+        setGameStatus(""); // Or set to "Game Over"
+        setUserBalance(null); // Fetch new balance after reset
+        setResponse("");
+        setOtherSelectedCards({});
+        setCount(0);
+        setPlayerCount(0);
+        setGameStarted(false); // Game is no longer active
+        setCountdown(null);
+        setIsStarting(false);
+        // hasInitialSyncRun.current = false; // Already handled by disconnect, but good to be explicit for 'gameEnded'
+      //  sessionStorage.removeItem("mySelectedCardId"); // Clear saved card
+
+        // 2. Clear any lingering alerts
+        setAlertMessage("Game has ended. You can select a new card and start a new game!");
+
+        // 3. Re-fetch user balance (important after a game, especially if prizes were involved)
+        fetchUserData(telegramId);
+
+        // 4. Optionally, notify the user or prompt them to start a new game
+        // (e.g., make the "Start Game" button available again, show a message)
+    };
+
+    socket.on("gameEnded", handleGameEnded);
+
+    return () => socket.off("gameEnded", handleGameEnded);
+}, [socket, telegramId, fetchUserData]); // Add fetchUserData to dependencies
+
+
+
 
  useEffect(() => {
   const interval = setInterval(async () => {
