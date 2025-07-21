@@ -15,11 +15,6 @@ const urlTelegramId = searchParams.get("user");
 const urlGameId = searchParams.get("game");
 const location = useLocation();
 const emitLockRef = useRef(false); // prevents double emit
-const prevPathRef = useRef(location.pathname);
-
-  useEffect(() => {
-    prevPathRef.current = location.pathname;
-  }, [location.pathname]);
 
 
 // Store only if changed
@@ -285,54 +280,38 @@ const startBtnDisabledBg = 'bg-gray-600 cursor-not-allowed';
 
 
 
- useEffect(() => {
-    const handleBeforeUnload = () => {
-      const savedCardId = sessionStorage.getItem("mySelectedCardId");
-      if (
-        savedCardId &&
-        telegramId &&
-        gameId &&
-        !location.pathname.includes("/game")
-      ) {
-        console.log("calledUnselecteOnLeave [beforeunload]");
-        socket.emit("unselectCardOnLeave", {
-          gameId,
-          telegramId,
-          cardId: Number(savedCardId),
-        });
-        sessionStorage.removeItem("mySelectedCardId");
-      }
-    };
+useEffect(() => {
+  const handleBeforeUnload = () => {
+    const savedCardId = sessionStorage.getItem("mySelectedCardId");
+    if (savedCardId && telegramId && gameId) {
+      if (!window.location.pathname.includes("/game")) {
+      socket.emit("unselectCardOnLeave", {
+        gameId,
+        telegramId,
+        cardId: Number(savedCardId),
+      });
+      sessionStorage.removeItem("mySelectedCardId");
+    }
+  }
+  };
 
-    window.addEventListener("beforeunload", handleBeforeUnload);
+  window.addEventListener("beforeunload", handleBeforeUnload);
 
-    return () => {
-      const savedCardId = sessionStorage.getItem("mySelectedCardId");
+  return () => {
+    // Component unmount cleanup
+    const savedCardId = sessionStorage.getItem("mySelectedCardId");
+    if (savedCardId && telegramId && gameId) {
+      socket.emit("unselectCardOnLeave", {
+        gameId,
+        telegramId,
+        cardId: Number(savedCardId),
+      });
+      sessionStorage.removeItem("mySelectedCardId");
+    }
 
-      // Compare the *previous* path (the one we are leaving)
-      // with the *new* path (location.pathname)
-      const prevPath = prevPathRef.current;
-      const currentPath = location.pathname;
-
-      if (
-        savedCardId &&
-        telegramId &&
-        gameId &&
-        prevPath.includes("/game") && // We are leaving the game page
-        !currentPath.includes("/game") // We are navigating away from game page
-      ) {
-        console.log("calledUnselecteOnLeave...2 (on route change from /game)");
-        socket.emit("unselectCardOnLeave", {
-          gameId,
-          telegramId,
-          cardId: Number(savedCardId),
-        });
-        sessionStorage.removeItem("mySelectedCardId");
-      }
-
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, [telegramId, gameId, socket, location.pathname]);
+    window.removeEventListener("beforeunload", handleBeforeUnload);
+  };
+}, [telegramId, gameId, socket]);
 
 
 
@@ -434,7 +413,6 @@ useEffect(() => {
 
 
   const resetGame = () => {
-    const savedCardId = sessionStorage.getItem("mySelectedCardId");
     emitLockRef.current = false; 
      fetchUserData(telegramId);
      socket.emit("unselectCardOnLeave", {
@@ -451,19 +429,14 @@ useEffect(() => {
 
   // Real-time update
 useEffect(() => {
-  if (!socket) return;
-
-  console.log("✅ Socket is ready, setting up gameEnded listener.");
   socket.on("gameEnded", () => {
-    console.log("🔥 Game ended received!");
-    // Perform UI updates or redirect
+    setGameStarted(false);
+    setAlertMessage("");
+     sessionStorage.removeItem("mySelectedCardId")
   });
 
   return () => socket.off("gameEnded");
-}, [socket]);
-
-
-
+}, []);
 
  useEffect(() => {
   const interval = setInterval(async () => {
