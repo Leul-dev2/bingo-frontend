@@ -38,16 +38,16 @@ const gameId = urlGameId || localStorage.getItem("gameChoice");
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Existing effect to load saved card on mount
-useEffect(() => {
-const savedId = sessionStorage.getItem("mySelectedCardId");
-if (savedId) {
-const selectedCard = bingoCards.find(card => card.id === Number(savedId));
-if (selectedCard) {
-setCartelaId(Number(savedId));
-setCartela(selectedCard.card);
-}
-}
-}, []);
+// useEffect(() => {
+// const savedId = sessionStorage.getItem("mySelectedCardId");
+// if (savedId) {
+// const selectedCard = bingoCards.find(card => card.id === Number(savedId));
+// if (selectedCard) {
+// setCartelaId(Number(savedId));
+// setCartela(selectedCard.card);
+// }
+// }
+// }, []);
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -109,19 +109,18 @@ setAlertMessage("Error fetching user data.");
 
 // 🟢 Initial Effect to Fetch & Setup Socket
 useEffect(() => {
+console.log("🟢 initial Effect")
 if (!telegramId || !gameId) {
 console.error("Missing telegramId or gameId for game page.");
 navigate('/');
 return;
 }
 
-localStorage.setItem("telegramId", telegramId);
+//localStorage.setItem("telegramId", telegramId);
 
-// --- Define Socket Handlers (memoized or stable references are good practice) ---
-// These handlers depend on state setters, so they are generally recreated on each render
-// unless you useCallback them. For a useEffect that runs once for setup, it's often fine.
+
 const handleCardSelections = (cards) => {
-console.log("💡 Initial card selections received:", cards);
+// console.log("💡 Initial card selections received:", cards);
 const reformatted = {};
 // Object.entries returns [key, value]. Here, key is cardId (string), value is telegramId (string)
 for (const [cardId, tId] of Object.entries(cards)) {
@@ -131,7 +130,7 @@ setOtherSelectedCards(reformatted);
 };
 
 const handleCardReleased = ({ telegramId: releasedTelegramId, cardId }) => {
-console.log(`💡 Card ${cardId} released by ${releasedTelegramId}`);
+// console.log(`💡 Card ${cardId} released by ${releasedTelegramId}`);
 setOtherSelectedCards((prev) => {
 const newState = { ...prev };
 // Ensure we delete only if the released card matches the one currently held by that user
@@ -144,53 +143,50 @@ return newState;
 
 // This function encapsulates the initial sync logic.
 const performInitialGameSync = () => {
-console.log("Attempting initial game sync...");
+  
+// console.log("Attempting initial game sync...");
 if (socket.connected && telegramId && gameId) {
 // Ensure this only runs once per unique telegramId/gameId session
 const currentSyncKey = `${telegramId}-${gameId}`;
 if (hasInitialSyncRun.current === currentSyncKey) {
-console.log("Initial sync already performed for this session.");
+// console.log("Initial sync already performed for this session.");
 return; // Avoid duplicate emissions
 }
 
-console.log("Emitting userJoinedGame and re-emitting saved card...");
+// console.log("Emitting userJoinedGame and re-emitting saved card...");
 socket.emit("userJoinedGame", { telegramId, gameId });
-
-const mySavedCardId = sessionStorage.getItem("mySelectedCardId");
-const mySavedCard = bingoCards.find(card => card.id === Number(mySavedCardId));
-if (mySavedCard) {
-socket.emit("cardSelected", {
-telegramId,
-gameId,
-cardId: Number(mySavedCardId),
-card: mySavedCard.card,
-});
+console.log("sending emit")
+//const mySavedCardId = sessionStorage.getItem("mySelectedCardId");
+// const mySavedCard = bingoCards.find(card => card.id === Number(mySavedCardId));
+//if () {
+// socket.emit("cardSelected", {
+// telegramId,
+// gameId,
+// cardId: Number(mySavedCardId),
+// card: mySavedCard.card,
+// });
 }
 // Emit joinUser if it's still necessary and separate from userJoinedGame
-socket.emit("joinUser", { telegramId }); // Consider if this is redundant with userJoinedGame
+//socket.emit("joinUser", { telegramId }); // Consider if this is redundant with userJoinedGame
 
-hasInitialSyncRun.current = currentSyncKey; // Mark sync as done for this session
-} else {
-console.log("Socket not connected or missing data, deferring initial sync.");
-}
+//hasInitialSyncRun.current = currentSyncKey; // Mark sync as done for this session
+// } else {
+// // console.log("Socket not connected or missing data, deferring initial sync.");
+// }
 };
 
-// --- Register Socket Listeners ---
-// Register these once when the component mounts.
-// The 'connect' event listener should preferably be in SocketContext for global management.
-// If SocketContext handles autoConnect:true, then `socket.connected` check below will be important.
-// If SocketContext handles `autoConnect:false` and `socket.connect()` explicitly, then `onConnect` in context handles it.
+
 
 socket.on("userconnected", (res) => { setResponse(res.telegramId); });
 socket.on("balanceUpdated", (newBalance) => { setUserBalance(newBalance); });
 socket.on("gameStatusUpdate", (status) => { setGameStatus(status); });
 socket.on("currentCardSelections", handleCardSelections);
 socket.on("cardConfirmed", (data) => {
-console.log("DEBUG: Frontend received cardConfirmed data:", data);
+// console.log("DEBUG: Frontend received cardConfirmed data:", data);
 const confirmedCardId = Number(data.cardId);
 setCartelaId(confirmedCardId);
 setCartela(data.card);
-sessionStorage.setItem("mySelectedCardId", data.cardId);
+//sessionStorage.setItem("mySelectedCardId", data.cardId);
 setGameStatus("Ready to Start");
 });
 socket.on("cardUnavailable", ({ cardId }) => {
@@ -223,7 +219,7 @@ setOtherSelectedCards({});
 setCartela([]);
 setCartelaId(null);
 sessionStorage.removeItem("mySelectedCardId");
-console.log("🔄 Cards have been reset for this game.");
+// console.log("🔄 Cards have been reset for this game.");
 hasInitialSyncRun.current = false; // Allow re-sync on next mount if desired
 }
 });
@@ -239,13 +235,13 @@ performInitialGameSync();
 // you might be duplicating. Choose one source of truth for userJoinedGame.
 // However, if the context only handles global connection status, then this is fine.
 const handleConnectForSync = () => {
-console.log("Component: Socket re-connected, performing initial sync.");
+// console.log("Component: Socket re-connected, performing initial sync.");
 performInitialGameSync();
 };
 socket.on("connect", handleConnectForSync);
 
 socket.on("disconnect", () => {
-console.log("🔴 Socket disconnected — resetting sync flag.");
+// console.log("🔴 Socket disconnected — resetting sync flag.");
 hasInitialSyncRun.current = false;
 });
 
@@ -280,46 +276,25 @@ hasInitialSyncRun.current = false;
 
 
 
-useEffect(() => {
-const handleBeforeUnload = () => {
-const savedCardId = sessionStorage.getItem("mySelectedCardId");
-if (savedCardId && telegramId && gameId) {
-if (!window.location.pathname.includes("/game")) {
-socket.emit("unselectCardOnLeave", {
-gameId,
-telegramId,
-cardId: Number(savedCardId),
-});
-sessionStorage.removeItem("mySelectedCardId");
-}
-}
-};
+  useEffect(() => {
+    const currentPath = location.pathname;
 
-window.addEventListener("beforeunload", handleBeforeUnload);
-
-return () => {
-// Component unmount cleanup
-const savedCardId = sessionStorage.getItem("mySelectedCardId");
-if (savedCardId && telegramId && gameId) {
-socket.emit("unselectCardOnLeave", {
-gameId,
-telegramId,
-cardId: Number(savedCardId),
-});
-sessionStorage.removeItem("mySelectedCardId");
-}
-
-window.removeEventListener("beforeunload", handleBeforeUnload);
-};
-}, [telegramId, gameId, socket]);
-
+    // If the user navigates to any page that is not "/card-selection" or "/game"
+    if (
+      currentPath !== "/" &&
+      !currentPath.startsWith("/game") // allow /game or /game/:id etc
+    ) {
+      console.log("🔁 User left card selection → Refreshing page...");
+      window.location.reload();
+    }
+  }, [location.pathname]);
 
 
 useEffect(() => {
 if (!socket) return;
 
 const handleCardAvailable = ({ cardId }) => {
-console.log("♻️ Card available:", cardId);
+// console.log("♻️ Card available:", cardId);
 emitLockRef.current = false;
 
 setOtherSelectedCards((prevCards) => {
@@ -332,9 +307,9 @@ String(updated[key]) === String(cardId)
 
 if (keyToRemove) {
 delete updated[keyToRemove];
-console.log(`✅ Removed card ${cardId} from ${keyToRemove}`);
+// console.log(`✅ Removed card ${cardId} from ${keyToRemove}`);
 } else {
-console.log("⚠️ Card not found in otherSelectedCards:", cardId);
+// console.log("⚠️ Card not found in otherSelectedCards:", cardId);
 }
 
 return updated;
@@ -352,7 +327,7 @@ socket.off("cardAvailable", handleCardAvailable);
 
 // 🟢 Select a bingo card
 const handleNumberClick = (number) => {
-console.log("Clicked button ID:", number);
+// console.log("Clicked button ID:", number);
 if (emitLockRef.current && number === cartelaId) return; // prevent double click on same card
 if (emitLockRef.current && number !== cartelaId) {
 // Allow changing the card - unlock first so the emit can happen
@@ -373,7 +348,7 @@ setCartela(selectedCard.card);
 setCartelaId(number);
 setGameStatus("Ready to Start");
 
-sessionStorage.setItem("mySelectedCardId", number);
+//sessionStorage.setItem("mySelectedCardId", number);
 
 socket.emit("cardSelected", {
 telegramId,
@@ -413,16 +388,8 @@ socket.off("gameFinished");
 
 
 const resetGame = () => {
-emitLockRef.current = false; 
-setCartelaId(null);
-setCartela([]);
-setGameStatus("");
-fetchUserData(telegramId);
-     socket.emit("unselectCardOnLeave", {
-        gameId,
-        telegramId,
-        cardId: Number(savedCardId),
-      });;
+ window.location.reload();
+ console.log("page refreshed")
 };
 
 
@@ -444,7 +411,7 @@ const res = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/games/${
 const data = await res.json();
 
 if (!data.isActive) {
-console.log("🟢 Game is inactive now.");
+// console.log("🟢 Game is inactive now.");
 setIsStarting(false);
 setGameStarted(false);  // ✅ Ensure gameStarted is false if game is not active
 } else {
@@ -501,7 +468,7 @@ socket.emit("joinGame", { gameId, telegramId });
 
 // ✅ Step 4: Listen for player count updates
 socket.off("playerCountUpdate").on("playerCountUpdate", ({ playerCount }) => {
-console.log(`Players in the game room ${gameId}: ${playerCount}`);
+// console.log(`Players in the game room ${gameId}: ${playerCount}`);
 setPlayerCount(playerCount);
 });
 

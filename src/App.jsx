@@ -50,13 +50,11 @@ const App = () => {
 
 
         {/* Routes WITH Nav */}
-        <Route path="/" element={<Layout isBlackToggleOn={isBlackToggleOn} />}>
+        <Route path="/" element={<Layout isBlackToggleOn={isBlackToggleOn} />} >
           <Route
             index
             element={
               <Bingo
-                setCartela={setCartela}
-                setSelectedNumber={setSelectedNumber}
                 isBlackToggleOn={isBlackToggleOn}
               />
             }
