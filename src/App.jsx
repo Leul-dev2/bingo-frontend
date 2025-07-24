@@ -1,5 +1,5 @@
 // App.jsx
-import React, { useState, useEffect, useLocation } from "react";
+import React, { useState, useEffect} from "react";
 import { BrowserRouter as Router, Routes, Route, useSearchParams } from "react-router-dom";
 import { io } from "socket.io-client";
 
@@ -101,6 +101,7 @@ const AppContent = ({ isBlackToggleOn, setIsBlackToggleOn, socket }) => {
               isBlackToggleOn={isBlackToggleOn}
               setCartelaIdInParent={setSelectedCartelaId}
               cartelaId={selectedCartelaId}
+              socket={socket}
             />
           }
         />

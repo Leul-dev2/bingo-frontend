@@ -6,9 +6,9 @@ import { io } from "socket.io-client";
 
 
 // Initialize socket connection
-const socket = io("https://bingobot-backend-bwdo.onrender.com");
+//const socket = io("https://bingobot-backend-bwdo.onrender.com");
 
-function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId}) {
+function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket}) {
 ///////saving teh tegram id and gamechoice in localstaoge /////////////////////////////////////////////////////
 const [searchParams] = useSearchParams();
 const urlTelegramId = searchParams.get("user");
