@@ -271,7 +271,7 @@ if (!socket) return;
 const handleCardAvailable = ({ cardId }) => {
 // console.log("♻️ Card available:", cardId);
 emitLockRef.current = false;
-
+console.log("handleCardAvailable ", cardId);
 setOtherSelectedCards((prevCards) => {
 const updated = { ...prevCards };
 const keyToRemove = Object.keys(updated).find(
