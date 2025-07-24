@@ -8,13 +8,14 @@ import { io } from "socket.io-client";
 // Initialize socket connection
 const socket = io("https://bingobot-backend-bwdo.onrender.com");
 
-function Bingo({isBlackToggleOn}) {
+function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId}) {
 ///////saving teh tegram id and gamechoice in localstaoge /////////////////////////////////////////////////////
 const [searchParams] = useSearchParams();
 const urlTelegramId = searchParams.get("user");
 const urlGameId = searchParams.get("game");
 const location = useLocation();
 const emitLockRef = useRef(false); // prevents double emit
+const prevPathRef = useRef(null);
 
 
 // Store only if changed
@@ -53,7 +54,7 @@ const gameId = urlGameId || localStorage.getItem("gameChoice");
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const navigate = useNavigate();
-const [cartelaId, setCartelaId] = useState(null);
+//const [cartelaId, setCartelaId] = useState(null);
 const [cartela, setCartela] = useState([]);
 const [gameStatus, setGameStatus] = useState("");
 const [userBalance, setUserBalance] = useState(null);
@@ -116,11 +117,10 @@ navigate('/');
 return;
 }
 
-//localStorage.setItem("telegramId", telegramId);
-
+//localStorage.setItem("telegramId", telegramId
 
 const handleCardSelections = (cards) => {
-// console.log("💡 Initial card selections received:", cards);
+console.log("💡 Initial card selections received:", cards);
 const reformatted = {};
 // Object.entries returns [key, value]. Here, key is cardId (string), value is telegramId (string)
 for (const [cardId, tId] of Object.entries(cards)) {
@@ -182,9 +182,9 @@ socket.on("balanceUpdated", (newBalance) => { setUserBalance(newBalance); });
 socket.on("gameStatusUpdate", (status) => { setGameStatus(status); });
 socket.on("currentCardSelections", handleCardSelections);
 socket.on("cardConfirmed", (data) => {
-// console.log("DEBUG: Frontend received cardConfirmed data:", data);
-const confirmedCardId = Number(data.cardId);
-setCartelaId(confirmedCardId);
+ console.log("DEBUG: Frontend received cardConfirmed data:", data);
+ const confirmedCardId = Number(data.cardId);
+//setCartelaId(confirmedCardId);
 setCartela(data.card);
 //sessionStorage.setItem("mySelectedCardId", data.cardId);
 setGameStatus("Ready to Start");
@@ -192,21 +192,21 @@ setGameStatus("Ready to Start");
 socket.on("cardUnavailable", ({ cardId }) => {
 setAlertMessage(`🚫 Card ${cardId} is already taken by another player.`);
 setCartela([]);
-setCartelaId(null);
+setCartelaIdInParent(null);
 sessionStorage.removeItem("mySelectedCardId");
 });
 socket.on("cardError", ({ message }) => {
 setAlertMessage(message || "Card selection failed.");
 setCartela([]);
-setCartelaId(null);
+//setCartelaId(null);
 sessionStorage.removeItem("mySelectedCardId");
 });
-socket.on("otherCardSelected", ({ telegramId: otherId, cardId }) => {
-setOtherSelectedCards((prev) => ({
-...prev,
-[otherId]: cardId,
-}));
-});
+// socket.on("otherCardSelected", ({ telegramId: otherId, cardId }) => {
+// setOtherSelectedCards((prev) => ({
+// ...prev,
+// [otherId]: cardId,
+// }));
+// });
 socket.on("cardReleased", handleCardReleased); // New listener for card release
 socket.on("gameid", (data) => { setCount(data.numberOfPlayers); });
 socket.on("error", (err) => {
@@ -217,7 +217,7 @@ socket.on("cardsReset", ({ gameId: resetGameId }) => {
 if (resetGameId === gameId) {
 setOtherSelectedCards({});
 setCartela([]);
-setCartelaId(null);
+//setCartelaId(null);
 sessionStorage.removeItem("mySelectedCardId");
 // console.log("🔄 Cards have been reset for this game.");
 hasInitialSyncRun.current = false; // Allow re-sync on next mount if desired
@@ -227,13 +227,6 @@ hasInitialSyncRun.current = false; // Allow re-sync on next mount if desired
 // --- Initial Sync Logic ---
 // Option A: If socket is already connected when component mounts
 performInitialGameSync();
-
-// Option B: If socket connects AFTER component mounts (e.g., first load or reconnect)
-// Add a listener for the 'connect' event *here* if you want *this component* to trigger
-// the initial sync specifically when its socket connects.
-// IMPORTANT: If your SocketContext already emits userJoinedGame on connect,
-// you might be duplicating. Choose one source of truth for userJoinedGame.
-// However, if the context only handles global connection status, then this is fine.
 const handleConnectForSync = () => {
 // console.log("Component: Socket re-connected, performing initial sync.");
 performInitialGameSync();
@@ -259,7 +252,7 @@ socket.off("currentCardSelections", handleCardSelections);
 socket.off("cardConfirmed");
 socket.off("cardUnavailable");
 socket.off("cardError");
-socket.off("otherCardSelected");
+// socket.off("otherCardSelected");
 socket.off("cardReleased", handleCardReleased);
 socket.off("gameid");
 socket.off("error");
@@ -268,26 +261,8 @@ socket.off("connect", handleConnectForSync); // Clean up this specific listener
 // Reset the sync flag when the component unmounts
 hasInitialSyncRun.current = false;
 };
-}, [telegramId, gameId, bingoCards, navigate, socket]); // Dependencies: Add all external values used inside useEffect
-// Omitted 'isConnected' from dependencies as 'socket.connected' is checked inside.
-// Adding 'socket' ensures effect re-runs if the socket instance itself changes (unlikely with Context)
+}, [telegramId, gameId, bingoCards, navigate, socket]); 
 
-// Add 'socket' to dependencies if it's from context // Added bingoCards to dependencies as it's used in handleConnect
-
-
-
-  useEffect(() => {
-    const currentPath = location.pathname;
-
-    // If the user navigates to any page that is not "/card-selection" or "/game"
-    if (
-      currentPath !== "/" &&
-      !currentPath.startsWith("/game") // allow /game or /game/:id etc
-    ) {
-      console.log("🔁 User left card selection → Refreshing page...");
-      window.location.reload();
-    }
-  }, [location.pathname]);
 
 
 useEffect(() => {
@@ -324,10 +299,29 @@ socket.off("cardAvailable", handleCardAvailable);
 }, [socket]);
 
 
+const handleLocalCartelaIdChange = (newCartelaId) => {
+  console.log(`🔍 Bingo.jsx: handleLocalCartelaIdChange called with: ${newCartelaId}`); // <--- ADD THIS LINE
+    // Update local cartela for rendering
+    const selectedCard = bingoCards.find(card => card.id === newCartelaId);
+    if (selectedCard) {
+      setCartela(selectedCard.card);
+      // Inform the parent (App.jsx) about the new cartelaId
+      if (setCartelaIdInParent) {
+        setCartelaIdInParent(newCartelaId);
+      }
+    } else {
+      setCartela([]); // Clear card if not found
+      if (setCartelaIdInParent) {
+        setCartelaIdInParent(null); // Inform parent to clear
+      }
+    }
+  };
+
+
 
 // 🟢 Select a bingo card
 const handleNumberClick = (number) => {
-// console.log("Clicked button ID:", number);
+console.log("Clicked button ID:", number);
 if (emitLockRef.current && number === cartelaId) return; // prevent double click on same card
 if (emitLockRef.current && number !== cartelaId) {
 // Allow changing the card - unlock first so the emit can happen
@@ -344,8 +338,9 @@ const selectedCard = bingoCards.find(card => card.id === number);
 emitLockRef.current = true; // ✅ LOCK IMMEDIATELY
 
 if (selectedCard) {
+handleLocalCartelaIdChange(number);
 setCartela(selectedCard.card);
-setCartelaId(number);
+//setCartelaId(number);
 setGameStatus("Ready to Start");
 
 //sessionStorage.setItem("mySelectedCardId", number);
@@ -356,7 +351,9 @@ gameId,
 cardId: number,
 card: selectedCard.card,
 });
+console.log("card emited to the backend")
 } else {
+handleLocalCartelaIdChange(null); 
 console.error("Card not found for ID:", number);
 }
 };
@@ -427,11 +424,6 @@ return () => clearInterval(interval);
 }, [gameId]);
 
 
-useEffect(() => {
-if (location.pathname === "/game") {
-setIsStarting(false); // Reset only after page switches
-}
-}, [location.pathname]);
 
 
 // 🟢 Join Game & Emit to Socket
@@ -539,6 +531,7 @@ Game Choice<br />
 
 <div className="grid grid-cols-10 gap-1 py-1 px-2 max-w-lg w-full text-xs">
 {numbers.map((num) => {
+  console.log(cartelaId);
 const isMyCard = cartelaId === num;
 const isOtherCard = Object.entries(otherSelectedCards).some(
 ([id, card]) => Number(card) === num && id !== telegramId
