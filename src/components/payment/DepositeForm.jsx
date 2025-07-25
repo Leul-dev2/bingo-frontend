@@ -56,60 +56,78 @@ function PaymentForm() {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   };
+  
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  if (loading) return; // 🛡 Prevent double-submit
 
-    if (!userReady) {
-      alert("User info not loaded yet.");
-      return;
-    }
+  if (!userReady) {
+    alert("User info not loaded yet.");
+    return;
+  }
 
-    const amount = parseFloat(form.amount);
-    if (isNaN(amount) || amount < MIN_DEPOSIT) {
-      alert(`❌ Minimum deposit is ${MIN_DEPOSIT} Birr.`);
-      return;
-    }
+  const amount = parseFloat(form.amount);
+  if (isNaN(amount) || amount < MIN_DEPOSIT) {
+    alert(`❌ Minimum deposit is ${MIN_DEPOSIT} Birr.`);
+    return;
+  }
 
-    if (!form.first_name || !form.phone_number) {
-      alert("❌ Please complete all fields.");
-      return;
-    }
+  if (!form.first_name || !form.phone_number) {
+    alert("❌ Please complete all fields.");
+    return;
+  }
 
-    // ✅ Phone number format validation
-    if (!/^09\d{8}$/.test(form.phone_number)) {
-      alert("❌ Invalid phone number format. Use 09XXXXXXXX.");
-      return;
-    }
+  // ✅ Clean and validate phone number
+  let cleanedPhone = form.phone_number.replace(/\s+/g, '').replace(/^\+/, '');
+  const phoneRegex = /^(09\d{8}|07\d{8}|2519\d{8}|2517\d{8})$/;
 
-    setLoading(true);
-    localStorage.removeItem("tx_ref");
-    const tx_ref = `${form.first_name}-${Date.now()}`;
-    localStorage.setItem("tx_ref", tx_ref);
+  if (!phoneRegex.test(cleanedPhone)) {
+    alert("❌ Invalid phone number format. Use 09XXXXXXXX, 07XXXXXXXX, or 2519XXXXXXXX.");
+    return;
+  }
 
-    try {
-      const res = await axios.post(
-        "https://bingobot-backend-bwdo.onrender.com/api/payment/accept-payment",
-        {
-          ...form,
-          tx_ref,
-        }
-      );
+  // ✅ Normalize to 251xxxxxxxxx format
+  let normalizedPhone = cleanedPhone;
+  if (normalizedPhone.startsWith("09") || normalizedPhone.startsWith("07")) {
+    normalizedPhone = "251" + normalizedPhone.slice(1);
+  }
 
-      const redirectUrl = res?.data?.data?.checkout_url;
+  // ✅ Updated form to submit
+  const updatedForm = {
+    ...form,
+    phone_number: normalizedPhone,
+  };
 
-      if (redirectUrl) {
-        window.location.href = redirectUrl;
-      } else {
-        alert("Something went wrong. Try again.");
-        setLoading(false);
+  setLoading(true);
+  localStorage.removeItem("tx_ref");
+  const tx_ref = `${form.first_name}-${Date.now()}`;
+  localStorage.setItem("tx_ref", tx_ref);
+
+  try {
+    const res = await axios.post(
+      "https://bingobot-backend-bwdo.onrender.com/api/payment/accept-payment",
+      {
+        ...updatedForm,
+        tx_ref,
       }
-    } catch (err) {
-      console.error("❌ Payment init failed:", err);
-      alert("Payment failed.");
+    );
+
+    const redirectUrl = res?.data?.data?.checkout_url;
+
+    if (redirectUrl) {
+      window.location.href = redirectUrl;
+    } else {
+      alert("Something went wrong. Try again.");
       setLoading(false);
     }
-  };
+  } catch (err) {
+    console.error("❌ Payment init failed:", err);
+    alert("Payment failed.");
+    setLoading(false);
+  }
+};
+
 
   return (
     <div className="min-h-screen bg-gradient-to-r from-green-400 to-blue-500 flex items-center justify-center px-4">
@@ -140,15 +158,16 @@ function PaymentForm() {
 
         <label className="block mb-6">
           <span className="text-gray-700 font-semibold block mb-1">Phone Number</span>
-          <input
-            name="phone_number"
-            type="tel"
-            value={form.phone_number}
-            onChange={handleChange}
-            required
-            placeholder="09XXXXXXXX"
-            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
-          />
+        <input
+  name="phone_number"
+  type="tel"
+  value={form.phone_number}
+  onChange={handleChange}
+  required
+  placeholder="e.g. 09XXXXXXXX or 07XXXXXXXX or 2519XXXXXXXX"
+  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
+/>
+
         </label>
 
         <button
