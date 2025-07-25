@@ -24,6 +24,7 @@ export default function Layout({ isBlackToggleOn, socket, gameId, telegramId, ca
       prevPath === "/" && currentPath !== "/" && !currentPath.startsWith("/game");
 
     console.log("  isEnteringRoot (condition):", isEnteringRoot);
+    console.log("socket when return", socket);
     console.log("  isLeavingRootToNonGame (condition):", isLeavingRootToNonGame);
 
 
@@ -107,3 +108,28 @@ export default function Layout({ isBlackToggleOn, socket, gameId, telegramId, ca
     </>
   );
 }
+
+
+
+
+
+// const bgGradient = isBlackToggleOn
+// ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900'
+// : 'bg-purple-400';
+
+// const alertBg = isBlackToggleOn ? 'bg-red-900' : 'bg-red-100';
+// const alertText = isBlackToggleOn ? 'text-red-300' : 'text-red-700';
+// const alertBorder = isBlackToggleOn ? 'border-red-700' : 'border-red-500';
+
+// const cardBg = isBlackToggleOn ? 'bg-white/10' : 'bg-white';
+// const cardText = isBlackToggleOn ? 'text-indigo-300' : 'text-purple-400';
+
+// const myCardBg = isBlackToggleOn ? 'bg-green-600 text-white' : 'bg-green-500 text-white';
+// const otherCardBg = isBlackToggleOn ? 'bg-yellow-600 text-black' : 'bg-yellow-400 text-black';
+// const defaultCardBg = isBlackToggleOn ? 'bg-gray-700 text-white' : 'bg-purple-100 text-black';
+
+// const cellBg = isBlackToggleOn ? 'bg-gray-800 text-white' : 'bg-purple-100 text-black';
+
+// const refreshBtnBg = isBlackToggleOn ? 'bg-blue-700' : 'bg-blue-500';
+// const startBtnEnabledBg = isBlackToggleOn ? 'bg-orange-600 hover:bg-orange-700' : 'bg-orange-500 hover:bg-orange-600';
+// const startBtnDisabledBg = 'bg-gray-600 cursor-not-allowed';
