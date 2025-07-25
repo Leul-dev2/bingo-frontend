@@ -16,8 +16,8 @@ const banks = {
   "656": {
     name: "Awash Bank",
     logo: "/Awash_International_Bank.png",
-    primaryColor: "#7F3F98", // Official purple
-    secondaryColor: "#F5EDF9", // Light lavender (unchanged)
+    primaryColor: "#7F3F98",
+    secondaryColor: "#F5EDF9",
   },
   "772": {
     logo: "/bank_of_abyssinia-new.svg",
@@ -38,15 +38,23 @@ export default function WithdrawForm() {
   const [amount, setAmount] = useState("");
   const [btnHover, setBtnHover] = useState(false);
 
-  // New: store user balance and loading state
   const [balance, setBalance] = useState(null);
   const [balanceLoading, setBalanceLoading] = useState(false);
 
   useEffect(() => {
-    const user = searchParams.get("user") || "";
-    const bankParam = searchParams.get("bank") || "";
+    const user = searchParams.get("user");
+    const bankParam = searchParams.get("bank");
 
-    if (!/^\d+$/.test(user) || !banks[bankParam]) {
+    alert(`🔍 Debug Info:\nUser Param: ${user}\nBank Param: ${bankParam}`);
+
+    if (!user || !/^\d+$/.test(user)) {
+      alert("❌ Invalid or missing 'user' query param!");
+      setLoading(false);
+      return;
+    }
+
+    if (!bankParam || !banks[bankParam]) {
+      alert("❌ Invalid or unsupported 'bank' code!");
       setLoading(false);
       return;
     }
@@ -57,7 +65,6 @@ export default function WithdrawForm() {
     setLoading(false);
   }, [searchParams]);
 
-  // Fetch user balance after telegramId is set
   useEffect(() => {
     if (!telegramId) return;
 
@@ -71,8 +78,9 @@ export default function WithdrawForm() {
 
         const data = await res.json();
         setBalance(data.balance ?? 0);
+        alert(`✅ Balance fetched: ${data.balance ?? 0}`);
       } catch (err) {
-        console.error("❌ Error fetching balance:", err);
+        alert("❌ Error fetching balance: " + err.message);
         setBalance(0);
       }
       setBalanceLoading(false);
@@ -84,7 +92,6 @@ export default function WithdrawForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Basic validation
     if (!telegramId || !bankId || !accountName || !accountNumber || !amount) {
       alert("❌ Please fill in all fields.");
       return;
@@ -101,25 +108,21 @@ export default function WithdrawForm() {
       return;
     }
 
-    // Validate minimum withdrawal amount
     if (amt < 50) {
       alert("❌ Minimum withdrawal amount is 50 Birr.");
       return;
     }
 
-    // Prevent submission while balance is loading
     if (balanceLoading) {
       alert("⏳ Loading your balance, please wait...");
       return;
     }
 
-    // Ensure balance was successfully fetched
     if (balance === null) {
       alert("❌ Unable to verify your balance at the moment.");
       return;
     }
 
-    // Check sufficient balance
     if (amt > balance) {
       alert(`❌ Insufficient balance. Your current balance is ${balance} Birr.`);
       return;
@@ -149,7 +152,6 @@ export default function WithdrawForm() {
 
       if (res.ok) {
         alert("✅ Withdrawal request sent successfully!");
-        // Optionally clear form or reset amount here
         setAmount("");
       } else {
         alert("❌ Error: " + data.message);
@@ -190,8 +192,6 @@ export default function WithdrawForm() {
       className="max-w-md mx-auto p-6 rounded-xl shadow-xl mt-12"
       style={{ backgroundColor: bank.secondaryColor }}
     >
-      {/* Bank Logo Full Width */}
-      {/* Bank Logo + Name only for Awash */}
       <div className="w-full mb-8 text-center">
         <img
           src={bank.logo}
