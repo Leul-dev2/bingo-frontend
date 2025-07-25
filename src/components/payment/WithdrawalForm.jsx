@@ -45,7 +45,6 @@ export default function WithdrawForm() {
     const user = searchParams.get("user");
     const bankParam = searchParams.get("bank");
 
-    alert(`🔍 Debug Info:\nUser Param: ${user}\nBank Param: ${bankParam}`);
 
     if (!user || !/^\d+$/.test(user)) {
       alert("❌ Invalid or missing 'user' query param!");
@@ -78,7 +77,6 @@ export default function WithdrawForm() {
 
         const data = await res.json();
         setBalance(data.balance ?? 0);
-        alert(`✅ Balance fetched: ${data.balance ?? 0}`);
       } catch (err) {
         alert("❌ Error fetching balance: " + err.message);
         setBalance(0);
