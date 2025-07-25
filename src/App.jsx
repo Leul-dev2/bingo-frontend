@@ -77,7 +77,7 @@ const AppContent = ({ isBlackToggleOn, setIsBlackToggleOn, socket }) => {
       <Route path="/PaymentForm" element={<PaymentForm />} />
       <Route path="/payment-success" element={<PaymentSuccess />} />
       <Route path="/instruction" element={<Instruction />} />
-      <Route path="/withdrwal-Form" element={<WithdrawForm />} />
+      <Route path="/withdrawal-Form" element={<WithdrawForm />} />    
       <Route path="/Check-Withdraw" element={<CheckWithdrawalPage />} />
 
       {/* Routes WITH Nav - Layout will now handle the common logic */}
