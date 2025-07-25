@@ -228,9 +228,9 @@ socket.on("currentCardSelections", handleCardSelections);
 socket.on("cardConfirmed", (data) => {
  console.log("DEBUG: Frontend received cardConfirmed data:", data);
  const confirmedCardId = Number(data.cardId);
-//setCartelaId(confirmedCardId);
+setCartelaIdInParent(confirmedCardId);
 setCartela(data.card);
-//sessionStorage.setItem("mySelectedCardId", data.cardId);
+sessionStorage.setItem("mySelectedCardId", data.cardId);
 setGameStatus("Ready to Start");
 });
 socket.on("cardUnavailable", ({ cardId }) => {
