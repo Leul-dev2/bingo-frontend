@@ -1,81 +1,67 @@
-import React, { useEffect, useRef } from "react"; // Import useRef and useEffect
-import { Outlet, useLocation } from "react-router-dom"; // Import useLocation
+// components/Bing-Pges/Layout.jsx
+import React, { useEffect, useRef } from "react";
+import { Outlet, useLocation } from "react-router-dom";
 import Nav from "./NavLink";
 
-// Receive the necessary props
-export default function Layout({ isBlackToggleOn, socket, gameId, telegramId, cartelaId, setCartelaIdInParent }) {
+// Receive the necessary props, INCLUDING the new onClearClientCardState
+export default function Layout({ isBlackToggleOn, socket, gameId, telegramId, cartelaId, setCartelaIdInParent, onClearClientCardState }) {
   const location = useLocation();
-  const prevPathRef = useRef(null); // Initialize ref to null
+  const prevPathRef = useRef(null);
 
-  // This useEffect will now run as long as Layout is mounted
   useEffect(() => {
     const currentPath = location.pathname;
-    const prevPath = prevPathRef.current; // Get the *previous* path from the ref
+    const prevPath = prevPathRef.current;
 
     console.log("--- Layout Effect Path Change Debug ---");
-    console.log("  currentPath:", currentPath);
-    console.log("  prevPath (from ref):", prevPath);
+    console.log("   currentPath:", currentPath);
+    console.log("   prevPath (from ref):", prevPath);
 
-    // isEnteringRoot: When we just landed on '/', and weren't on '/' before (prevPath is not '/')
     const isEnteringRoot = currentPath === "/" && prevPath !== "/";
-
-    // isLeavingRootToNonGame: When we were on '/', and moved to something not '/' and not '/game'
     const isLeavingRootToNonGame =
       prevPath === "/" && currentPath !== "/" && !currentPath.startsWith("/game");
 
-    console.log("  isEnteringRoot (condition):", isEnteringRoot);
+    console.log("   isEnteringRoot (condition):", isEnteringRoot);
     console.log("socket when return", socket);
-    console.log("  isLeavingRootToNonGame (condition):", isLeavingRootToNonGame);
+    console.log("   isLeavingRootToNonGame (condition):", isLeavingRootToNonGame);
 
 
-    // --- 1. (Optional) Reload once per visit ONLY when entering "/" ---
-    // If you removed window.location.reload() from Bingo.jsx, you might still want this here,
-    // or you might decide it's not needed at all for an SPA.
-    // I'm keeping it commented out as per our previous discussion to avoid reload loops.
-    /*
-    const reloadKey = `hasRefreshed_${currentPath}`;
+    // --- 1. Clear session storage ONLY when entering "/" (Soft Reload) ---
     if (isEnteringRoot) {
-      const hasRefreshed = sessionStorage.getItem(reloadKey);
-      if (!hasRefreshed) {
-        sessionStorage.setItem(reloadKey, "true");
-        console.log("Layout: Reloading page on entry to /");
-        window.location.reload();
-        return; // Prevent rest of effect after reload
-      }
+      console.log("Layout: Navigating back to /, performing soft reload and clearing session storage.");
+      sessionStorage.removeItem("mySelectedCardId");
+      sessionStorage.removeItem("hasRefreshed_/");
+      // If you want the full client-side card state to be reset here too, call the function:
+      // onClearClientCardState(cartelaId); // Pass the current cardId if it's relevant, or just call it to reset
     }
-    */
 
 
     // --- 2. Emit only when leaving "/" to a NON-/game route (via React Router) ---
     if (isLeavingRootToNonGame) {
       console.log("✅ LAYOUT EMIT: unselectCardOnLeave on route change!");
-      // Ensure socket is available and connected before emitting
       if (socket && socket.connected) {
         socket.emit("unselectCardOnLeave", {
           gameId,
           telegramId,
-          cardId: cartelaId ?? null, // Use the cartelaId passed from App
+          cardId: cartelaId ?? null,
         });
-        setCartelaIdInParent(null);
-        sessionStorage.removeItem("hasRefreshed_/"); // Clear any related session storage
+        // Call the centralized client-side cleanup function after emitting to server
+        onClearClientCardState(cartelaId); // <--- CALL THE FUNCTION HERE
+        // The following sessionStorage removals are redundant if onClearClientCardState handles them
+        // sessionStorage.removeItem("mySelectedCardId");
+        // sessionStorage.removeItem("hasRefreshed_/");
       } else {
         console.warn("Layout: Socket not connected or not available for emit on route change.");
       }
     }
 
-    // IMPORTANT: Update prevPathRef.current *after* all checks for the *next* render cycle
-    // This ensures 'prevPath' is correctly set for the *next* time this effect runs.
     prevPathRef.current = currentPath;
-    console.log("  prevPathRef.current (updated to):", prevPathRef.current);
+    console.log("   prevPathRef.current (updated to):", prevPathRef.current);
     console.log("--- End Layout Effect Path Change Debug ---");
 
 
     // --- 3. Emit again ONLY if closing tab or refreshing while on "/" (beforeunload event) ---
-    // This listener needs access to the *latest* state variables (gameId, telegramId, cartelaId)
-    // which are available from the useEffect's closure, or passed as dependencies.
     const handleBeforeUnload = () => {
-      // This fires *just before* the page unloads
-      if (location.pathname === "/") { // Check the current path at unload time
+      if (location.pathname === "/") {
         console.log("📤 LAYOUT EMIT: unselectCardOnLeave on beforeunload!");
         if (socket && socket.connected) {
           socket.emit("unselectCardOnLeave", {
@@ -83,53 +69,28 @@ export default function Layout({ isBlackToggleOn, socket, gameId, telegramId, ca
             telegramId,
             cardId: cartelaId ?? null,
           });
-          sessionStorage.removeItem("hasRefreshed_/");
+          // Call the centralized client-side cleanup function
+          onClearClientCardState(cartelaId); // <--- CALL THE FUNCTION HERE
+          // The following sessionStorage removals are redundant if onClearClientCardState handles them
+          // sessionStorage.removeItem("mySelectedCardId");
+          // sessionStorage.removeItem("hasRefreshed_/");
         } else {
-            console.warn("Layout: Socket not connected or not available for emit on beforeunload.");
+          console.warn("Layout: Socket not connected or not available for emit on beforeunload.");
         }
       }
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
 
-    // Cleanup listener on unmount or dependency change
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, [location.pathname, gameId, telegramId, cartelaId, socket]); // Dependencies for this useEffect
+  }, [location.pathname, gameId, telegramId, cartelaId, socket, onClearClientCardState]); // Add onClearClientCardState to dependencies
 
   return (
     <>
-      {/* This will render the current page (child route) */}
       <Outlet />
-
-      {/* This is the persistent Nav */}
       <Nav isBlackToggleOn={isBlackToggleOn} />
     </>
   );
 }
-
-
-
-
-
-// const bgGradient = isBlackToggleOn
-// ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900'
-// : 'bg-purple-400';
-
-// const alertBg = isBlackToggleOn ? 'bg-red-900' : 'bg-red-100';
-// const alertText = isBlackToggleOn ? 'text-red-300' : 'text-red-700';
-// const alertBorder = isBlackToggleOn ? 'border-red-700' : 'border-red-500';
-
-// const cardBg = isBlackToggleOn ? 'bg-white/10' : 'bg-white';
-// const cardText = isBlackToggleOn ? 'text-indigo-300' : 'text-purple-400';
-
-// const myCardBg = isBlackToggleOn ? 'bg-green-600 text-white' : 'bg-green-500 text-white';
-// const otherCardBg = isBlackToggleOn ? 'bg-yellow-600 text-black' : 'bg-yellow-400 text-black';
-// const defaultCardBg = isBlackToggleOn ? 'bg-gray-700 text-white' : 'bg-purple-100 text-black';
-
-// const cellBg = isBlackToggleOn ? 'bg-gray-800 text-white' : 'bg-purple-100 text-black';
-
-// const refreshBtnBg = isBlackToggleOn ? 'bg-blue-700' : 'bg-blue-500';
-// const startBtnEnabledBg = isBlackToggleOn ? 'bg-orange-600 hover:bg-orange-700' : 'bg-orange-500 hover:bg-orange-600';
-// const startBtnDisabledBg = 'bg-gray-600 cursor-not-allowed';

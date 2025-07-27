@@ -8,13 +8,13 @@ import { io } from "socket.io-client";
 // Initialize socket connection
 //const socket = io("https://bingobot-backend-bwdo.onrender.com");
 
-function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket}) {
+function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherSelectedCards, setOtherSelectedCards, emitLockRef, onClearClientCardState }) {
 ///////saving teh tegram id and gamechoice in localstaoge /////////////////////////////////////////////////////
 const [searchParams] = useSearchParams();
 const urlTelegramId = searchParams.get("user");
 const urlGameId = searchParams.get("game");
 const location = useLocation();
-const emitLockRef = useRef(false); // prevents double emit
+//const emitLockRef = useRef(false); // prevents double emit
 const prevPathRef = useRef(null);
 
 
@@ -61,7 +61,7 @@ const [userBalance, setUserBalance] = useState(null);
 const [alertMessage, setAlertMessage] = useState("");
 const numbers = Array.from({ length: 100 }, (_, i) => i + 1);
 const [response, setResponse] = useState("");
-const [otherSelectedCards, setOtherSelectedCards] = useState({});
+//const [otherSelectedCards, setOtherSelectedCards] = useState({});
 const [count, setCount] = useState(0);
 const [playerCount, setPlayerCount] = useState(0);
 const [gameStarted, setGameStarted] = useState(false);
@@ -130,7 +130,7 @@ setOtherSelectedCards(reformatted);
 };
 
 const handleCardReleased = ({ telegramId: releasedTelegramId, cardId }) => {
-// console.log(`💡 Card ${cardId} released by ${releasedTelegramId}`);
+console.log(`💡 Card ${cardId} released by ${releasedTelegramId}`);
 setOtherSelectedCards((prev) => {
 const newState = { ...prev };
 // Ensure we delete only if the released card matches the one currently held by that user
@@ -154,12 +154,13 @@ const handleInitialCardStates = (data) => {
 
     // --- Restore User's Own Card (Crucial for consistent display) ---
     const mySavedCardId = sessionStorage.getItem("mySelectedCardId");
+    console.log("🔥🔥🔥🔥 my saved card", mySavedCardId);
     if (mySavedCardId && !isNaN(Number(mySavedCardId))) {
         const numMySavedCardId = Number(mySavedCardId);
-        const selectedCardData = bingoCards.find(card => card.id === numMySavedCardId);
+       // const selectedCardData = bingoCards.find(card => card.id === numMySavedCardId);
         if (selectedCardData) {
             setCartela(selectedCardData.card);
-            setCartelaIdInParent(numMySavedCardId); // Ensure parent (App.jsx) state is also updated
+            //setCartelaIdInParent(numMySavedCardId); // Ensure parent (App.jsx) state is also updated
             // Also ensure your own card is reflected in `otherSelectedCards`
             // if it wasn't already included by the backend's `initialCardStates` (it should be, but as a safeguard)
             setOtherSelectedCards(prev => ({
@@ -200,6 +201,8 @@ return; // Avoid duplicate emissions
 socket.emit("userJoinedGame", { telegramId, gameId });
  console.log("sending emit [userJoinedGame]");
 console.log("sending emit")
+
+
 //const mySavedCardId = sessionStorage.getItem("mySelectedCardId");
 // const mySavedCard = bingoCards.find(card => card.id === Number(mySavedCardId));
 //if () {
@@ -219,9 +222,14 @@ console.log("sending emit")
 // }
 };
 
+function handleReset(){
+  console.log("🎯🎯🎯 handle reset");
+  sessionStorage.removeItem("mySelectedCardId");
+}
 
-socket.on("initialCardStates", handleInitialCardStates);
+//socket.on("initialCardStates", handleInitialCardStates);
 socket.on("userconnected", (res) => { setResponse(res.telegramId); });
+socket.on("roundEnded", handleReset);
 socket.on("balanceUpdated", (newBalance) => { setUserBalance(newBalance); });
 socket.on("gameStatusUpdate", (status) => { setGameStatus(status); });
 socket.on("currentCardSelections", handleCardSelections);
@@ -295,7 +303,8 @@ fetchUserData(telegramId); // Initial fetch of user data
 return () => {
 // Remove all specific listeners attached by this component
 socket.off("userconnected");
-socket.off("initialCardStates", handleInitialCardStates);
+socket.off("roundEnded", handleReset);
+//socket.off("initialCardStates", handleInitialCardStates);
 socket.off("balanceUpdated");
 socket.off("gameStatusUpdate");
 socket.off("currentCardSelections", handleCardSelections);
@@ -312,47 +321,6 @@ socket.off("connect", handleConnectForSync); // Clean up this specific listener
 hasInitialSyncRun.current = false;
 };
 }, [telegramId, gameId, bingoCards, navigate, socket]); 
-
-
-
-useEffect(() => {
-if (!socket){
- console.log("🚫 Bingo.jsx: Socket not available, cannot register cardAvailable listener.");  
- return;
-} 
-
-console.log("✅ Bingo.jsx: Registering cardAvailable listener for 'cardAvailable' event.");
-
-
-const handleCardAvailable = ({ cardId }) => {
-console.log("♻️ Card available:", cardId);
-emitLockRef.current = false;
-console.log("handleCardAvailable ", cardId);
-setOtherSelectedCards((prevCards) => {
-const updated = { ...prevCards };
-const keyToRemove = Object.keys(updated).find(
-(key) =>
-updated[key] === cardId || 
-String(updated[key]) === String(cardId)
-);
-
-if (keyToRemove) {
-delete updated[keyToRemove];
-// console.log(`✅ Removed card ${cardId} from ${keyToRemove}`);
-} else {
-// console.log("⚠️ Card not found in otherSelectedCards:", cardId);
-}
-
-return updated;
-});
-};
-
-socket.on("cardAvailable", handleCardAvailable);
-
-return () => {
-socket.off("cardAvailable", handleCardAvailable);
-};
-}, [socket]);
 
 
 const handleLocalCartelaIdChange = (newCartelaId) => {
