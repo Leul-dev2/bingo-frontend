@@ -45,7 +45,7 @@ const AppContent = ({ isBlackToggleOn, setIsBlackToggleOn, socket }) => {
   // Define the centralized client-side card cleanup function
   const clearClientCardState = (cardIdToClear) => {
     console.log("♻️ Client-side card state cleanup initiated for:", cardIdToClear);
-    setSelectedCartelaId(null); // Clear the main selected card
+    //setSelectedCartelaId(null); // Clear the main selected card
     emitLockRef.current = false; // Reset the lock
 
     setOtherSelectedCards((prevCards) => {
@@ -75,7 +75,7 @@ const AppContent = ({ isBlackToggleOn, setIsBlackToggleOn, socket }) => {
       const handleCardAvailable = ({ cardId }) => {
         console.log("♻️ Socket Event: cardAvailable received for:", cardId);
         // Call the centralized cleanup function
-        clearClientCardState(cardId);
+       clearClientCardState(cardId);
       };
 
       socket.on("cardAvailable", handleCardAvailable);

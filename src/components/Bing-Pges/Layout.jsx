@@ -45,7 +45,7 @@ export default function Layout({ isBlackToggleOn, socket, gameId, telegramId, ca
           cardId: cartelaId ?? null,
         });
         // Call the centralized client-side cleanup function after emitting to server
-        onClearClientCardState(cartelaId); // <--- CALL THE FUNCTION HERE
+       // onClearClientCardState(cartelaId); // <--- CALL THE FUNCTION HERE
         // The following sessionStorage removals are redundant if onClearClientCardState handles them
         // sessionStorage.removeItem("mySelectedCardId");
         // sessionStorage.removeItem("hasRefreshed_/");
