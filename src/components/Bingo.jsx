@@ -426,7 +426,9 @@ const resetGame = () => {
 // Real-time update
 useEffect(() => {
 socket.on("gameEnded", () => {
+console.log("game ended ⏳⏳⏳⏳")
 setGameStarted(false);
+setIsStarting(false);
 setAlertMessage("");
 sessionStorage.removeItem("mySelectedCardId")
 });
