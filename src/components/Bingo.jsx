@@ -157,10 +157,10 @@ const handleInitialCardStates = (data) => {
     console.log("🔥🔥🔥🔥 my saved card", mySavedCardId);
     if (mySavedCardId && !isNaN(Number(mySavedCardId))) {
         const numMySavedCardId = Number(mySavedCardId);
-       // const selectedCardData = bingoCards.find(card => card.id === numMySavedCardId);
+       const selectedCardData = bingoCards.find(card => card.id === numMySavedCardId);
         if (selectedCardData) {
             setCartela(selectedCardData.card);
-            //setCartelaIdInParent(numMySavedCardId); // Ensure parent (App.jsx) state is also updated
+            setCartelaIdInParent(numMySavedCardId); // Ensure parent (App.jsx) state is also updated
             // Also ensure your own card is reflected in `otherSelectedCards`
             // if it wasn't already included by the backend's `initialCardStates` (it should be, but as a safeguard)
             setOtherSelectedCards(prev => ({
@@ -222,14 +222,10 @@ console.log("sending emit")
 // }
 };
 
-function handleReset(){
-  console.log("🎯🎯🎯 handle reset");
-  sessionStorage.removeItem("mySelectedCardId");
-}
+// 
 
 //socket.on("initialCardStates", handleInitialCardStates);
 socket.on("userconnected", (res) => { setResponse(res.telegramId); });
-socket.on("roundEnded", handleReset);
 socket.on("balanceUpdated", (newBalance) => { setUserBalance(newBalance); });
 socket.on("gameStatusUpdate", (status) => { setGameStatus(status); });
 socket.on("currentCardSelections", handleCardSelections);
@@ -303,7 +299,6 @@ fetchUserData(telegramId); // Initial fetch of user data
 return () => {
 // Remove all specific listeners attached by this component
 socket.off("userconnected");
-socket.off("roundEnded", handleReset);
 //socket.off("initialCardStates", handleInitialCardStates);
 socket.off("balanceUpdated");
 socket.off("gameStatusUpdate");
