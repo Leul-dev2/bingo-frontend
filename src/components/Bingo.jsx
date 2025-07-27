@@ -426,7 +426,7 @@ const resetGame = () => {
 // Real-time update
 useEffect(() => {
 socket.on("gameEnded", () => {
-console.log("game ended ⏳⏳⏳⏳")
+console.log("gameended ⬅️⬅️⬅️")
 setGameStarted(false);
 setIsStarting(false);
 setAlertMessage("");
@@ -443,7 +443,7 @@ const res = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/games/${
 const data = await res.json();
 
 if (!data.isActive) {
-// console.log("🟢 Game is inactive now.");
+console.log("🟢 Game is inactive now.");
 setIsStarting(false);
 setGameStarted(false);  // ✅ Ensure gameStarted is false if game is not active
 } else {
