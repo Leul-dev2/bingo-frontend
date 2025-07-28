@@ -49,6 +49,21 @@ const BingoGame = () => {
       hasJoinedRef.current = true;
     }
 
+       // --- NEW: Listen for drawnNumbersHistory ---
+    socket.on("drawnNumbersHistory", ({ gameId: receivedGameId, history }) => {
+      if (receivedGameId === gameId) { // Ensure it's for the current game
+        console.log(`✅ Received ${history.length} drawn numbers history for game ${receivedGameId}.`);
+
+        // Update randomNumber state with raw numbers
+        const numbers = history.map(item => item.number);
+        setRandomNumber(numbers);
+
+        // Update calledSet state with formatted labels
+        const labels = new Set(history.map(item => item.label));
+        setCalledSet(labels);
+      }
+    });
+
     // Cleanup on unmount
     return () => {
       socket.off("playerCountUpdate");
@@ -56,6 +71,7 @@ const BingoGame = () => {
       socket.off("countdownTick");
       socket.off("gameStart");
       socket.off("numberDrawn");
+      socket.off("drawnNumbersHistory");
       // Optionally disconnect:
       // socket.disconnect();
     };
@@ -84,13 +100,20 @@ const BingoGame = () => {
     socket.emit("gameCount", { gameId });
     setHasEmittedGameCount(true);
   }
-}, [playerCount, gameStarted, hasEmittedGameCount]);
+}, [playerCount, gameStarted, hasEmittedGameCount, gameId]);
 
 
 useEffect(() => {
   socket.on("gameReset", () => {
     console.log("🔄 Game reset received, allowing new gameCount emit");
     setHasEmittedGameCount(false);
+    // ✅ NEW: Reset other game states upon a full game reset
+    setRandomNumber([]);
+    setCalledSet(new Set());
+    setSelectedNumbers(new Set());
+    setCountdown(0);
+    setGameStarted(false);
+    setWinnerFound(false);
   });
 
   return () => {
@@ -128,12 +151,6 @@ useEffect(() => {
     });
   }, []);
   
-  // Log all drawn numbers less frequently or use a callback
-  // useEffect(() => {
-  //   if (randomNumber.length > 0) {
-  //     //console.log("🎯 All Drawn Numbers:", randomNumber);
-  //   }
-  // }, [randomNumber]);
 
  const handleCartelaClick = (num) => {
   setSelectedNumbers((prev) => {
@@ -307,59 +324,8 @@ useEffect(() => {
   });
 };
 
-useEffect(() => {
-  if (!socket) return;
-
-  socket.on("drawHistory", (history) => {
-    if (history.length > 0 && typeof history[0] === "object") {
-      // history is array of objects { number, label }
-      const numbers = history.map(item => item.number);
-      const labels = history.map(item => item.label);
-
-      setRandomNumber(numbers);
-      setCalledSet(new Set(labels));
-    } else {
-      // fallback if just array of numbers
-      setRandomNumber(history);
-      setCalledSet(new Set(history.map(num => {
-        const letterIndex = Math.floor((num - 1) / 15);
-        const letter = ["B", "I", "N", "G", "O"][letterIndex];
-        return `${letter}-${num}`;
-      })));
-    }
-  });
-
-  return () => {
-    socket.off("drawHistory");
-  };
-}, [socket]);
 
 
-
-
-
-//console.log("card numbersss", cartela);
-
-// const declareWinner = (winnerPattern, telegramId) => {
-//   const board = cartela.map((row, rowIndex) =>
-//     row.map((num, colIndex) => ({
-//       value: num,
-//       selected: selectedNumbers.has(num),
-//       isWinning: lastWinnerCells.some(([r, c]) => r === rowIndex && c === colIndex)
-//     }))
-//   );
-
-//   const winnerData = {
-//     telegramId,
-//     gameId,
-//     board,
-//     winnerPattern,
-//     cartelaId
-//   };
-
-//   // Send all winner data to backend
-//   socket.emit("winner", winnerData);
-// };
 
 
 useEffect(() => {
@@ -470,19 +436,20 @@ useEffect(() => {
 
 
        {/* Called Numbers Section */}
-<div className="bg-gray-100 p-2 rounded-lg w-full max-w-md mx-auto">
-  <p className="text-center font-bold text-xs sm:text-sm md:text-base">Called Numbers</p>
-  <div className="grid grid-cols-5 gap-1 mt-2 text-xs sm:text-sm">
-    {calledNumbers.map((num, i) => {
-      const letter = num.charAt(0);
-      return (
-        <div key={i} className={`p-2 text-center rounded text-white ${bingoColors[letter]} text-xs sm:text-sm`}>
-          {num}
-        </div>
-      );
-    })}
+  <div className="bg-gray-100 p-2 rounded-lg w-full max-w-md mx-auto">
+    <p className="text-center font-bold text-xs sm:text-sm md:text-base">Called Numbers</p>
+    <div className="grid grid-cols-5 gap-1 mt-2 text-xs sm:text-sm">
+      {/* ✅ MODIFIED: Use Array.from(calledSet) to render the formatted numbers */}
+      {Array.from(calledSet).map((label, i) => {
+        const letter = label.charAt(0);
+        return (
+          <div key={i} className={`p-2 text-center rounded text-white ${bingoColors[letter]} text-xs sm:text-sm`}>
+            {label} {/* Display the formatted label directly */}
+          </div>
+        );
+      })}
+    </div>
   </div>
-</div>
 
 {/* Bingo Card */}
 {cartela.length > 0 && (
