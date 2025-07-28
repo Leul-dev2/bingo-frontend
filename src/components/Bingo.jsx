@@ -119,22 +119,6 @@ navigate('/');
 return;
 }
 
-
-const activityPingInterval = setInterval(() => {
-        if (gameId && telegramId) {
-            socket.emit("gameActivityPing", {
-                telegramId: telegramId,
-                gameId: gameId,
-                context: 'CARD_SELECTION' // Send the context
-            });
-        }
-    }, 5000); // Ping every 5 seconds
-
-   
-       
-        // ... existing cleanup ...
-  
-
 //localStorage.setItem("telegramId", telegramId
 
 const handleCardSelections = (cards) => {
@@ -331,7 +315,6 @@ socket.off("currentCardSelections", handleCardSelections);
 socket.off("cardConfirmed");
 socket.off("cardUnavailable");
 socket.off("cardError");
-clearInterval(activityPingInterval);
 // socket.off("otherCardSelected");
 socket.off("cardReleased", handleCardReleased);
 socket.off("gameid");

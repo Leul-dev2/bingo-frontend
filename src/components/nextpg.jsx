@@ -49,17 +49,6 @@ const BingoGame = () => {
       hasJoinedRef.current = true;
     }
 
-      const gameActivityPingInterval = setInterval(() => {
-        if (gameId && telegramId) {
-            socket.emit("gameActivityPing", {
-                telegramId: telegramId,
-                gameId: gameId,
-                context: 'GAME_PAGE' // Send the context
-            });
-        }
-    }, 10000); // Ping every 10 seconds
-
-
     // Cleanup on unmount
     return () => {
       socket.off("playerCountUpdate");
@@ -67,7 +56,6 @@ const BingoGame = () => {
       socket.off("countdownTick");
       socket.off("gameStart");
       socket.off("numberDrawn");
-      clearInterval(gameActivityPingInterval);
       // Optionally disconnect:
       // socket.disconnect();
     };
