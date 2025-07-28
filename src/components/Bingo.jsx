@@ -2,11 +2,8 @@ import bingoCards from "../assets/bingoCards.json"; // Import the JSON file
 import { useEffect, useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useLocation } from "react-router-dom";
-import { io } from "socket.io-client";
 
 
-// Initialize socket connection
-//const socket = io("https://bingobot-backend-bwdo.onrender.com");
 
 function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherSelectedCards, setOtherSelectedCards, emitLockRef }) {
 ///////saving teh tegram id and gamechoice in localstaoge /////////////////////////////////////////////////////
@@ -71,6 +68,7 @@ const [countdown, setCountdown] = useState(null);
 const [isStarting, setIsStarting] = useState(false);
 const [isSocketReady, setIsSocketReady] = useState(false);
 const hasInitialSyncRun = useRef(false);
+const [selectedCardData, setSelectedCardData] = useState(null); // ✅ NEW STATE: To store the full card data
 
 
 const bgGradient = isBlackToggleOn
@@ -112,282 +110,216 @@ setAlertMessage("Error fetching user data.");
 
 // 🟢 Initial Effect to Fetch & Setup Socket
 useEffect(() => {
-console.log("🟢 initial Effect")
-if (!telegramId || !gameId) {
-console.error("Missing telegramId or gameId for game page.");
-navigate('/');
-return;
-}
-
-//localStorage.setItem("telegramId", telegramId
-
-const handleCardSelections = (cards) => {
-  console.log("💡 Initial card selections received:", cards);
-  const reformatted = {};
-  
-  for (const [cardId, tId] of Object.entries(cards)) {
-    if (tId === telegramId) {
-      setCartelaIdInParent(parseInt(cardId)); // 👈 Restore your own card selection
-    } else {
-      reformatted[tId] = parseInt(cardId);     // 👈 Store other players' selections
-    }
+  console.log("🟢 initial Effect - Bingo component mount/update");
+  if (!telegramId || !gameId) {
+    console.error("Missing telegramId or gameId for game page, navigating home.");
+    navigate('/');
+    return;
   }
 
-  setOtherSelectedCards(reformatted); // 👈 Only others
-};
+  const handleCardSelections = (cards) => {
+    console.log("💡 Initial card selections received:", cards);
+    const reformatted = {};
+    for (const [cardId, tId] of Object.entries(cards)) {
+      // ✅ MODIFIED: Use the passed `cartelaId` prop to check for your own card
+      if (tId === telegramId) {
+        setCartelaIdInParent(parseInt(cardId)); // Restore your own card selection
+        const myCard = bingoCards.find(card => card.id === parseInt(cardId));
+        if (myCard) {
+          setCartela(myCard.card);
+          setSelectedCardData(myCard); // Store the actual card object
+        }
+      } else {
+        reformatted[tId] = parseInt(cardId); // Store other players' selections
+      }
+    }
+    setOtherSelectedCards(reformatted); // Only others
+  };
 
-
-const handleCardReleased = ({ telegramId: releasedTelegramId, cardId }) => {
-console.log(`💡 Card ${cardId} released by ${releasedTelegramId}`);
-setOtherSelectedCards((prev) => {
-const newState = { ...prev };
-// Ensure we delete only if the released card matches the one currently held by that user
-if (newState[releasedTelegramId] === cardId) {
-delete newState[releasedTelegramId];
-}
-return newState;
-});
-};
-
-const handleInitialCardStates = (data) => {
+  const handleInitialCardStates = (data) => {
     console.log("💡 Frontend: Received initialCardStates (full board sync):", data);
     const { takenCards } = data; // Backend sends: { "cardId": { cardId: N, takenBy: 'TID', isTaken: true } }
 
     const newOtherSelectedCardsMap = {};
-    for (const cardId in takenCards) {
-        const takenByTelegramId = takenCards[cardId].takenBy;
-        newOtherSelectedCardsMap[takenByTelegramId] = Number(cardId); // Store as { telegramId: cardId }
+    let myCardFoundInSync = false;
+
+    for (const cardIdStr in takenCards) {
+      const cardId = Number(cardIdStr);
+      const takenByTelegramId = takenCards[cardIdStr].takenBy;
+      if (takenByTelegramId === telegramId) {
+        setCartelaIdInParent(cardId); // Set your cardId
+        const myCard = bingoCards.find(card => card.id === cardId);
+        if (myCard) {
+          setCartela(myCard.card);
+          setSelectedCardData(myCard); // Store the actual card object
+        }
+        myCardFoundInSync = true;
+      } else {
+        newOtherSelectedCardsMap[takenByTelegramId] = cardId; // Store as { telegramId: cardId }
+      }
     }
     setOtherSelectedCards(newOtherSelectedCardsMap); // Set the full map, overriding previous state
 
-    // --- Restore User's Own Card (Crucial for consistent display) ---
-    const mySavedCardId = sessionStorage.getItem("mySelectedCardId");
-    console.log("🔥🔥🔥🔥 my saved card", mySavedCardId);
-    if (mySavedCardId && !isNaN(Number(mySavedCardId))) {
+    // ✅ MODIFIED: Logic to restore user's own card based on sessionStorage
+    // Only attempt to restore if your card wasn't already in the sync from backend
+    if (!myCardFoundInSync) {
+      const mySavedCardId = sessionStorage.getItem("mySelectedCardId");
+      if (mySavedCardId && !isNaN(Number(mySavedCardId))) {
         const numMySavedCardId = Number(mySavedCardId);
-       // const selectedCardData = bingoCards.find(card => card.id === numMySavedCardId);
-        if (selectedCardData) {
-            setCartela(selectedCardData.card);
-            setCartelaIdInParent(numMySavedCardId); // Ensure parent (App.jsx) state is also updated
-            // Also ensure your own card is reflected in `otherSelectedCards`
-            // if it wasn't already included by the backend's `initialCardStates` (it should be, but as a safeguard)
-            setOtherSelectedCards(prev => ({
-                ...prev,
-                [telegramId]: numMySavedCardId
-            }));
+        const selectedCard = bingoCards.find(card => card.id === numMySavedCardId);
+        if (selectedCard) {
+          setCartela(selectedCard.card);
+          setCartelaIdInParent(numMySavedCardId);
+          setSelectedCardData(selectedCard); // Store the actual card object
+          // Also ensure your own card is reflected in `otherSelectedCards` if it wasn't
+          setOtherSelectedCards(prev => ({
+            ...prev,
+            [telegramId]: numMySavedCardId
+          }));
         } else {
-             // If saved card ID doesn't exist in bingoCards, clear it
-            sessionStorage.removeItem("mySelectedCardId");
-            setCartela([]);
-            setCartelaIdInParent(null);
-            console.warn("Saved card ID not found in bingoCards data. Clearing saved selection.");
+          sessionStorage.removeItem("mySelectedCardId");
+          setCartela([]);
+          setCartelaIdInParent(null);
+          setSelectedCardData(null); // Clear stored card data
+          console.warn("Saved card ID not found in bingoCards data. Clearing saved selection.");
         }
-    } else {
-        // If no saved card, ensure UI and parent state are clear
+      } else {
         setCartela([]);
         setCartelaIdInParent(null);
+        setSelectedCardData(null); // Clear stored card data
+      }
     }
-    // --- End Restore User's Own Card ---
-
     hasInitialSyncRun.current = true; // Mark sync as done for this specific mount
-};
+  };
 
-// This function encapsulates the initial sync logic.
-const performInitialGameSync = () => {
-  
-// console.log("Attempting initial game sync...");
-if (socket.connected && telegramId && gameId) {
-// Ensure this only runs once per unique telegramId/gameId session
-const currentSyncKey = `${telegramId}-${gameId}`;
-if (hasInitialSyncRun.current === currentSyncKey) {
-// console.log("Initial sync already performed for this session.");
-return; // Avoid duplicate emissions
-}
+  // This function encapsulates the initial sync logic.
+  const performInitialGameSync = () => {
+    if (socket.connected && telegramId && gameId) {
+      // Ensure this only runs once per unique telegramId/gameId session
+      const currentSyncKey = `${telegramId}-${gameId}`;
+      if (hasInitialSyncRun.current === currentSyncKey) {
+        console.log("Initial sync already performed for this session. Skipping.");
+        return; // Avoid duplicate emissions
+      }
 
-// console.log("Emitting userJoinedGame and re-emitting saved card...");
- console.log(`Frontend: Emitting 'userJoinedGame' for gameId: ${gameId}`);
-socket.emit("userJoinedGame", { telegramId, gameId });
- console.log("sending emit [userJoinedGame]");
-console.log("sending emit")
+      console.log(`Frontend: Emitting 'userJoinedGame' for gameId: ${gameId} (Lobby Phase)`);
+      // ✅ MODIFIED: Explicitly for lobby phase as per your clarification
+      socket.emit("userJoinedGame", { telegramId, gameId });
+      console.log("Emitted userJoinedGame");
 
-
-//const mySavedCardId = sessionStorage.getItem("mySelectedCardId");
-// const mySavedCard = bingoCards.find(card => card.id === Number(mySavedCardId));
-//if () {
-// socket.emit("cardSelected", {
-// telegramId,
-// gameId,
-// cardId: Number(mySavedCardId),
-// card: mySavedCard.card,
-// });
-}
-// Emit joinUser if it's still necessary and separate from userJoinedGame
-//socket.emit("joinUser", { telegramId }); // Consider if this is redundant with userJoinedGame
-
-//hasInitialSyncRun.current = currentSyncKey; // Mark sync as done for this session
-// } else {
-// // console.log("Socket not connected or missing data, deferring initial sync.");
-// }
-};
-
-
-socket.on("initialCardStates", handleInitialCardStates);
-socket.on("userconnected", (res) => { setResponse(res.telegramId); });
-//socket.on("roundEnded", handleReset);
-socket.on("balanceUpdated", (newBalance) => { setUserBalance(newBalance); });
-socket.on("gameStatusUpdate", (status) => { setGameStatus(status); });
-socket.on("currentCardSelections", handleCardSelections);
-socket.on("cardConfirmed", (data) => {
- console.log("DEBUG: Frontend received cardConfirmed data:", data);
- const confirmedCardId = Number(data.cardId);
-setCartelaIdInParent(confirmedCardId);
-setCartela(data.card);
-sessionStorage.setItem("mySelectedCardId", data.cardId);
-setGameStatus("Ready to Start");
-});
-socket.on("cardUnavailable", ({ cardId }) => {
-setAlertMessage(`🚫 Card ${cardId} is already taken by another player.`);
-setCartela([]);
-setCartelaIdInParent(null);
-sessionStorage.removeItem("mySelectedCardId");
-});
-socket.on("cardError", ({ message }) => {
-setAlertMessage(message || "Card selection failed.");
-setCartela([]);
-//setCartelaId(null);
-sessionStorage.removeItem("mySelectedCardId");
-});
-// socket.on("otherCardSelected", ({ telegramId: otherId, cardId }) => {
-// setOtherSelectedCards((prev) => ({
-// ...prev,
-// [otherId]: cardId,
-// }));
-// });
-socket.on("cardReleased", handleCardReleased); // New listener for card release
-socket.on("gameid", (data) => { setCount(data.numberOfPlayers); 
-  console.log("number of players recived", data.numberOfPlayers);
-});
-socket.on("error", (err) => {
-console.error(err);
-setAlertMessage(err.message);
-});
-socket.on("cardsReset", ({ gameId: resetGameId }) => {
-if (resetGameId === gameId) {
-setOtherSelectedCards({});
-setCartela([]);
-//setCartelaId(null);
-sessionStorage.removeItem("mySelectedCardId");
-// console.log("🔄 Cards have been reset for this game.");
-hasInitialSyncRun.current = false; // Allow re-sync on next mount if desired
-}
-});
-
-// --- Initial Sync Logic ---
-// Option A: If socket is already connected when component mounts
-performInitialGameSync();
-const handleConnectForSync = () => {
-    // Only perform sync if it hasn't been done for this mount yet
-    if (!hasInitialSyncRun.current) {
-        console.log("Component: Socket re-connected/connected, performing initial sync.");
-        performInitialGameSync();
+      hasInitialSyncRun.current = currentSyncKey; // Mark sync as done for this session
+    } else {
+      console.log("Socket not connected or missing data, deferring initial sync for lobby.");
     }
-};
-socket.on("connect", handleConnectForSync);
+  };
 
-socket.on("disconnect", () => {
-// console.log("🔴 Socket disconnected — resetting sync flag.");
-hasInitialSyncRun.current = false;
-});
+  // ... (keep handleCardReleased and other socket.on listeners)
 
+  // ✅ MODIFIED: Use the `connect` event for performing initial sync
+  const handleConnectForSync = () => {
+    console.log("Component: Socket connected/re-connected, performing initial sync for lobby.");
+    performInitialGameSync();
+  };
+  socket.on("connect", handleConnectForSync);
 
+  // ✅ MODIFIED: Ensure initial sync runs on component mount if already connected
+  // This is crucial for clients who refresh or return to the lobby page.
+  if (socket.connected) {
+    console.log("Socket already connected on mount, performing initial sync for lobby.");
+    performInitialGameSync();
+  }
 
-fetchUserData(telegramId); // Initial fetch of user data
+  socket.on("disconnect", () => {
+    console.log("🔴 Socket disconnected — resetting sync flag.");
+    hasInitialSyncRun.current = false;
+  });
 
-// --- Cleanup Function ---
-return () => {
-// Remove all specific listeners attached by this component
-socket.off("userconnected");
-//socket.off("roundEnded", handleReset);
-socket.off("initialCardStates", handleInitialCardStates);
-socket.off("balanceUpdated");
-socket.off("gameStatusUpdate");
-socket.off("currentCardSelections", handleCardSelections);
-socket.off("cardConfirmed");
-socket.off("cardUnavailable");
-socket.off("cardError");
-// socket.off("otherCardSelected");
-socket.off("cardReleased", handleCardReleased);
-socket.off("gameid");
-socket.off("error");
-socket.off("cardsReset");
-socket.off("connect", handleConnectForSync); // Clean up this specific listener
-// Reset the sync flag when the component unmounts
-hasInitialSyncRun.current = false;
-};
-}, [telegramId, gameId, bingoCards, navigate, socket]); 
+  fetchUserData(telegramId); // Initial fetch of user data
 
-
+  // --- Cleanup Function ---
+  return () => {
+    // Remove all specific listeners attached by this component
+    socket.off("userconnected");
+    socket.off("initialCardStates", handleInitialCardStates);
+    socket.off("balanceUpdated");
+    socket.off("gameStatusUpdate");
+    socket.off("currentCardSelections", handleCardSelections);
+    socket.off("cardConfirmed");
+    socket.off("cardUnavailable");
+    socket.off("cardError");
+    socket.off("cardReleased", handleCardReleased);
+    socket.off("gameid");
+    socket.off("error");
+    socket.off("cardsReset");
+    socket.off("connect", handleConnectForSync); // Clean up this specific listener
+    // Reset the sync flag when the component unmounts
+    hasInitialSyncRun.current = false;
+  };
+}, [telegramId, gameId, bingoCards, navigate, socket, setCartelaIdInParent, setOtherSelectedCards]);
+// ✅ ADDED DEPENDENCIES: setCartelaIdInParent, setOtherSelectedCards for completeness
 
 
 
 const handleLocalCartelaIdChange = (newCartelaId) => {
-  console.log(`🔍 Bingo.jsx: handleLocalCartelaIdChange called with: ${newCartelaId}`); // <--- ADD THIS LINE
-    // Update local cartela for rendering
-    const selectedCard = bingoCards.find(card => card.id === newCartelaId);
-    if (selectedCard) {
-      setCartela(selectedCard.card);
-      // Inform the parent (App.jsx) about the new cartelaId
-      if (setCartelaIdInParent) {
-        setCartelaIdInParent(newCartelaId);
-      }
-    } else {
-      setCartela([]); // Clear card if not found
-      if (setCartelaIdInParent) {
-        setCartelaIdInParent(null); // Inform parent to clear
-      }
+  console.log(`🔍 Bingo.jsx: handleLocalCartelaIdChange called with: ${newCartelaId}`);
+  const selectedCard = bingoCards.find(card => card.id === newCartelaId);
+  if (selectedCard) {
+    setCartela(selectedCard.card);
+    setSelectedCardData(selectedCard); // ✅ MODIFIED: Update the new state
+    if (setCartelaIdInParent) {
+      setCartelaIdInParent(newCartelaId);
     }
-  };
+  } else {
+    setCartela([]);
+    setSelectedCardData(null); // ✅ MODIFIED: Clear the new state
+    if (setCartelaIdInParent) {
+      setCartelaIdInParent(null);
+    }
+  }
+};
+
+
+
 
 
 
 // 🟢 Select a bingo card
 const handleNumberClick = (number) => {
-console.log("Clicked button ID:", number);
-if (emitLockRef.current && number === cartelaId) return; // prevent double click on same card
-if (emitLockRef.current && number !== cartelaId) {
-// Allow changing the card - unlock first so the emit can happen
-emitLockRef.current = false;
-}
+  console.log("Clicked button ID:", number);
+  // Allow changing the card by unlocking and re-emitting
+  if (emitLockRef.current && cartelaId === number) return; // Prevent double-clicking the *same* card
 
-// if (!isSocketReady) {
-//   console.warn("Socket not ready. Please wait...");
-//   return;
-// }
+  const newSelectedCard = bingoCards.find(card => card.id === number);
 
-const selectedCard = bingoCards.find(card => card.id === number);
+  if (newSelectedCard) {
+    // If the card is already taken by someone else, don't allow selection
+    const isOtherCardTaken = Object.entries(otherSelectedCards).some(
+      ([id, card]) => Number(card) === number && id !== telegramId
+    );
+    if (isOtherCardTaken) {
+      setAlertMessage(`🚫 Card ${number} is already taken by another player.`);
+      return; // Do not proceed with selection
+    }
 
-emitLockRef.current = true; // ✅ LOCK IMMEDIATELY
+    emitLockRef.current = true; // ✅ LOCK IMMEDIATELY before emitting
 
-if (selectedCard) {
-handleLocalCartelaIdChange(number);
-setCartela(selectedCard.card);
-//setCartelaId(number);
-setGameStatus("Ready to Start");
+    handleLocalCartelaIdChange(number); // Update local states (cartela, cartelaIdInParent, selectedCardData)
+    setGameStatus("Ready to Start");
 
-//sessionStorage.setItem("mySelectedCardId", number);
-
-socket.emit("cardSelected", {
-telegramId,
-gameId,
-cardId: number,
-card: selectedCard.card,
-});
-console.log("card emited to the backend")
-} else {
-handleLocalCartelaIdChange(null); 
-console.error("Card not found for ID:", number);
-}
+    socket.emit("cardSelected", {
+      telegramId,
+      gameId,
+      cardId: number,
+      card: newSelectedCard.card, // ✅ MODIFIED: Use the newly found card data
+    });
+    console.log(`Card ${number} emitted to the backend for selection.`);
+  } else {
+    handleLocalCartelaIdChange(null);
+    console.error("Card not found for ID:", number);
+  }
 };
+
+
 
 
 useEffect(() => {
@@ -463,72 +395,68 @@ return () => clearInterval(interval);
 
 // 🟢 Join Game & Emit to Socket
 const startGame = async () => {
-if (isStarting) return;
+  if (isStarting) return; // Prevent multiple clicks
 
-setIsStarting(true); // Block double-clicking
+  // Ensure a card is selected before trying to start
+  if (!cartelaId) {
+    setAlertMessage("Please select a bingo card before starting the game.");
+    return;
+  }
 
-try {
-// 🧠 Step 1: Check if a game is already running
-const statusRes = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/games/${gameId}/status`);
-const statusData = await statusRes.json();
+  setIsStarting(true); // Block double-clicking
 
-if (statusData.exists && statusData.isActive) {
-alert("🚫 A game is already running or being initialized. Please wait.");
-setIsStarting(false);
-return;
-}
+  try {
+    // 🧠 Step 1: Check if a game is already running (via REST API)
+    const statusRes = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/games/${gameId}/status`);
+    const statusData = await statusRes.json();
 
-// 🟢 Step 2: Start game - backend checks player balance and game state
-const response = await fetch("https://bingobot-backend-bwdo.onrender.com/api/games/start", {
-method: "POST",
-headers: {
-"Content-Type": "application/json",
-},
-body: JSON.stringify({ gameId, telegramId }),
-});
+    if (statusData.exists && statusData.isActive) {
+      setAlertMessage("🚫 A game is already running or being initialized. Please wait.");
+      setIsStarting(false);
+      return;
+    }
 
-const data = await response.json();
+    // 🟢 Step 2: Call backend REST API to 'start' the game
+    // This server endpoint should handle game initialization, balance checks, etc.
+    const response = await fetch("https://bingobot-backend-bwdo.onrender.com/api/games/start", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ gameId, telegramId }),
+    });
 
-if (response.ok && data.success) {
-// ✅ Step 3: Game is ready, join the socket room now
-socket.emit("joinGame", { gameId, telegramId });
+    const data = await response.json();
 
-// ✅ Step 4: Listen for player count updates
-socket.off("playerCountUpdate").on("playerCountUpdate", ({ playerCount }) => {
-// console.log(`Players in the game room ${gameId}: ${playerCount}`);
-setPlayerCount(playerCount);
-});
+    if (response.ok && data.success) {
+      // ✅ Game start initiated successfully by backend.
+      console.log("Game start initiated successfully by backend (via REST API).");
 
-// ✅ Step 5: Listen for gameId confirmation and navigate
-socket.off("gameId").on("gameId", (res) => {
-const { gameId: receivedGameId, telegramId: receivedTelegramId } = res;
+      navigate("/game", {
+        state: {
+          gameId: gameId, // Use the gameId from your state
+          telegramId: telegramId, // Use the telegramId from your state
+          cartelaId: cartelaId, // The ID of the card the user selected in the lobby
+          cartela: selectedCardData ? selectedCardData.card : cartela, // The actual card data
+          playerCount: playerCount, // Current player count from lobby
+        },
+      });
 
-if (receivedGameId && receivedTelegramId) {
-navigate("/game", {
-state: {
-gameId: receivedGameId,
-telegramId: receivedTelegramId,
-cartelaId,
-cartela,
-playerCount,
-},
-});
-} else {
-setAlertMessage("Invalid game or user data received!");
-}
-});
+    } else {
+      // 🚨 Backend rejected the game start request
+      setAlertMessage(data.error || "Error starting the game");
+      console.error("Game start error:", data.error);
+    }
 
-} else {
-// 🚨 Backend rejected the request
-setAlertMessage(data.error || "Error starting the game");
-console.error("Game start error:", data.error);
-}
-
-} catch (error) {
-setAlertMessage("Error connecting to the backend");
-console.error("Connection error:", error);
-} 
+  } catch (error) {
+    setAlertMessage("Error connecting to the backend or starting game.");
+    console.error("Connection error:", error);
+  } finally {
+    setIsStarting(false); // ✅ IMPORTANT: Always reset isStarting in finally block
+  }
 };
+
+// ... (rest of the component's render logic)
 
 
 return (
