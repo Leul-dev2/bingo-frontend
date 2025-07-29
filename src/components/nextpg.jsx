@@ -52,7 +52,7 @@ const BingoGame = () => {
        // --- NEW: Listen for drawnNumbersHistory ---
     socket.on("drawnNumbersHistory", ({ gameId: receivedGameId, history }) => {
       if (receivedGameId === gameId) { // Ensure it's for the current game
-        console.log(`✅ Received ${history.length} drawn numbers history for game ${receivedGameId}.`);
+        console.log(`✅ 🔥🔥🔥 Received ${history.length} drawn numbers history for game ${receivedGameId}.`);
 
         // Update randomNumber state with raw numbers
         const numbers = history.map(item => item.number);
@@ -63,6 +63,20 @@ const BingoGame = () => {
         setCalledSet(labels);
       }
     });
+
+      const handleSocketConnect = () => {
+        console.log("✅ Socket.IO connected or reconnected!");
+        // Emit joinGame again to ensure state synchronization from server
+        // Only if you're truly in a game context (gameId, telegramId exist)
+        if (gameId && telegramId) {
+            socket.emit("joinGame", { gameId, telegramId });
+            console.log("✅ Re-emitted joinGame after socket reconnection.");
+            // You might want to reset hasEmittedGameCount here too if applicable,
+            // but for general state sync, joinGame is enough.
+        }
+    };
+
+    socket.on("connect", handleSocketConnect);
 
     // Cleanup on unmount
     return () => {
@@ -503,8 +517,11 @@ useEffect(() => {
           Bingo!
         </button>
         <div className="w-full flex gap-2">
-          <button className="w-1/2 bg-blue-500 px-4 py-2 text-white rounded-lg text-lg">
-            Refresh
+           <button
+              className="w-1/2 bg-blue-500 px-4 py-2 text-white rounded-lg text-lg"
+              onClick={() => window.location.reload()} // <-- Add this onClick handler
+            >
+              Refresh
           </button>
           <button
             onClick={() => {
