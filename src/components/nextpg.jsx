@@ -517,9 +517,21 @@ useEffect(() => {
           Bingo!
         </button>
         <div className="w-full flex gap-2">
-           <button
+            <button
               className="w-1/2 bg-blue-500 px-4 py-2 text-white rounded-lg text-lg"
-              onClick={() => window.location.reload()} // <-- Add this onClick handler
+              onClick={() => {
+                // Re-emit joinGame to force a state synchronization from the backend
+                if (gameId && telegramId) {
+                  socket.emit("joinGame", { gameId, telegramId });
+                  console.log("Forced refresh: Re-emitted joinGame to synchronize state.");
+                  // Optional: Reset any client-side-only UI states if necessary
+                  // setSomeTemporaryUIState(false);
+                } else {
+                  console.warn("Cannot force refresh: gameId or telegramId missing.");
+                  // Fallback to full refresh if critical data is missing (unlikely if in game)
+                  window.location.reload();
+                }
+              }}
             >
               Refresh
           </button>
