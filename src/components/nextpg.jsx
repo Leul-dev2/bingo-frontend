@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import socket from "../socket.js"; // ✅ Shared socket instance
-import "./WinnerModal.jsx"
 
 const BingoGame = () => {
   const location = useLocation();
@@ -27,12 +26,6 @@ const BingoGame = () => {
   const [gameStarted, setGameStarted] = useState(false);
   const [winnerFound, setWinnerFound] = useState(false);
   const [hasEmittedGameCount, setHasEmittedGameCount] = React.useState(false);
-
-  // --- NEW STATE FOR WINNER MODAL AND SESSION TRACKING ---
-  const [showWinnerModal, setShowWinnerModal] = useState(false);
-  const [winnerInfoForModal, setWinnerInfoForModal] = useState(null);
-  const [currentGameSessionId, setCurrentGameSessionId] = useState(null); // CRITICAL: Tracks client's current session ID
-  // --- END NEW STATE ---
 
   const hasJoinedRef = useRef(false);
 
@@ -347,42 +340,40 @@ useEffect(() => {
 
 
 
+
+
 useEffect(() => {
-  if (!socket) return;
-
-  // ... (other socket listeners)
-
-  // 10. Winner Confirmation (CRITICAL: Use Modal instead of navigate)
-  const handleWinnerConfirmed = (winnerInfo) => {
-      console.log("Client: Received winnerConfirmed event:", winnerInfo);
-      setWinnerInfoForModal(winnerInfo); // Store winner data
-      setShowWinnerModal(true); // <--- THIS OPENS THE MODAL
-
-      // Optional: Logic to differentiate current vs. historical winner
-      if (currentGameSessionId && winnerInfo.sessionId && winnerInfo.sessionId === currentGameSessionId) {
-          console.log("Client: This winner is for the current session that just ended.");
-          setWinnerFound(true); // Disable 'Bingo!' button for current round
-          setGameStarted(false); // Game has ended for this round
-      } else if (currentGameSessionId && winnerInfo.sessionId && winnerInfo.sessionId !== currentGameSessionId) {
-          console.log("Client: This winner is for a PREVIOUS session. Displaying info but continuing with current game.");
-      } else {
-          console.log("Client: Received winner, but current session ID is not yet known or matched.");
+  const handleWinnerFound = ({ winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId }) => {
+    navigate("/winnerPage", {
+      state: {
+        winnerName,
+        prizeAmount,
+        board,
+        winnerPattern,
+        boardNumber,
+        playerCount,
+        telegramId,
+        gameId
       }
-      // NO navigate("/winnerPage", ...) HERE
+    });
   };
 
-  // ... (other socket listeners)
+  const handleWinnerError = ({ message }) => {
+    alert(message || "Winner verification failed. Please try again.");
+  };
 
-  // --- Register Listeners ---
-  socket.on("winnerConfirmed", handleWinnerConfirmed); // Register the handler
+  socket.on("winnerConfirmed", handleWinnerFound);
+  socket.on("winnerError", handleWinnerError);
 
-  // --- Cleanup on Unmount ---
   return () => {
-    socket.off("winnerConfirmed", handleWinnerConfirmed); // Clean up the handler
-    // ... (other socket.off calls)
+    socket.off("winnerConfirmed", handleWinnerFound);
+    socket.off("winnerError", handleWinnerError);
   };
-}, [gameId, telegramId, navigate, currentGameSessionId]); // Dependencies
+}, [navigate]);
 
+
+
+  
 
   return (
     <div className="bg-purple-400 min-h-screen flex flex-col items-center p-2 w-full max-w-screen overflow-hidden">
