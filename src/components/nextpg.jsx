@@ -342,34 +342,46 @@ useEffect(() => {
 
 
 
-useEffect(() => {
-  const handleWinnerFound = ({ winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId }) => {
-    navigate("/winnerPage", {
-      state: {
-        winnerName,
-        prizeAmount,
-        board,
-        winnerPattern,
-        boardNumber,
-        playerCount,
-        telegramId,
-        gameId
-      }
-    });
-  };
+  useEffect(() => {
+    if (!socket) return;
 
-  const handleWinnerError = ({ message }) => {
-    alert(message || "Winner verification failed. Please try again.");
-  };
+    const handleWinnerFound = ({
+      winnerName,
+      prizeAmount,
+      board,
+      winnerPattern,
+      boardNumber,
+      playerCount,
+      telegramId,
+      gameId,
+    }) => {
+      navigate("/winnerPage", {
+        state: {
+          winnerName,
+          prizeAmount,
+          board,
+          winnerPattern,
+          boardNumber,
+          playerCount,
+          telegramId,
+          gameId,
+        },
+      });
+    };
 
-  socket.on("winnerConfirmed", handleWinnerFound);
-  socket.on("winnerError", handleWinnerError);
+    const handleWinnerError = ({ message }) => {
+      alert(message || "Winner verification failed. Please try again.");
+    };
 
-  return () => {
-    socket.off("winnerConfirmed", handleWinnerFound);
-    socket.off("winnerError", handleWinnerError);
-  };
-}, [navigate]);
+    socket.on("winnerConfirmed", handleWinnerFound);
+    socket.on("winnerError", handleWinnerError);
+
+    return () => {
+      socket.off("winnerConfirmed", handleWinnerFound);
+      socket.off("winnerError", handleWinnerError);
+    };
+  }, [navigate]);
+
 
 
 
