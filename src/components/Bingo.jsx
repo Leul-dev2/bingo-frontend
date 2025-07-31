@@ -128,6 +128,7 @@ const handleCardSelections = (cards) => {
   for (const [cardId, tId] of Object.entries(cards)) {
     if (tId === telegramId) {
       setCartelaIdInParent(parseInt(cardId)); // 👈 Restore your own card selection
+      console.log("🍔🍔🍔 card is set", cardId);
     } else {
       reformatted[tId] = parseInt(cardId);     // 👈 Store other players' selections
     }
@@ -165,7 +166,7 @@ const handleInitialCardStates = (data) => {
     console.log("🔥🔥🔥🔥 my saved card", mySavedCardId);
     if (mySavedCardId && !isNaN(Number(mySavedCardId))) {
         const numMySavedCardId = Number(mySavedCardId);
-       // const selectedCardData = bingoCards.find(card => card.id === numMySavedCardId);
+       const selectedCardData = bingoCards.find(card => card.id === numMySavedCardId);
         if (selectedCardData) {
             setCartela(selectedCardData.card);
             setCartelaIdInParent(numMySavedCardId); // Ensure parent (App.jsx) state is also updated
@@ -484,9 +485,9 @@ method: "POST",
 headers: {
 "Content-Type": "application/json",
 },
-body: JSON.stringify({ gameId, telegramId }),
+body: JSON.stringify({ gameId, telegramId, cardId: cartelaId }),
 });
-
+console.log("senttt cartela id ", cartelaId);
 const data = await response.json();
 
 if (response.ok && data.success) {
