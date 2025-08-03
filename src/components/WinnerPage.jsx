@@ -49,7 +49,7 @@ const WinnerPage = () => {
         Prize Amount:{" "}
         <span className="font-bold text-xl text-yellow-600">${prizeAmount}</span>
       </p>
-      <p className="text-sm mt-4 text-gray-600">Game ID: {boardNumber}</p>
+      <p className="text-sm mt-4 text-gray-600">Cartela Number: {boardNumber}</p>
     </div>
 
     {/* Winning Pattern Display */}

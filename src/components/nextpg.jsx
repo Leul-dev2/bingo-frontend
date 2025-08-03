@@ -26,6 +26,7 @@ const BingoGame = () => {
   const [gameStarted, setGameStarted] = useState(false);
   const [winnerFound, setWinnerFound] = useState(false);
   const [hasEmittedGameCount, setHasEmittedGameCount] = React.useState(false);
+  const [gracePlayers, setGracePlayers] = useState([]);
 
   const hasJoinedRef = useRef(false);
 
@@ -103,18 +104,29 @@ const BingoGame = () => {
     });
   }, []);
 
-  // 3️⃣ Request to start game if enough players
- useEffect(() => {
-  // Game has already started or gameCount has already been sent — don't emit again
-  if (gameStarted || hasEmittedGameCount) return;
 
-  // Only emit when minimum players are ready and game hasn't been triggered yet
-  if (playerCount >= 2) {
+  // Listen to grace player updates from server
+useEffect(() => {
+  socket.on("updateGracePlayers", ({ gracePlayers }) => {
+    setGracePlayers(gracePlayers);
+  });
+
+  return () => socket.off("updateGracePlayers");
+}, [socket]);
+
+  // 3️⃣ Request to start game if enough players
+useEffect(() => {
+  if (
+    playerCount >= 2 &&
+    gracePlayers.length === 0 &&
+    !hasEmittedGameCount &&
+    !gameStarted
+  ) {
     console.log("✅ Emitting gameCount to server...");
     socket.emit("gameCount", { gameId });
     setHasEmittedGameCount(true);
   }
-}, [playerCount, gameStarted, hasEmittedGameCount, gameId]);
+}, [playerCount, gameStarted, hasEmittedGameCount, gameId, gracePlayers]);
 
 
 useEffect(() => {
