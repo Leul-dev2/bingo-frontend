@@ -109,6 +109,7 @@ const BingoGame = () => {
 useEffect(() => {
   socket.on("updateGracePlayers", ({ gracePlayers }) => {
     setGracePlayers(gracePlayers);
+    console.log ("updated set grace 🎯🎯🎯🎯")
   });
 
   return () => socket.off("updateGracePlayers");
