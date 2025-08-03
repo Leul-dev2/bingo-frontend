@@ -107,7 +107,6 @@ const BingoGame = () => {
 
   // Listen to grace player updates from server
 useEffect(() => {
-  if (!socket) return;
 
   const handleUpdateGracePlayers = ({ gracePlayers }) => {
     console.log("🎯 Frontend received gracePlayers update:", gracePlayers);
@@ -119,7 +118,7 @@ useEffect(() => {
   return () => {
     socket.off("updateGracePlayers", handleUpdateGracePlayers);
   };
-}, [socket]);
+}, []);
 
   // 3️⃣ Request to start game if enough players
 useEffect(() => {
