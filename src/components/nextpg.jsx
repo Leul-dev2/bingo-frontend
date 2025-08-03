@@ -106,25 +106,12 @@ const BingoGame = () => {
 
 
   // Listen to grace player updates from server
-useEffect(() => {
 
-  const handleUpdateGracePlayers = ({ gracePlayers }) => {
-    console.log("🎯 Frontend received gracePlayers update:", gracePlayers);
-    setGracePlayers(gracePlayers);
-  };
-
-  socket.on("updateGracePlayers", handleUpdateGracePlayers);
-
-  return () => {
-    socket.off("updateGracePlayers", handleUpdateGracePlayers);
-  };
-}, []);
 
   // 3️⃣ Request to start game if enough players
 useEffect(() => {
   if (
     playerCount >= 2 &&
-    gracePlayers.length === 0 &&
     !hasEmittedGameCount &&
     !gameStarted
   ) {
