@@ -111,7 +111,7 @@ const BingoGame = () => {
   // 3️⃣ Request to start game if enough players
 useEffect(() => {
   if (
-    playerCount >= 3 &&
+    playerCount >= 2 &&
     !hasEmittedGameCount &&
     !gameStarted
   ) {
@@ -423,7 +423,7 @@ useEffect(() => {
         <div className="w-1/2 flex flex-col items-center gap-2">
           <div className="bg-gray-300 p-2 rounded-lg text-center text-xs w-[90%]">
             <p>Countdown</p>
-            <p className="text-lg font-bold">{countdown > 0 ? countdown : "Game Started"}</p>
+            <p className="text-lg font-bold">{countdown > 0 ? countdown : "Please Wait"}</p>
           </div>
 
           <div className="bg-purple-600 p-4 rounded-lg text-white flex flex-col items-center w-full max-w-md mx-auto">
