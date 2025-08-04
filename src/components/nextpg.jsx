@@ -111,7 +111,7 @@ const BingoGame = () => {
   // 3️⃣ Request to start game if enough players
 useEffect(() => {
   if (
-    playerCount >= 2 &&
+    playerCount >= 3 &&
     !hasEmittedGameCount &&
     !gameStarted
   ) {
