@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 const WinnerPage = () => {
   const location = useLocation();
-  const { winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId } = location.state || {};
+  const { winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId, GameSessionId } = location.state || {};
     const navigate = useNavigate();
   console.log("winnerpatern",winnerPattern);
   console.log("board",board);
