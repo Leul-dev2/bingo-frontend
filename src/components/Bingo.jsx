@@ -464,71 +464,89 @@ return () => clearInterval(interval);
 
 // 🟢 Join Game & Emit to Socket
 const startGame = async () => {
-if (isStarting) return;
+    if (isStarting) return;
 
-setIsStarting(true); // Block double-clicking
+    setIsStarting(true); // Block double-clicking
 
-try {
-// 🧠 Step 1: Check if a game is already running
-const statusRes = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/games/${gameId}/status`);
-const statusData = await statusRes.json();
+    try {
+        // 🧠 Step 1: Check if a game is already running
+        // Consider also checking for GameSessionId existence here if needed
+        const statusRes = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/games/${gameId}/status`);
+        const statusData = await statusRes.json();
 
-if (statusData.exists && statusData.isActive) {
-alert("🚫 A game is already running or being initialized. Please wait.");
-setIsStarting(false);
-return;
-}
+        if (statusData.exists && statusData.isActive) {
+            alert("🚫 A game is already running or being initialized. Please wait.");
+            setIsStarting(false);
+            return;
+        }
 
-// 🟢 Step 2: Start game - backend checks player balance and game state
-const response = await fetch("https://bingobot-backend-bwdo.onrender.com/api/games/start", {
-method: "POST",
-headers: {
-"Content-Type": "application/json",
-},
-body: JSON.stringify({ gameId, telegramId, cardId: cartelaId }),
-});
-console.log("senttt cartela id ", cartelaId);
-const data = await response.json();
+        // 🟢 Step 2: Start game - backend checks player balance and game state
+        const response = await fetch("https://bingobot-backend-bwdo.onrender.com/api/games/start", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ gameId, telegramId, cardId: cartelaId }),
+        });
 
-if (response.ok && data.success) {
-// ✅ Step 3: Game is ready, join the socket room now
-socket.emit("joinGame", { gameId, telegramId });
+        const data = await response.json();
 
-// ✅ Step 4: Listen for player count updates
-socket.off("playerCountUpdate").on("playerCountUpdate", ({ playerCount }) => {
-// console.log(`Players in the game room ${gameId}: ${playerCount}`);
-setPlayerCount(playerCount);
-});
+        if (response.ok && data.success) {
+            // 🟢 The backend now returns the GameSessionId. Capture it here.
+            const { GameSessionId: newGameSessionId } = data; 
+            
+            // ✅ Step 3: Game is ready, join the socket room with the new GameSessionId
+            // 🟢 Pass the GameSessionId to the backend
+            socket.emit("joinGame", { 
+                gameId, 
+                telegramId, 
+                GameSessionId: newGameSessionId 
+            });
 
-// ✅ Step 5: Listen for gameId confirmation and navigate
-socket.off("gameId").on("gameId", (res) => {
-const { gameId: receivedGameId, telegramId: receivedTelegramId } = res;
+            // ✅ Step 4: Listen for player count updates
+            socket.off("playerCountUpdate").on("playerCountUpdate", ({ playerCount }) => {
+                setPlayerCount(playerCount);
+            });
 
-if (receivedGameId && receivedTelegramId) {
-navigate("/game", {
-state: {
-gameId: receivedGameId,
-telegramId: receivedTelegramId,
-cartelaId,
-cartela,
-playerCount,
-},
-});
-} else {
-setAlertMessage("Invalid game or user data received!");
-}
-});
+            // ✅ Step 5: Listen for gameId confirmation and navigate
+            socket.off("gameId").on("gameId", (res) => {
+                const { 
+                    gameId: receivedGameId, 
+                    GameSessionId: receivedSessionId, // 🟢 Capture the GameSessionId from the socket event
+                    telegramId: receivedTelegramId 
+                } = res;
 
-} else {
-// 🚨 Backend rejected the request
-setAlertMessage(data.error || "Error starting the game");
-console.error("Game start error:", data.error);
-}
+                if (receivedGameId && receivedTelegramId && receivedSessionId) {
+                    // 🟢 Pass the GameSessionId to the navigation state
+                    navigate("/game", {
+                        state: {
+                            gameId: receivedGameId,
+                            telegramId: receivedTelegramId,
+                            GameSessionId: receivedSessionId, // 🟢 Add this to the state
+                            cartelaId,
+                            cartela,
+                            playerCount,
+                        },
+                    });
+                } else {
+                    setAlertMessage("Invalid game or user data received!");
+                }
+            });
 
-} catch (error) {
-setAlertMessage("Error connecting to the backend");
-console.error("Connection error:", error);
-} 
+        } else {
+            // 🚨 Backend rejected the request
+            setAlertMessage(data.error || "Error starting the game");
+            console.error("Game start error:", data.error);
+        }
+
+    } catch (error) {
+        setAlertMessage("Error connecting to the backend");
+        console.error("Connection error:", error);
+    } finally {
+        // We can place setIsStarting(false) here or inside the `if` and `else` blocks
+        // depending on the desired behavior.
+        setIsStarting(false); 
+    }
 };
 
 

@@ -5,7 +5,7 @@ import socket from "../socket.js"; // ✅ Shared socket instance
 const BingoGame = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { cartela, cartelaId, gameId, telegramId } = location.state || {};
+  const { cartela, cartelaId, gameId, telegramId, GameSessionId } = location.state || {};
 
   const bingoColors = {
     B: "bg-yellow-500",
@@ -116,7 +116,7 @@ useEffect(() => {
     !gameStarted
   ) {
     console.log("✅ Emitting gameCount to server...");
-    socket.emit("gameCount", { gameId });
+    socket.emit("gameCount", { gameId, GameSessionId });
     setHasEmittedGameCount(true);
   }
 }, [playerCount, gameStarted, hasEmittedGameCount, gameId, gracePlayers]);
@@ -294,6 +294,7 @@ useEffect(() => {
     socket.emit("checkWinner", {
       telegramId,
       gameId,
+      GameSessionId,
       cartelaId, 
       selectedNumbers: selectedArray,        // player card ID
     });
