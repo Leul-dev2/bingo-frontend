@@ -46,7 +46,7 @@ const BingoGame = () => {
     }
 
     if (!hasJoinedRef.current && gameId && telegramId) {
-      socket.emit("joinGame", { gameId, telegramId });
+      socket.emit("joinGame", { gameId, telegramId, GameSessionId });
       hasJoinedRef.current = true;
     }
 
