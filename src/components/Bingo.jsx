@@ -493,14 +493,14 @@ const startGame = async () => {
 
         if (response.ok && data.success) {
             // 🟢 The backend now returns the GameSessionId. Capture it here.
-            const { GameSessionId: newGameSessionId } = data; 
+            const { GameSessionId: currentSessionId } = data; 
             
             // ✅ Step 3: Game is ready, join the socket room with the new GameSessionId
             // 🟢 Pass the GameSessionId to the backend
             socket.emit("joinGame", { 
                 gameId, 
                 telegramId, 
-                GameSessionId: newGameSessionId 
+                GameSessionId: currentSessionId
             });
 
             // ✅ Step 4: Listen for player count updates
