@@ -70,7 +70,7 @@ const BingoGame = () => {
         // Emit joinGame again to ensure state synchronization from server
         // Only if you're truly in a game context (gameId, telegramId exist)
         if (gameId && telegramId) {
-            socket.emit("joinGame", { gameId, telegramId });
+            socket.emit("joinGame", { gameId, telegramId, GameSessionId });
             console.log("✅ Re-emitted joinGame after socket reconnection.");
             // You might want to reset hasEmittedGameCount here too if applicable,
             // but for general state sync, joinGame is enough.
@@ -529,7 +529,7 @@ useEffect(() => {
               onClick={() => {
                 // Re-emit joinGame to force a state synchronization from the backend
                 if (gameId && telegramId) {
-                  socket.emit("joinGame", { gameId, telegramId });
+                  socket.emit("joinGame", { gameId, telegramId, GameSessionId });
                   console.log("Forced refresh: Re-emitted joinGame to synchronize state.");
                   // Optional: Reset any client-side-only UI states if necessary
                   // setSomeTemporaryUIState(false);
