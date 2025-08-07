@@ -334,7 +334,7 @@ useEffect(() => {
 
 
   const handleLeave = () => {
-  socket.emit("playerLeave", { gameId, playerId });
+  socket.emit("playerLeave", { gameId, GameSessionId, playerId });
 
   socket.emit("checkPlayerCount", { gameId }, (response) => {
     if (response.playerCount === 0) {
