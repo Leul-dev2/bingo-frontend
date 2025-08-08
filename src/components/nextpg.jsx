@@ -399,7 +399,7 @@ useEffect(() => {
 }, [navigate]);
 
 
- const handleLeaveing = () => {
+ const handleLeaving = () => {
     navigate("/");
   };
 
@@ -582,19 +582,25 @@ useEffect(() => {
         </div>
       </div>
 
-      {isGameEnd && (
-              <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center bg-black bg-opacity-50 z-50">
-                <div className="bg-white p-6 rounded-lg shadow-lg text-center">
-                  <h2 className="text-xl font-semibold mb-4">Game has ended!</h2>
-                  <button
-                    onClick={handleLeaving}
-                    className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-                  >
-                    Leave Game
-                  </button>
-                </div>
-              </div>
+     {isGameEnd && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm z-50 transition-opacity duration-300">
+          <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center">
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">
+              🎉 Game Over
+            </h2>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
+              The game has ended. You may now leave the room.
+            </p>
+            <button
+              onClick={handleLeaving}
+              className="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-6 rounded-full transition duration-200"
+            >
+              Leave Game
+            </button>
+          </div>
+        </div>
       )}
+
 
     </div>
   );
