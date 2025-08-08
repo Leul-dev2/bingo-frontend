@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import socket from "../socket.js"; // ✅ Shared socket instance
 
+
 const BingoGame = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -27,6 +28,7 @@ const BingoGame = () => {
   const [winnerFound, setWinnerFound] = useState(false);
   const [hasEmittedGameCount, setHasEmittedGameCount] = React.useState(false);
   const [gracePlayers, setGracePlayers] = useState([]);
+  const [isGameEnd, setIsGameEnd] = useState(false);
 
   const hasJoinedRef = useRef(false);
 
@@ -81,11 +83,6 @@ const BingoGame = () => {
 
     socket.on("connect", handleSocketConnect);
 
-
-    socket.on("gameEnd", () => {
-         navigate("/");
-    })
-
     // Cleanup on unmount
     return () => {
       socket.off("playerCountUpdate");
@@ -99,6 +96,22 @@ const BingoGame = () => {
       // socket.disconnect();
     };
   }, [gameId, telegramId]);
+
+
+    useEffect(() => {
+    const handleGameEnd = () => {
+      setIsGameEnd(true);
+    };
+
+    socket.on("gameEnd", handleGameEnd);
+
+    return () => {
+      socket.off("gameEnd", handleGameEnd); // Clean up listener
+    };
+  }, []);
+
+
+  
 
   // 2️⃣ Handle player count updates
   useEffect(() => {
@@ -387,6 +400,11 @@ useEffect(() => {
 }, [navigate]);
 
 
+ const handleLeaveing = () => {
+    navigate("/");
+  };
+
+
 
   
 
@@ -564,6 +582,21 @@ useEffect(() => {
 
         </div>
       </div>
+
+      {isGameEnd && (
+              <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center bg-black bg-opacity-50 z-50">
+                <div className="bg-white p-6 rounded-lg shadow-lg text-center">
+                  <h2 className="text-xl font-semibold mb-4">Game has ended!</h2>
+                  <button
+                    onClick={handleLeaving}
+                    className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+                  >
+                    Leave Game
+                  </button>
+                </div>
+              </div>
+      )}
+
     </div>
   );
 };
