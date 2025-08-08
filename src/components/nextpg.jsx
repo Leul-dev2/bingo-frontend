@@ -50,6 +50,8 @@ const BingoGame = () => {
       hasJoinedRef.current = true;
     }
 
+
+
        // --- NEW: Listen for drawnNumbersHistory ---
     socket.on("drawnNumbersHistory", ({ gameId: receivedGameId, history }) => {
       if (receivedGameId === gameId) { // Ensure it's for the current game
@@ -79,6 +81,11 @@ const BingoGame = () => {
 
     socket.on("connect", handleSocketConnect);
 
+
+    socket.on("gameEnd", () => {
+         navigate("/");
+    })
+
     // Cleanup on unmount
     return () => {
       socket.off("playerCountUpdate");
@@ -87,7 +94,8 @@ const BingoGame = () => {
       socket.off("gameStart");
       socket.off("numberDrawn");
       socket.off("drawnNumbersHistory");
-      // Optionally disconnect:
+      socket.off("gameEnd");
+      // Optionally disconnect:s
       // socket.disconnect();
     };
   }, [gameId, telegramId]);
