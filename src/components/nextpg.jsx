@@ -91,7 +91,6 @@ const BingoGame = () => {
       socket.off("gameStart");
       socket.off("numberDrawn");
       socket.off("drawnNumbersHistory");
-      socket.off("gameEnd");
       // Optionally disconnect:s
       // socket.disconnect();
     };
