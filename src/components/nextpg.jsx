@@ -569,7 +569,7 @@ useEffect(() => {
           </button>
           <button
             onClick={() => {
-             socket.emit("playerLeave", { gameId: String(gameId), telegramId }, () => {
+             socket.emit("playerLeave", { gameId: String(gameId), GameSessionId, telegramId }, () => {
                 console.log("player leave emited");
                 navigate("/");
               });
