@@ -570,7 +570,7 @@ useEffect(() => {
           <button
             onClick={() => {
              socket.emit("playerLeave", { gameId: String(gameId), GameSessionId, telegramId }, () => {
-                console.log("player leave emited");
+                console.log("player leave emited🎯🎯", GameSessionId );
                 navigate("/");
               });
             }}
