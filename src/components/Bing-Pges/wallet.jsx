@@ -15,19 +15,20 @@ export default function Wallet({ isBlackToggleOn }) {
 
   // Wallet data states
   const [balance, setBalance] = useState(0);
-  const [bonus, setBonus] = useState(0);
-  const [coins, setCoins] = useState(0);
+  const [bonus, setBonus] = useState(0); // If your backend provides bonus, else remove
+  const [coins, setCoins] = useState(0); // If your backend provides coins, else remove
   const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(true);
 
-  // History data states (now loaded with balance)
+  // History data states
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [historyData, setHistoryData] = useState({ deposits: [], withdrawals: [] });
+  const [deposits, setDeposits] = useState([]);
+  const [withdrawals, setWithdrawals] = useState([]);
   const [filter, setFilter] = useState('all');
 
-  const telegramId = urlTelegramId || localStorage.getItem('telegramId') || '593680186';
+  const telegramId = urlTelegramId || localStorage.getItem('telegramId') || '';
 
-  // Rate limit handling states for the single fetch
+  // Rate limit handling states
   const [retryAfter, setRetryAfter] = useState(0);
   const [rateLimitError, setRateLimitError] = useState('');
 
@@ -45,52 +46,61 @@ export default function Wallet({ isBlackToggleOn }) {
     return () => clearTimeout(timer);
   }, [retryAfter]);
 
-  // Fetch wallet info + history together on mount and when retryAfter hits 0
+  // Fetch all wallet data and history from single endpoint
   useEffect(() => {
     if (!telegramId) return;
-    if (retryAfter > 0) return;
+    if (retryAfter > 0) return; // wait for retry countdown
 
-    setLoading(true);
-    setHistoryLoading(true);
+    if (activeTab === 1) {
+      setHistoryLoading(true);
+    } else {
+      setLoading(true);
+    }
+
     setRateLimitError('');
     setRetryAfter(0);
 
     fetch(`https://bingobot-backend-bwdo.onrender.com/api/wallet?telegramId=${telegramId}`)
-      .then(async res => {
+      .then(async (res) => {
         if (res.status === 429) {
           const json = await res.json();
           setRateLimitError(json.error || 'Too many requests. Please wait before trying again.');
           setRetryAfter(json.retryAfter || 5);
-          setLoading(false);
-          setHistoryLoading(false);
-          return null; // skip normal parsing
+          if (activeTab === 1) setHistoryLoading(false);
+          else setLoading(false);
+          return null;
         }
         return res.json();
       })
       .then(data => {
         if (!data) return;
+
+        // Update balance and phone info
         setBalance(data.balance || 0);
-        setBonus(data.bonus || 0);
-        setCoins(data.coins || 0);
         setPhoneNumber(data.phoneNumber || 'Unknown');
-        setHistoryData({
-          deposits: data.deposits || [],
-          withdrawals: data.withdrawals || [],
-        });
+
+        // If your backend returns bonus and coins, assign here, else remove these lines:
+        if (data.bonus !== undefined) setBonus(data.bonus);
+        if (data.coins !== undefined) setCoins(data.coins);
+
+        // Update history arrays
+        setDeposits(data.deposits || []);
+        setWithdrawals(data.withdrawals || []);
       })
       .catch(err => console.error('Wallet fetch failed:', err))
       .finally(() => {
-        setLoading(false);
-        setHistoryLoading(false);
+        if (activeTab === 1) setHistoryLoading(false);
+        else setLoading(false);
       });
-  }, [telegramId, retryAfter]);
+  }, [telegramId, retryAfter, activeTab]);
 
+  // Filtered & sorted history for display
   const filteredHistory = [
-    ...(filter === 'all' || filter === 'deposit' ? historyData.deposits.map(tx => ({ ...tx, type: 'deposit' })) : []),
-    ...(filter === 'all' || filter === 'withdraw' ? historyData.withdrawals.map(tx => ({ ...tx, type: 'withdraw' })) : []),
+    ...(filter === 'all' || filter === 'deposit' ? deposits.map(tx => ({ ...tx, type: 'deposit' })) : []),
+    ...(filter === 'all' || filter === 'withdraw' ? withdrawals.map(tx => ({ ...tx, type: 'withdraw' })) : []),
   ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-  // Status Badge
+  // Status badge color
   const getStatusColor = (status) => {
     const colors = {
       pending: 'bg-yellow-500 text-white',
@@ -103,7 +113,7 @@ export default function Wallet({ isBlackToggleOn }) {
     return colors[status] || 'bg-gray-400 text-white';
   };
 
-  // Theming
+  // Theming classes (same as before)
   const containerBg = isBlackToggleOn ? 'bg-gradient-to-br from-gray-900 via-black to-gray-900' : 'bg-gradient-to-br from-purple-200 via-purple-300 to-purple-200';
   const cardBg = isBlackToggleOn ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-800';
   const activeBtnBg = isBlackToggleOn ? 'bg-indigo-700 text-white shadow-inner' : 'bg-purple-600 text-white shadow-inner';
@@ -201,21 +211,23 @@ export default function Wallet({ isBlackToggleOn }) {
               <span className="font-extrabold text-3xl">{balance} Birr</span>
             </motion.div>
 
-            {/* Bonus & Coins */}
-            <div className="space-y-4">
-              <motion.div whileHover={{ scale: 1.02 }} className={`rounded-xl p-4 flex items-center justify-between text-white shadow-md ${bonusBg}`}>
-                <div className="flex items-center space-x-2">
-                  <FaGift /> <span>Bonus Balance</span>
-                </div>
-                <span className="font-bold">{bonus} Birr</span>
-              </motion.div>
-              <motion.div whileHover={{ scale: 1.02 }} className={`rounded-xl p-4 flex items-center justify-between text-white shadow-md ${coinsBg}`}>
-                <div className="flex items-center space-x-2">
-                  <FaCoins /> <span>Coins</span>
-                </div>
-                <span className="font-bold">{coins}</span>
-              </motion.div>
-            </div>
+            {/* Bonus & Coins (optional, remove if not in backend) */}
+            {(bonus !== 0 || coins !== 0) && (
+              <div className="space-y-4">
+                <motion.div whileHover={{ scale: 1.02 }} className={`rounded-xl p-4 flex items-center justify-between text-white shadow-md ${bonusBg}`}>
+                  <div className="flex items-center space-x-2">
+                    <FaGift /> <span>Bonus Balance</span>
+                  </div>
+                  <span className="font-bold">{bonus} Birr</span>
+                </motion.div>
+                <motion.div whileHover={{ scale: 1.02 }} className={`rounded-xl p-4 flex items-center justify-between text-white shadow-md ${coinsBg}`}>
+                  <div className="flex items-center space-x-2">
+                    <FaCoins /> <span>Coins</span>
+                  </div>
+                  <span className="font-bold">{coins}</span>
+                </motion.div>
+              </div>
+            )}
 
             <motion.button
               whileTap={{ scale: 0.95 }}
@@ -227,49 +239,64 @@ export default function Wallet({ isBlackToggleOn }) {
           </motion.div>
         ) : (
           <>
-            {/* History Tab Content */}
-            {historyLoading ? (
-              <div className="flex justify-center py-10 space-x-3">
-                {[...Array(3)].map((_, i) => (
-                  <motion.div
-                    key={i}
-                    className={`w-8 h-8 rounded-full shadow-md ${loadingDotBg}`}
-                    initial={{ scale: 0.6, opacity: 0.7 }}
-                    animate={{ scale: [0.6, 1, 0.6], opacity: [0.7, 1, 0.7] }}
-                    transition={{ repeat: Infinity, duration: 1, delay: i * 0.2 }}
-                  />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+              {/* Filter Buttons */}
+              <div className="flex justify-center space-x-2 mb-4">
+                {['all', 'deposit', 'withdraw'].map(type => (
+                  <button
+                    key={type}
+                    onClick={() => setFilter(type)}
+                    className={`px-4 py-2 rounded-full font-medium ${filter === type ? activeBtnBg : inactiveBtnBg}`}
+                  >
+                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                  </button>
                 ))}
               </div>
-            ) : filteredHistory.length === 0 ? (
-              <div className={`text-center font-semibold py-10 ${isBlackToggleOn ? 'text-gray-300' : 'text-purple-600'}`}>
-                No transactions
-              </div>
-            ) : (
-              <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                {filteredHistory.map((tx, index) => (
-                  <div key={index} className={`rounded-lg p-4 shadow-md flex flex-col space-y-1 ${
-                    isBlackToggleOn ? 'bg-gray-700 text-white' : 'bg-purple-100 text-purple-900'
-                  }`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        {tx.type === 'deposit' ? <FaArrowDown className="text-green-500" /> : <FaArrowUp className="text-red-500" />}
-                        <div>
-                          <div className="font-bold capitalize">{tx.type}</div>
-                          <div className="text-sm opacity-70">{new Date(tx.createdAt).toLocaleString()}</div>
+
+              {/* History */}
+              {historyLoading ? (
+                <div className="flex justify-center py-10 space-x-3">
+                  {[...Array(3)].map((_, i) => (
+                    <motion.div
+                      key={i}
+                      className={`w-8 h-8 rounded-full shadow-md ${loadingDotBg}`}
+                      initial={{ scale: 0.6, opacity: 0.7 }}
+                      animate={{ scale: [0.6, 1, 0.6], opacity: [0.7, 1, 0.7] }}
+                      transition={{ repeat: Infinity, duration: 1, delay: i * 0.2 }}
+                    />
+                  ))}
+                </div>
+              ) : filteredHistory.length === 0 ? (
+                <div className={`text-center font-semibold py-10 ${isBlackToggleOn ? 'text-gray-300' : 'text-purple-600'}`}>
+                  No transactions
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                  {filteredHistory.map((tx, index) => (
+                    <div key={index} className={`rounded-lg p-4 shadow-md flex flex-col space-y-1 ${
+                      isBlackToggleOn ? 'bg-gray-700 text-white' : 'bg-purple-100 text-purple-900'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          {tx.type === 'deposit' ? <FaArrowDown className="text-green-500" /> : <FaArrowUp className="text-red-500" />}
+                          <div>
+                            <div className="font-bold capitalize">{tx.type}</div>
+                            <div className="text-sm opacity-70">{new Date(tx.createdAt).toLocaleString()}</div>
+                          </div>
                         </div>
+                        <div className="font-bold text-lg">{tx.amount} Br</div>
                       </div>
-                      <div className="font-bold text-lg">{tx.amount} Br</div>
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="opacity-70">Tx Ref: <span className="font-mono">{tx.tx_ref}</span></div>
+                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(tx.status)}`}>
+                          {tx.status}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="opacity-70">Tx Ref: <span className="font-mono">{tx.tx_ref}</span></div>
-                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(tx.status)}`}>
-                        {tx.status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </motion.div>
           </>
         )}
       </div>
