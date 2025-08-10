@@ -10,12 +10,35 @@ export default function Score({ isBlackToggleOn }) {
   const [search, setSearch] = useState('');
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [retryAfter, setRetryAfter] = useState(0); // NEW state for retry countdown
+
+  useEffect(() => {
+    let countdownTimer;
+
+    if (retryAfter > 0) {
+      countdownTimer = setTimeout(() => {
+        setRetryAfter(prev => (prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    }
+
+    return () => clearTimeout(countdownTimer);
+  }, [retryAfter]);
 
   useEffect(() => {
     const fetchPlayers = async () => {
       setLoading(true);
       try {
         const res = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/Score?time=${timeKeys[activeTab]}`);
+
+        if (res.status === 429) {
+          const { retryAfter: serverRetry, error } = await res.json();
+          setRetryAfter(serverRetry || 5);
+          console.warn(error || 'Rate limit exceeded');
+          setPlayers([]); // clear players list while waiting
+          setLoading(false);
+          return;
+        }
+
         const data = await res.json();
         const masked = data.map((p, i) => ({
           id: i + 1,
@@ -29,8 +52,11 @@ export default function Score({ isBlackToggleOn }) {
       }
       setLoading(false);
     };
-    fetchPlayers();
-  }, [activeTab]);
+
+    if (retryAfter === 0) {
+      fetchPlayers();
+    }
+  }, [activeTab, retryAfter]);
 
   const filtered = players.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
 
@@ -69,6 +95,13 @@ export default function Score({ isBlackToggleOn }) {
             <RefreshCw />
           </motion.button>
         </div>
+
+        {/* Retry Banner */}
+        {retryAfter > 0 && (
+          <div className="bg-yellow-200 text-yellow-900 text-center p-2 rounded-lg font-medium">
+            Too many requests. Please wait {retryAfter} second{retryAfter > 1 ? 's' : ''}...
+          </div>
+        )}
 
         {/* Search */}
         <div className="relative">
