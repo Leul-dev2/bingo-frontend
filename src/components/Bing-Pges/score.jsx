@@ -10,12 +10,35 @@ export default function Score({ isBlackToggleOn }) {
   const [search, setSearch] = useState('');
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [retryAfter, setRetryAfter] = useState(0); // NEW state for retry countdown
+
+  useEffect(() => {
+    let countdownTimer;
+
+    if (retryAfter > 0) {
+      countdownTimer = setTimeout(() => {
+        setRetryAfter(prev => (prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    }
+
+    return () => clearTimeout(countdownTimer);
+  }, [retryAfter]);
 
   useEffect(() => {
     const fetchPlayers = async () => {
       setLoading(true);
       try {
         const res = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/Score?time=${timeKeys[activeTab]}`);
+
+        if (res.status === 429) {
+          const { retryAfter: serverRetry, error } = await res.json();
+          setRetryAfter(serverRetry || 5);
+          console.warn(error || 'Rate limit exceeded');
+          setPlayers([]); // clear players list while waiting
+          setLoading(false);
+          return;
+        }
+
         const data = await res.json();
         const masked = data.map((p, i) => ({
           id: i + 1,
@@ -29,8 +52,11 @@ export default function Score({ isBlackToggleOn }) {
       }
       setLoading(false);
     };
-    fetchPlayers();
-  }, [activeTab]);
+
+    if (retryAfter === 0) {
+      fetchPlayers();
+    }
+  }, [activeTab, retryAfter]);
 
   const filtered = players.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
 
@@ -69,6 +95,28 @@ export default function Score({ isBlackToggleOn }) {
             <RefreshCw />
           </motion.button>
         </div>
+
+      {/* Retry Banner */}
+<AnimatePresence>
+  {retryAfter > 0 && (
+    <motion.div
+      key="retry-banner"
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      transition={{ duration: 0.3 }}
+      className="flex items-center justify-center gap-3 px-4 py-2 rounded-full shadow-md 
+                 bg-gradient-to-r from-amber-300 via-yellow-300 to-amber-400 text-yellow-900"
+    >
+      <RefreshCw className="w-5 h-5 animate-spin-slow text-yellow-800" />
+      <span className="font-medium">
+        Too many requests — retry in{" "}
+        <span className="font-bold">{retryAfter}</span>{" "}
+        second{retryAfter > 1 ? "s" : ""}
+      </span>
+    </motion.div>
+  )}
+</AnimatePresence>
 
         {/* Search */}
         <div className="relative">
