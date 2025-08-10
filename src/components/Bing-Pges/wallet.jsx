@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react'; // <-- useRef imported
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -10,13 +10,15 @@ const tabs = ['Balance', 'History'];
 export default function Wallet({ isBlackToggleOn }) {
   const [searchParams] = useSearchParams();
   const urlTelegramId = searchParams.get('user');
+  const [loadingBlocked, setLoadingBlocked] = useState(false);
+  const lastFetchTimeRef = useRef(0);
 
   const [activeTab, setActiveTab] = useState(0);
 
   // Wallet data states
   const [balance, setBalance] = useState(0);
-  const [bonus, setBonus] = useState(0); // If your backend provides bonus, else remove
-  const [coins, setCoins] = useState(0); // If your backend provides coins, else remove
+  const [bonus, setBonus] = useState(0);
+  const [coins, setCoins] = useState(0);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -46,53 +48,59 @@ export default function Wallet({ isBlackToggleOn }) {
     return () => clearTimeout(timer);
   }, [retryAfter]);
 
-  // Fetch all wallet data and history from single endpoint
+  // Fetch wallet data with throttling, no early returns — just if/else
   useEffect(() => {
-    if (!telegramId) return;
-    if (retryAfter > 0) return; // wait for retry countdown
+    async function fetchWalletData() {
+      if (!telegramId) {
+        // no telegramId — skip fetch but do NOT return early here
+      } else {
+        const now = Date.now();
 
-    if (activeTab === 1) {
-      setHistoryLoading(true);
-    } else {
-      setLoading(true);
-    }
+        if (loadingBlocked || now - lastFetchTimeRef.current < 1000) {
+          // Too soon to fetch — skip fetch but do NOT return early here
+        } else {
+          lastFetchTimeRef.current = now;
+          setLoadingBlocked(true);
+          if (activeTab === 1) {
+            setHistoryLoading(true);
+          } else {
+            setLoading(true);
+          }
+          setRateLimitError('');
+          setRetryAfter(0);
 
-    setRateLimitError('');
-    setRetryAfter(0);
+          try {
+            const res = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/wallet?telegramId=${telegramId}`);
 
-    fetch(`https://bingobot-backend-bwdo.onrender.com/api/wallet?telegramId=${telegramId}`)
-      .then(async (res) => {
-        if (res.status === 429) {
-          const json = await res.json();
-          setRateLimitError(json.error || 'Too many requests. Please wait before trying again.');
-          setRetryAfter(json.retryAfter || 5);
-          if (activeTab === 1) setHistoryLoading(false);
-          else setLoading(false);
-          return null;
+            if (res.status === 429) {
+              const json = await res.json();
+              setRateLimitError(json.error || 'Too many requests. Please wait before trying again.');
+              setRetryAfter(json.retryAfter || 5);
+            } else {
+              const data = await res.json();
+
+              setBalance(data.balance || 0);
+              setPhoneNumber(data.phoneNumber || 'Unknown');
+              if (data.bonus !== undefined) setBonus(data.bonus);
+              if (data.coins !== undefined) setCoins(data.coins);
+              setDeposits(data.deposits || []);
+              setWithdrawals(data.withdrawals || []);
+            }
+          } catch (error) {
+            console.error('Wallet fetch failed:', error);
+          } finally {
+            setLoadingBlocked(false);
+            if (activeTab === 1) {
+              setHistoryLoading(false);
+            } else {
+              setLoading(false);
+            }
+          }
         }
-        return res.json();
-      })
-      .then(data => {
-        if (!data) return;
-
-        // Update balance and phone info
-        setBalance(data.balance || 0);
-        setPhoneNumber(data.phoneNumber || 'Unknown');
-
-        // If your backend returns bonus and coins, assign here, else remove these lines:
-        if (data.bonus !== undefined) setBonus(data.bonus);
-        if (data.coins !== undefined) setCoins(data.coins);
-
-        // Update history arrays
-        setDeposits(data.deposits || []);
-        setWithdrawals(data.withdrawals || []);
-      })
-      .catch(err => console.error('Wallet fetch failed:', err))
-      .finally(() => {
-        if (activeTab === 1) setHistoryLoading(false);
-        else setLoading(false);
-      });
-  }, [telegramId, retryAfter, activeTab]);
+      }
+    }
+    fetchWalletData();
+  }, [telegramId, retryAfter, activeTab]); // Removed loadingBlocked from deps to avoid loop
 
   // Filtered & sorted history for display
   const filteredHistory = [
