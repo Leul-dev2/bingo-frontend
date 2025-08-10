@@ -39,100 +39,88 @@ const BingoGame = () => {
 
   const hasJoinedRef = useRef(false);
 
-  useEffect(() => {
-  if (!cartelaId || isNaN(Number(cartelaId))) {
-    console.error("❌ cartelaId is missing or invalid in location.state");
-    alert("Something went wrong. Please reselect your card.");
-    navigate("/"); // or redirect to card selection
-    }
-  }, [cartelaId]);
-
-
-  // 1️⃣ Connect socket and joinGame
-  useEffect(() => {
+ useEffect(() => {
+    // 1. Initial Connection and Join Game Logic
     if (!socket.connected) {
       socket.connect();
     }
-
     if (!hasJoinedRef.current && gameId && telegramId) {
       socket.emit("joinGame", { gameId, telegramId, GameSessionId });
       hasJoinedRef.current = true;
     }
 
-
-
-       // --- NEW: Listen for drawnNumbersHistory ---
-    socket.on("drawnNumbersHistory", ({ gameId: receivedGameId, history }) => {
-      if (receivedGameId === gameId) { // Ensure it's for the current game
-        console.log(`✅ 🔥🔥🔥 Received ${history.length} drawn numbers history for game ${receivedGameId}.`);
-
-        // Update randomNumber state with raw numbers
+    // 2. All Event Listeners in a Single Place
+    const handleSocketConnect = () => {
+      console.log("✅ Socket.IO connected or reconnected!");
+      if (gameId && telegramId) {
+        socket.emit("joinGame", { gameId, telegramId, GameSessionId });
+      }
+    };
+    const handlePlayerCountUpdate = ({ playerCount }) => setPlayerCount(playerCount);
+    const handleCountdownTick = ({ countdown }) => setCountdown(countdown);
+    const handleGameStart = () => setGameStarted(true);
+    const handleGameEnd = () => setIsGameEnd(true);
+    const handleGameReset = () => {
+      console.log("🔄 Game reset received, allowing new gameCount emit");
+      setHasEmittedGameCount(false);
+      setRandomNumber([]);
+      setCalledSet(new Set());
+      setSelectedNumbers(new Set());
+      setCountdown(0);
+      setGameStarted(false);
+    };
+    const handleDrawnNumbersHistory = ({ gameId: receivedGameId, history }) => {
+      if (receivedGameId === gameId) {
         const numbers = history.map(item => item.number);
-        setRandomNumber(numbers);
-
-        // Update calledSet state with formatted labels
         const labels = new Set(history.map(item => item.label));
+        setRandomNumber(numbers);
         setCalledSet(labels);
       }
-    });
-
-      const handleSocketConnect = () => {
-        console.log("✅ Socket.IO connected or reconnected!");
-        // Emit joinGame again to ensure state synchronization from server
-        // Only if you're truly in a game context (gameId, telegramId exist)
-        if (gameId && telegramId) {
-            socket.emit("joinGame", { gameId, telegramId, GameSessionId });
-            console.log("✅ Re-emitted joinGame after socket reconnection.");
-            // You might want to reset hasEmittedGameCount here too if applicable,
-            // but for general state sync, joinGame is enough.
-        }
+    };
+    const handleNumberDrawn = ({ number, label, callNumberLength }) => {
+      setRandomNumber((prev) => [...prev, number]);
+      setCalledSet((prev) => new Set(prev).add(label));
+      setCallNumberLength(callNumberLength);
+    };
+    const handleGameDetails = ({ winAmount, playersCount, stakeAmount }) => {
+      setGameDetails({ winAmount, playersCount, stakeAmount });
+    };
+    const handleWinnerConfirmed = ({ winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId, GameSessionId }) => {
+      navigate("/winnerPage", { state: { winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId, GameSessionId } });
+    };
+    const handleWinnerError = ({ message }) => {
+      alert(message || "Winner verification failed. Please try again.");
     };
 
     socket.on("connect", handleSocketConnect);
-
-    // Cleanup on unmount
-    return () => {
-      socket.off("playerCountUpdate");
-      socket.off("countdownUpdate");
-      socket.off("countdownTick");
-      socket.off("gameStart");
-      socket.off("numberDrawn");
-      socket.off("drawnNumbersHistory");
-      // Optionally disconnect:s
-      // socket.disconnect();
-    };
-  }, [gameId, telegramId]);
-
-
-    useEffect(() => {
-    const handleGameEnd = () => {
-      setIsGameEnd(true);
-    };
-
+    socket.on("playerCountUpdate", handlePlayerCountUpdate);
+    socket.on("countdownTick", handleCountdownTick);
+    socket.on("gameStart", handleGameStart);
     socket.on("gameEnd", handleGameEnd);
+    socket.on("gameReset", handleGameReset);
+    socket.on("drawnNumbersHistory", handleDrawnNumbersHistory);
+    socket.on("numberDrawn", handleNumberDrawn);
+    socket.on("gameDetails", handleGameDetails);
+    socket.on("winnerConfirmed", handleWinnerConfirmed);
+    socket.on("winnerError", handleWinnerError);
 
+    // 3. Cleanup Function
     return () => {
-      socket.off("gameEnd", handleGameEnd); // Clean up listener
+      socket.off("connect", handleSocketConnect);
+      socket.off("playerCountUpdate", handlePlayerCountUpdate);
+      socket.off("countdownTick", handleCountdownTick);
+      socket.off("gameStart", handleGameStart);
+      socket.off("gameEnd", handleGameEnd);
+      socket.off("gameReset", handleGameReset);
+      socket.off("drawnNumbersHistory", handleDrawnNumbersHistory);
+      socket.off("numberDrawn", handleNumberDrawn);
+      socket.off("gameDetails", handleGameDetails);
+      socket.off("winnerConfirmed", handleWinnerConfirmed);
+      socket.off("winnerError", handleWinnerError);
     };
-  }, []);
-
+  }, [gameId, telegramId, GameSessionId, navigate]);
 
   
-
-  // 2️⃣ Handle player count updates
-  useEffect(() => {
-    socket.on("playerCountUpdate", ({ playerCount }) => {
-      console.log("✅ Player count received:", playerCount);
-      setPlayerCount(playerCount);
-    });
-
-    socket.on("countdownUpdate", ({ countdown }) => {
-      setCountdown(countdown);
-    });
-  }, []);
-
-
-  // Listen to grace player updates from server
 
 
   // 3️⃣ Request to start game if enough players
@@ -149,36 +137,6 @@ useEffect(() => {
 }, [playerCount, gameStarted, hasEmittedGameCount, gameId, gracePlayers]);
 
 
-useEffect(() => {
-  socket.on("gameReset", () => {
-    console.log("🔄 Game reset received, allowing new gameCount emit");
-    setHasEmittedGameCount(false);
-    // ✅ NEW: Reset other game states upon a full game reset
-    setRandomNumber([]);
-    setCalledSet(new Set());
-    setSelectedNumbers(new Set());
-    setCountdown(0);
-    setGameStarted(false);
-    setWinnerFound(false);
-  });
-
-  return () => {
-    socket.off("gameReset");
-  };
-}, []);
-
-
-  // 4️⃣ Countdown and game start
-  useEffect(() => {
-    socket.on("countdownTick", ({ countdown }) => {
-      setCountdown(countdown);
-    });
-
-    socket.on("gameStart", () => {
-      setGameStarted(true);
-    });
-  }, []);
-
   // 5️⃣ Local countdown timer
   useEffect(() => {
     if (countdown > 0) {
@@ -189,24 +147,7 @@ useEffect(() => {
     }
   }, [countdown]);
 
-  // 6️⃣ Handle number draw
-  useEffect(() => {
-  // Define the function to handle the event
-  const handleNumberDrawn = ({ number, label, callNumberLength }) => {
-    setRandomNumber((prev) => [...prev, number]);
-    setCalledSet((prev) => new Set(prev).add(label));
-    setCallNumberLength(callNumberLength);
-  };
 
-  // Set up the listener
-  socket.on("numberDrawn", handleNumberDrawn);
-
-  // Return the cleanup function
-  return () => {
-    // This runs when the component unmounts
-    socket.off("numberDrawn", handleNumberDrawn);
-  };
-}, []);
   
 
  const handleCartelaClick = (num) => {
@@ -346,24 +287,6 @@ useEffect(() => {
   };
 
 
-    useEffect(() => {
-    // Listen for the "gameDetails" event
-    socket.on("gameDetails", ({ winAmount, playersCount, stakeAmount }) => {
-      // Update the state with the received values
-      setGameDetails({
-        winAmount: winAmount,
-        playersCount: playersCount,
-        stakeAmount: stakeAmount,
-      });
-    });
-
-    // Cleanup the event listener when the component unmounts
-    return () => {
-      socket.off("gameDetails");
-    };
-  }, []); // The empty dependency array ensures this effect runs only once
-
-
   useEffect(() => {
   if (!socket) return;
 
@@ -406,31 +329,14 @@ useEffect(() => {
     });
   };
 
-  const handleWinnerError = ({ message }) => {
-    alert(message || "Winner verification failed. Please try again.");
-  };
-
-  socket.on("winnerConfirmed", handleWinnerFound);
-  socket.on("winnerError", handleWinnerError);
-
-  return () => {
-    socket.off("winnerConfirmed", handleWinnerFound);
-    socket.off("winnerError", handleWinnerError);
-  };
 }, [navigate]);
-
-
- const handleLeaving = () => {
-    navigate("/");
-  };
-
 
 
   
 
   return (
     <div className="bg-gradient-to-b from-[#1a002b] via-[#2d003f] to-black min-h-screen flex flex-col items-center p-1 pb-3 w-full max-w-screen overflow-hidden">
-     <div className="grid grid-cols-4 sm:grid-cols-4 gap-1 w-full text-white text-center">
+     <div className="grid grid-cols-4 sm:grid-cols-4 gap-1 w-full text-white text-center mt-3 mb-4">
         {[
           `Players: ${gameDetails.playersCount}`, // Correct way to display players count
          // telegramId,
@@ -444,7 +350,7 @@ useEffect(() => {
         ))}
     </div>
 
-      <div className="flex flex-wrap w-full mt-4">
+      <div className="flex flex-wrap w-full mt-3">
         <div className="w-1/2 flex justify-center">
           <div className="grid grid-cols-5 gap-1  bg-[#2a0047] p-2 rounded-lg text-xs w-[90%]">
           {["B", "I", "N", "G", "O"].map((letter, i) => (
@@ -615,7 +521,7 @@ useEffect(() => {
       </div>
 
      {isGameEnd && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm z-50 transition-opacity duration-300">
+        <div className="fixed inset-0 flex items-center justify-center  bg-opacity-80 backdrop-blur-sm z-50 transition-opacity duration-300">
           <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center">
             <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">
               🎉 Game Over
@@ -624,8 +530,9 @@ useEffect(() => {
               The game has ended. You may now leave the room.
             </p>
             <button
+              className="w-1/2 bg-gradient-to-r from-green-500 to-emerald-600 px-4 py-2 text-white rounded-lg text-lg font-semibold shadow-md"
               onClick={() => {
-             socket.emit("playerLeave", { gameId: String(gameId), GameSessionId, telegramId }, () => {
+              socket.emit("playerLeave", { gameId: String(gameId), GameSessionId, telegramId }, () => {
                 console.log("player leave emited🎯🎯", GameSessionId );
                 navigate("/");
               });
