@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { useSearchParams } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { FaSyncAlt, FaUser } from 'react-icons/fa';
-import { useNavigate } from 'react-router-dom';
-
 
 export default function Profile({ setIsBlackToggleOn, isBlackToggleOn }) {
   const [searchParams] = useSearchParams();
@@ -18,8 +16,15 @@ export default function Profile({ setIsBlackToggleOn, isBlackToggleOn }) {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  // Rate limit states for wallet fetch
+  const [retryAfterWallet, setRetryAfterWallet] = useState(0);
+  const [rateLimitErrorWallet, setRateLimitErrorWallet] = useState('');
 
-  // On mount, initialize toggle from localStorage
+  // Rate limit states for profile fetch
+  const [retryAfterProfile, setRetryAfterProfile] = useState(0);
+  const [rateLimitErrorProfile, setRateLimitErrorProfile] = useState('');
+
+  // Initialize toggle from localStorage on mount
   useEffect(() => {
     const storedToggle = localStorage.getItem('blackToggle');
     if (storedToggle !== null) {
@@ -27,7 +32,7 @@ export default function Profile({ setIsBlackToggleOn, isBlackToggleOn }) {
     }
   }, [setIsBlackToggleOn]);
 
-  // Handler updates state and localStorage
+  // Toggle handler
   const toggleBlackToggle = () => {
     setIsBlackToggleOn((prev) => {
       localStorage.setItem('blackToggle', String(!prev));
@@ -35,29 +40,74 @@ export default function Profile({ setIsBlackToggleOn, isBlackToggleOn }) {
     });
   };
 
+  // Countdown timer for wallet retry
+  useEffect(() => {
+    if (retryAfterWallet <= 0) return;
+    const timer = setTimeout(() => setRetryAfterWallet(retryAfterWallet - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [retryAfterWallet]);
+
+  // Countdown timer for profile retry
+  useEffect(() => {
+    if (retryAfterProfile <= 0) return;
+    const timer = setTimeout(() => setRetryAfterProfile(retryAfterProfile - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [retryAfterProfile]);
+
+  // Fetch wallet & profile data with rate-limit handling
   useEffect(() => {
     const id = urlTelegramId || localStorage.getItem('telegramId');
     if (!id) return;
     setTelegramId(id);
-    setLoading(true);
 
-    // Fetch wallet data (query param) then fetch profile stats
+    // Prevent fetching while retry countdown active
+    if (retryAfterWallet > 0 || retryAfterProfile > 0) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setRateLimitErrorWallet('');
+    setRetryAfterWallet(0);
+    setRateLimitErrorProfile('');
+    setRetryAfterProfile(0);
+
+    // Wallet fetch with rate-limit detection
     const fetchWallet = fetch(
       `https://bingobot-backend-bwdo.onrender.com/api/wallet?telegramId=${id}`
     )
-      .then((res) => res.json())
+      .then(async (res) => {
+        if (res.status === 429) {
+          const json = await res.json();
+          setRateLimitErrorWallet(json.error || 'Too many requests. Please wait before retrying.');
+          setRetryAfterWallet(json.retryAfter || 5);
+          return null;
+        }
+        return res.json();
+      })
       .then((data) => {
+        if (!data) return;
         setBalance(data.balance || 0);
         setBonus(data.bonus || 0);
         setCoins(data.coins || 0);
       })
       .catch((err) => console.error('Wallet fetch error:', err));
 
+    // Profile fetch with rate-limit detection
     const fetchProfile = fetch(
       `https://bingobot-backend-bwdo.onrender.com/api/profile/${id}`
     )
-      .then((res) => res.json())
+      .then(async (res) => {
+        if (res.status === 429) {
+          const json = await res.json();
+          setRateLimitErrorProfile(json.error || 'Too many requests. Please wait before retrying.');
+          setRetryAfterProfile(json.retryAfter || 5);
+          return null;
+        }
+        return res.json();
+      })
       .then((data) => {
+        if (!data) return;
         if (data.success) {
           setUsername(data.username || '');
           setGamesWon(data.gamesWon || 0);
@@ -68,20 +118,18 @@ export default function Profile({ setIsBlackToggleOn, isBlackToggleOn }) {
       .catch((err) => console.error('Profile fetch error:', err));
 
     Promise.all([fetchWallet, fetchProfile]).finally(() => setLoading(false));
-  }, [urlTelegramId]);
+  }, [urlTelegramId, retryAfterWallet, retryAfterProfile]);
 
   /////////////////////////////////////////////////////////////////////////
- 
- const handleInvite = () => {
-  const inviteLink = 'https://t.me/bossbingosbot'; // replace with your bot link
-  const shareText = encodeURIComponent('Check out this awesome bot: ' + inviteLink);
-  const telegramShareUrl = `https://t.me/share/url?text=${shareText}`; // Removed `url` param
-  window.open(telegramShareUrl, '_blank');
-};
 
+  const handleInvite = () => {
+    const inviteLink = 'https://t.me/bossbingosbot'; // replace with your bot link
+    const shareText = encodeURIComponent('Check out this awesome bot: ' + inviteLink);
+    const telegramShareUrl = `https://t.me/share/url?text=${shareText}`; // Removed `url` param
+    window.open(telegramShareUrl, '_blank');
+  };
 
-////////////////////////////////////////////////////////////////////
-  // Dynamic style classes based on toggle
+  // Styling classes based on toggle
   const bgGradient = isBlackToggleOn
     ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900'
     : 'bg-gradient-to-br from-purple-200 via-purple-300 to-purple-200';
@@ -114,6 +162,38 @@ export default function Profile({ setIsBlackToggleOn, isBlackToggleOn }) {
             <FaSyncAlt />
           </motion.button>
         </div>
+
+        {/* Rate Limit Banners */}
+        <AnimatePresence>
+          {(retryAfterWallet > 0 || retryAfterProfile > 0) && (
+            <motion.div
+              key="rate-limit-profile"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+              className="flex flex-col gap-2 px-4 py-2 rounded-lg shadow-md 
+                         bg-gradient-to-r from-amber-300 via-yellow-300 to-amber-400 text-yellow-900 mb-4"
+            >
+              {retryAfterWallet > 0 && (
+                <div className="flex items-center gap-3">
+                  <FaSyncAlt className="w-5 h-5 animate-spin-slow text-yellow-800" />
+                  <span className="font-medium">
+                    {rateLimitErrorWallet} Retry in <strong>{retryAfterWallet}</strong> second{retryAfterWallet > 1 ? 's' : ''}.
+                  </span>
+                </div>
+              )}
+              {retryAfterProfile > 0 && (
+                <div className="flex items-center gap-3">
+                  <FaSyncAlt className="w-5 h-5 animate-spin-slow text-yellow-800" />
+                  <span className="font-medium">
+                    {rateLimitErrorProfile} Retry in <strong>{retryAfterProfile}</strong> second{retryAfterProfile > 1 ? 's' : ''}.
+                  </span>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Avatar & Username */}
         <motion.div
@@ -171,25 +251,19 @@ export default function Profile({ setIsBlackToggleOn, isBlackToggleOn }) {
           </button>
         </motion.div>
 
-
         <motion.div
-  initial={{ opacity: 0, y: 10 }}
-  animate={{ opacity: 1, y: 0 }}
-  transition={{ delay: 1.3 }}
-  className="mt-2 flex justify-center"
->
-<button
-  onClick={() => navigate(`/PaymentForm?user=${telegramId}`)}
-  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-md transition-all"
->
-  💳 Go to Payment
-</button>
-
-
-</motion.div>
-
-
-
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.3 }}
+          className="mt-2 flex justify-center"
+        >
+          <button
+            onClick={() => navigate(`/PaymentForm?user=${telegramId}`)}
+            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-md transition-all"
+          >
+            💳 Go to Payment
+          </button>
+        </motion.div>
 
         {/* Settings */}
         <motion.div

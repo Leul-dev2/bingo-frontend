@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import { ChevronLeft, RefreshCw, Search, Clock, Award, Calendar } from 'lucide-react';
 
@@ -18,26 +18,55 @@ export default function History({ isBlackToggleOn }) {
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // NEW states for rate limit info:
+  const [retryAfter, setRetryAfter] = useState(0);
+  const [rateLimitError, setRateLimitError] = useState('');
+
   const telegramId = urlTelegramId || localStorage.getItem('telegramId');
   const selectedBet = betValues[activeBet];
+
+  // Countdown timer for retryAfter
+  useEffect(() => {
+    if (retryAfter <= 0) return;
+    const timer = setTimeout(() => setRetryAfter(retryAfter - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [retryAfter]);
 
   useEffect(() => {
     const fetchGames = async () => {
       if (!telegramId) return;
       setLoading(true);
+      setRateLimitError('');
+      setRetryAfter(0);
+
       try {
         const res = await fetch(
           `https://bingobot-backend-bwdo.onrender.com/api/history?user=${telegramId}&bet=${selectedBet}&tab=${activeTab}`
         );
+
+        if (res.status === 429) {
+          // Rate limit hit, parse error and retryAfter from server if present
+          const json = await res.json();
+          setRateLimitError(json.error || 'Too many requests. Please wait before trying again.');
+          setRetryAfter(json.retryAfter || 5); // default 5 seconds if not specified
+          setGames([]); // clear data while rate-limited
+          setLoading(false);
+          return; // Skip further parsing
+        }
+
         const data = await res.json();
         setGames(data);
-      } catch {
+        setLoading(false);
+      } catch (error) {
         setGames([]);
+        setLoading(false);
       }
-      setLoading(false);
     };
-    fetchGames();
-  }, [activeTab, activeBet]);
+
+    if (retryAfter === 0) {
+      fetchGames();
+    }
+  }, [activeTab, activeBet, retryAfter, telegramId, selectedBet]);
 
   const filteredGames = games
     .filter(g => activeTab !== 0 || Number(g.win) > 0)
@@ -82,6 +111,24 @@ export default function History({ isBlackToggleOn }) {
             <RefreshCw />
           </motion.button>
         </div>
+
+        {/* Rate Limit Banner */}
+        <AnimatePresence>
+          {retryAfter > 0 && (
+            <motion.div
+              key="rate-limit-banner"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+              className="flex items-center justify-center gap-3 px-4 py-2 rounded-full shadow-md 
+                         bg-gradient-to-r from-amber-300 via-yellow-300 to-amber-400 text-yellow-900 mb-4"
+            >
+              <RefreshCw className="w-5 h-5 animate-spin-slow text-yellow-800" />
+              <span className="font-medium">{rateLimitError} Retry in <strong>{retryAfter}</strong> second{retryAfter > 1 ? 's' : ''}.</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Search */}
         <div className="relative">
@@ -190,9 +237,9 @@ export default function History({ isBlackToggleOn }) {
                     >
                       {Number(game.win) > 0 ? 'WIN ✅' : 'LOSE ❌'}
                     </span>
-<span className={`${textBody} text-sm font-semibold`}>
-  {Number(game.win) > 0 ? `+${game.win} birr` : `-${Math.abs(game.win)} birr`}
-</span>
+                    <span className={`${textBody} text-sm font-semibold`}>
+                      {Number(game.win) > 0 ? `+${game.win} birr` : `-${Math.abs(game.win)} birr`}
+                    </span>
                   </div>
                 </motion.li>
               ))}

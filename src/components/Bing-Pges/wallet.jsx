@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import {
   FaSyncAlt, FaUser, FaWallet, FaCoins, FaGift, FaArrowDown, FaArrowUp
@@ -12,30 +12,73 @@ export default function Wallet({ isBlackToggleOn }) {
   const urlTelegramId = searchParams.get('user');
 
   const [activeTab, setActiveTab] = useState(0);
+
+  // Wallet data states
   const [balance, setBalance] = useState(0);
   const [bonus, setBonus] = useState(0);
   const [coins, setCoins] = useState(0);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(true);
+
+  // History data states
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyData, setHistoryData] = useState({ deposits: [], withdrawals: [] });
   const [filter, setFilter] = useState('all');
 
   const telegramId = urlTelegramId || localStorage.getItem('telegramId') || '593680186';
 
+  // Rate limit handling states for balance
+  const [retryAfterBalance, setRetryAfterBalance] = useState(0);
+  const [rateLimitErrorBalance, setRateLimitErrorBalance] = useState('');
+
+  // Rate limit handling states for history
+  const [retryAfterHistory, setRetryAfterHistory] = useState(0);
+  const [rateLimitErrorHistory, setRateLimitErrorHistory] = useState('');
+
+  // Save telegramId to localStorage if changed
   useEffect(() => {
     if (urlTelegramId && urlTelegramId !== localStorage.getItem('telegramId')) {
       localStorage.setItem('telegramId', urlTelegramId);
     }
   }, [urlTelegramId]);
 
+  // Countdown timer for balance retry
+  useEffect(() => {
+    if (retryAfterBalance <= 0) return;
+    const timer = setTimeout(() => setRetryAfterBalance(retryAfterBalance - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [retryAfterBalance]);
+
+  // Countdown timer for history retry
+  useEffect(() => {
+    if (retryAfterHistory <= 0) return;
+    const timer = setTimeout(() => setRetryAfterHistory(retryAfterHistory - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [retryAfterHistory]);
+
+  // Fetch wallet balance info
   useEffect(() => {
     if (!telegramId) return;
 
+    if (retryAfterBalance > 0) return; // wait for retry countdown
+
     setLoading(true);
+    setRateLimitErrorBalance('');
+    setRetryAfterBalance(0);
+
     fetch(`https://bingobot-backend-bwdo.onrender.com/api/wallet?telegramId=${telegramId}`)
-      .then(res => res.json())
+      .then(async res => {
+        if (res.status === 429) {
+          const json = await res.json();
+          setRateLimitErrorBalance(json.error || 'Too many requests. Please wait before trying again.');
+          setRetryAfterBalance(json.retryAfter || 5);
+          setLoading(false);
+          return null; // skip normal parsing
+        }
+        return res.json();
+      })
       .then(data => {
+        if (!data) return;
         setBalance(data.balance || 0);
         setBonus(data.bonus || 0);
         setCoins(data.coins || 0);
@@ -43,19 +86,36 @@ export default function Wallet({ isBlackToggleOn }) {
       })
       .catch(err => console.error('Wallet fetch failed:', err))
       .finally(() => setLoading(false));
-  }, [telegramId]);
+  }, [telegramId, retryAfterBalance]);
 
+  // Fetch wallet history
   useEffect(() => {
     if (activeTab !== 1 || !telegramId) return;
+
+    if (retryAfterHistory > 0) return; // wait for retry countdown
+
     setHistoryLoading(true);
+    setRateLimitErrorHistory('');
+    setRetryAfterHistory(0);
+
     fetch(`https://bingobot-backend-bwdo.onrender.com/api/wallet/history?telegramId=${telegramId}`)
-      .then(res => res.json())
+      .then(async res => {
+        if (res.status === 429) {
+          const json = await res.json();
+          setRateLimitErrorHistory(json.error || 'Too many requests. Please wait before trying again.');
+          setRetryAfterHistory(json.retryAfter || 5);
+          setHistoryLoading(false);
+          return null;
+        }
+        return res.json();
+      })
       .then(data => {
+        if (!data) return;
         setHistoryData(data);
       })
       .catch(err => console.error('History fetch failed:', err))
       .finally(() => setHistoryLoading(false));
-  }, [activeTab, telegramId]);
+  }, [activeTab, telegramId, retryAfterHistory]);
 
   const filteredHistory = [
     ...(filter === 'all' || filter === 'deposit' ? historyData.deposits.map(tx => ({ ...tx, type: 'deposit' })) : []),
@@ -102,6 +162,24 @@ export default function Wallet({ isBlackToggleOn }) {
             <FaSyncAlt />
           </motion.button>
         </div>
+
+        {/* Rate Limit Banner for balance */}
+        <AnimatePresence>
+          {retryAfterBalance > 0 && (
+            <motion.div
+              key="rate-limit-balance"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+              className="flex items-center justify-center gap-3 px-4 py-2 rounded-full shadow-md 
+                         bg-gradient-to-r from-amber-300 via-yellow-300 to-amber-400 text-yellow-900 mb-4"
+            >
+              <FaSyncAlt className="w-5 h-5 animate-spin-slow text-yellow-800" />
+              <span className="font-medium">{rateLimitErrorBalance} Retry in <strong>{retryAfterBalance}</strong> second{retryAfterBalance > 1 ? 's' : ''}.</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Phone Info */}
         <div className={`flex items-center justify-between rounded-lg p-3 ${phoneBarBg}`}>
@@ -180,64 +258,84 @@ export default function Wallet({ isBlackToggleOn }) {
             </motion.button>
           </motion.div>
         ) : (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-            {/* Filter Buttons */}
-            <div className="flex justify-center space-x-2 mb-4">
-              {['all', 'deposit', 'withdraw'].map(type => (
-                <button
-                  key={type}
-                  onClick={() => setFilter(type)}
-                  className={`px-4 py-2 rounded-full font-medium ${filter === type ? activeBtnBg : inactiveBtnBg}`}
+          <>
+            {/* Rate Limit Banner for history */}
+            <AnimatePresence>
+              {retryAfterHistory > 0 && (
+                <motion.div
+                  key="rate-limit-history"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                  className="flex items-center justify-center gap-3 px-4 py-2 rounded-full shadow-md 
+                             bg-gradient-to-r from-amber-300 via-yellow-300 to-amber-400 text-yellow-900 mb-4"
                 >
-                  {type.charAt(0).toUpperCase() + type.slice(1)}
-                </button>
-              ))}
-            </div>
+                  <FaSyncAlt className="w-5 h-5 animate-spin-slow text-yellow-800" />
+                  <span className="font-medium">{rateLimitErrorHistory} Retry in <strong>{retryAfterHistory}</strong> second{retryAfterHistory > 1 ? 's' : ''}.</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-            {/* History */}
-            {historyLoading ? (
-              <div className="flex justify-center py-10 space-x-3">
-                {[...Array(3)].map((_, i) => (
-                  <motion.div
-                    key={i}
-                    className={`w-8 h-8 rounded-full shadow-md ${loadingDotBg}`}
-                    initial={{ scale: 0.6, opacity: 0.7 }}
-                    animate={{ scale: [0.6, 1, 0.6], opacity: [0.7, 1, 0.7] }}
-                    transition={{ repeat: Infinity, duration: 1, delay: i * 0.2 }}
-                  />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+              {/* Filter Buttons */}
+              <div className="flex justify-center space-x-2 mb-4">
+                {['all', 'deposit', 'withdraw'].map(type => (
+                  <button
+                    key={type}
+                    onClick={() => setFilter(type)}
+                    className={`px-4 py-2 rounded-full font-medium ${filter === type ? activeBtnBg : inactiveBtnBg}`}
+                  >
+                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                  </button>
                 ))}
               </div>
-            ) : filteredHistory.length === 0 ? (
-              <div className={`text-center font-semibold py-10 ${isBlackToggleOn ? 'text-gray-300' : 'text-purple-600'}`}>
-                No transactions
-              </div>
-            ) : (
-              <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                {filteredHistory.map((tx, index) => (
-                  <div key={index} className={`rounded-lg p-4 shadow-md flex flex-col space-y-1 ${
-                    isBlackToggleOn ? 'bg-gray-700 text-white' : 'bg-purple-100 text-purple-900'
-                  }`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        {tx.type === 'deposit' ? <FaArrowDown className="text-green-500" /> : <FaArrowUp className="text-red-500" />}
-                        <div>
-                          <div className="font-bold capitalize">{tx.type}</div>
-                          <div className="text-sm opacity-70">{new Date(tx.createdAt).toLocaleString()}</div>
+
+              {/* History */}
+              {historyLoading ? (
+                <div className="flex justify-center py-10 space-x-3">
+                  {[...Array(3)].map((_, i) => (
+                    <motion.div
+                      key={i}
+                      className={`w-8 h-8 rounded-full shadow-md ${loadingDotBg}`}
+                      initial={{ scale: 0.6, opacity: 0.7 }}
+                      animate={{ scale: [0.6, 1, 0.6], opacity: [0.7, 1, 0.7] }}
+                      transition={{ repeat: Infinity, duration: 1, delay: i * 0.2 }}
+                    />
+                  ))}
+                </div>
+              ) : filteredHistory.length === 0 ? (
+                <div className={`text-center font-semibold py-10 ${isBlackToggleOn ? 'text-gray-300' : 'text-purple-600'}`}>
+                  No transactions
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                  {filteredHistory.map((tx, index) => (
+                    <div key={index} className={`rounded-lg p-4 shadow-md flex flex-col space-y-1 ${
+                      isBlackToggleOn ? 'bg-gray-700 text-white' : 'bg-purple-100 text-purple-900'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          {tx.type === 'deposit' ? <FaArrowDown className="text-green-500" /> : <FaArrowUp className="text-red-500" />}
+                          <div>
+                            <div className="font-bold capitalize">{tx.type}</div>
+                            <div className="text-sm opacity-70">{new Date(tx.createdAt).toLocaleString()}</div>
+                          </div>
                         </div>
+                        <div className="font-bold text-lg">{tx.amount} Br</div>
                       </div>
-                      <div className="font-bold text-lg">{tx.amount} Br</div>
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="opacity-70">Tx Ref: <span className="font-mono">{tx.tx_ref}</span></div>
+                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(tx.status)}`}>
+                          {tx.status}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="opacity-70">Tx Ref: <span className="font-mono">{tx.tx_ref}</span></div>
-                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(tx.status)}`}>
-                        {tx.status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </motion.div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          </>
         )}
       </div>
     </div>

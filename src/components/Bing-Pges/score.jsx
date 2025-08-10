@@ -96,12 +96,27 @@ export default function Score({ isBlackToggleOn }) {
           </motion.button>
         </div>
 
-        {/* Retry Banner */}
-        {retryAfter > 0 && (
-          <div className="bg-yellow-200 text-yellow-900 text-center p-2 rounded-lg font-medium">
-            Too many requests. Please wait {retryAfter} second{retryAfter > 1 ? 's' : ''}...
-          </div>
-        )}
+      {/* Retry Banner */}
+<AnimatePresence>
+  {retryAfter > 0 && (
+    <motion.div
+      key="retry-banner"
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      transition={{ duration: 0.3 }}
+      className="flex items-center justify-center gap-3 px-4 py-2 rounded-full shadow-md 
+                 bg-gradient-to-r from-amber-300 via-yellow-300 to-amber-400 text-yellow-900"
+    >
+      <RefreshCw className="w-5 h-5 animate-spin-slow text-yellow-800" />
+      <span className="font-medium">
+        Too many requests — retry in{" "}
+        <span className="font-bold">{retryAfter}</span>{" "}
+        second{retryAfter > 1 ? "s" : ""}
+      </span>
+    </motion.div>
+  )}
+</AnimatePresence>
 
         {/* Search */}
         <div className="relative">
