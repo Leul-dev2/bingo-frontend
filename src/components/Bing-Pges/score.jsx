@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, RefreshCw, Search } from 'lucide-react';
 
@@ -11,9 +11,6 @@ export default function Score({ isBlackToggleOn }) {
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [retryAfter, setRetryAfter] = useState(0); // NEW state for retry countdown
-  const [loadingBlocked, setLoadingBlocked] = useState(false); // NEW to block rapid fetch
-
-  const lastFetchTimeRef = useRef(0); // NEW: track last fetch time
 
   useEffect(() => {
     let countdownTimer;
@@ -29,18 +26,7 @@ export default function Score({ isBlackToggleOn }) {
 
   useEffect(() => {
     const fetchPlayers = async () => {
-      const now = Date.now();
-
-      // Throttle: allow fetch only if 1 sec elapsed since last fetch and not blocked
-      if (loadingBlocked || now - lastFetchTimeRef.current < 1000) {
-        // Skip fetch if blocked or too soon
-        return;
-      }
-
-      lastFetchTimeRef.current = now;
-      setLoadingBlocked(true);
       setLoading(true);
-
       try {
         const res = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/Score?time=${timeKeys[activeTab]}`);
 
@@ -50,7 +36,6 @@ export default function Score({ isBlackToggleOn }) {
           console.warn(error || 'Rate limit exceeded');
           setPlayers([]); // clear players list while waiting
           setLoading(false);
-          setLoadingBlocked(false);
           return;
         }
 
@@ -66,7 +51,6 @@ export default function Score({ isBlackToggleOn }) {
         setPlayers([]);
       }
       setLoading(false);
-      setLoadingBlocked(false);
     };
 
     if (retryAfter === 0) {
@@ -112,34 +96,27 @@ export default function Score({ isBlackToggleOn }) {
           </motion.button>
         </div>
 
-        {/* Retry Banner */}
-        <AnimatePresence>
-          {retryAfter > 0 && (
-            <motion.div
-              key="retry-banner"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3 }}
-              className="flex items-center justify-center gap-3 px-4 py-2 rounded-full shadow-md 
-                         bg-gradient-to-r from-amber-300 via-yellow-300 to-amber-400 text-yellow-900"
-            >
-              <RefreshCw className="w-5 h-5 animate-spin-slow text-yellow-800" />
-              <span className="font-medium">
-                Too many requests — retry in{" "}
-                <span className="font-bold">{retryAfter}</span>{" "}
-                second{retryAfter > 1 ? "s" : ""}
-              </span>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Optional: Loading block message */}
-        {loadingBlocked && retryAfter === 0 && (
-          <div className="text-yellow-600 font-semibold mb-4 text-center">
-            Please wait a moment before refreshing data again.
-          </div>
-        )}
+      {/* Retry Banner */}
+<AnimatePresence>
+  {retryAfter > 0 && (
+    <motion.div
+      key="retry-banner"
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      transition={{ duration: 0.3 }}
+      className="flex items-center justify-center gap-3 px-4 py-2 rounded-full shadow-md 
+                 bg-gradient-to-r from-amber-300 via-yellow-300 to-amber-400 text-yellow-900"
+    >
+      <RefreshCw className="w-5 h-5 animate-spin-slow text-yellow-800" />
+      <span className="font-medium">
+        Too many requests — retry in{" "}
+        <span className="font-bold">{retryAfter}</span>{" "}
+        second{retryAfter > 1 ? "s" : ""}
+      </span>
+    </motion.div>
+  )}
+</AnimatePresence>
 
         {/* Search */}
         <div className="relative">

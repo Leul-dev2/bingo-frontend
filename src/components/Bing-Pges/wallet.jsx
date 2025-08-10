@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'; // <-- useRef imported
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -10,8 +10,6 @@ const tabs = ['Balance', 'History'];
 export default function Wallet({ isBlackToggleOn }) {
   const [searchParams] = useSearchParams();
   const urlTelegramId = searchParams.get('user');
-  const [loadingBlocked, setLoadingBlocked] = useState(false);
-  const lastFetchTimeRef = useRef(0);
 
   const [activeTab, setActiveTab] = useState(0);
 
@@ -24,15 +22,18 @@ export default function Wallet({ isBlackToggleOn }) {
 
   // History data states
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [deposits, setDeposits] = useState([]);
-  const [withdrawals, setWithdrawals] = useState([]);
+  const [historyData, setHistoryData] = useState({ deposits: [], withdrawals: [] });
   const [filter, setFilter] = useState('all');
 
-  const telegramId = urlTelegramId || localStorage.getItem('telegramId') || '';
+  const telegramId = urlTelegramId || localStorage.getItem('telegramId') || '593680186';
 
-  // Rate limit handling states
-  const [retryAfter, setRetryAfter] = useState(0);
-  const [rateLimitError, setRateLimitError] = useState('');
+  // Rate limit handling states for balance
+  const [retryAfterBalance, setRetryAfterBalance] = useState(0);
+  const [rateLimitErrorBalance, setRateLimitErrorBalance] = useState('');
+
+  // Rate limit handling states for history
+  const [retryAfterHistory, setRetryAfterHistory] = useState(0);
+  const [rateLimitErrorHistory, setRateLimitErrorHistory] = useState('');
 
   // Save telegramId to localStorage if changed
   useEffect(() => {
@@ -41,74 +42,87 @@ export default function Wallet({ isBlackToggleOn }) {
     }
   }, [urlTelegramId]);
 
-  // Countdown timer for retry
+  // Countdown timer for balance retry
   useEffect(() => {
-    if (retryAfter <= 0) return;
-    const timer = setTimeout(() => setRetryAfter(retryAfter - 1), 1000);
+    if (retryAfterBalance <= 0) return;
+    const timer = setTimeout(() => setRetryAfterBalance(retryAfterBalance - 1), 1000);
     return () => clearTimeout(timer);
-  }, [retryAfter]);
+  }, [retryAfterBalance]);
 
-  // Fetch wallet data with throttling, no early returns — just if/else
+  // Countdown timer for history retry
   useEffect(() => {
-    async function fetchWalletData() {
-      if (!telegramId) {
-        // no telegramId — skip fetch but do NOT return early here
-      } else {
-        const now = Date.now();
+    if (retryAfterHistory <= 0) return;
+    const timer = setTimeout(() => setRetryAfterHistory(retryAfterHistory - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [retryAfterHistory]);
 
-        if (loadingBlocked || now - lastFetchTimeRef.current < 1000) {
-          // Too soon to fetch — skip fetch but do NOT return early here
-        } else {
-          lastFetchTimeRef.current = now;
-          setLoadingBlocked(true);
-          if (activeTab === 1) {
-            setHistoryLoading(true);
-          } else {
-            setLoading(true);
-          }
-          setRateLimitError('');
-          setRetryAfter(0);
+  // Fetch wallet balance info
+  useEffect(() => {
+    if (!telegramId) return;
 
-          try {
-            const res = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/wallet?telegramId=${telegramId}`);
+    if (retryAfterBalance > 0) return; // wait for retry countdown
 
-            if (res.status === 429) {
-              const json = await res.json();
-              setRateLimitError(json.error || 'Too many requests. Please wait before trying again.');
-              setRetryAfter(json.retryAfter || 5);
-            } else {
-              const data = await res.json();
+    setLoading(true);
+    setRateLimitErrorBalance('');
+    setRetryAfterBalance(0);
 
-              setBalance(data.balance || 0);
-              setPhoneNumber(data.phoneNumber || 'Unknown');
-              if (data.bonus !== undefined) setBonus(data.bonus);
-              if (data.coins !== undefined) setCoins(data.coins);
-              setDeposits(data.deposits || []);
-              setWithdrawals(data.withdrawals || []);
-            }
-          } catch (error) {
-            console.error('Wallet fetch failed:', error);
-          } finally {
-            setLoadingBlocked(false);
-            if (activeTab === 1) {
-              setHistoryLoading(false);
-            } else {
-              setLoading(false);
-            }
-          }
+    fetch(`https://bingobot-backend-bwdo.onrender.com/api/wallet?telegramId=${telegramId}`)
+      .then(async res => {
+        if (res.status === 429) {
+          const json = await res.json();
+          setRateLimitErrorBalance(json.error || 'Too many requests. Please wait before trying again.');
+          setRetryAfterBalance(json.retryAfter || 5);
+          setLoading(false);
+          return null; // skip normal parsing
         }
-      }
-    }
-    fetchWalletData();
-  }, [telegramId, retryAfter, activeTab]); // Removed loadingBlocked from deps to avoid loop
+        return res.json();
+      })
+      .then(data => {
+        if (!data) return;
+        setBalance(data.balance || 0);
+        setBonus(data.bonus || 0);
+        setCoins(data.coins || 0);
+        setPhoneNumber(data.phoneNumber || 'Unknown');
+      })
+      .catch(err => console.error('Wallet fetch failed:', err))
+      .finally(() => setLoading(false));
+  }, [telegramId, retryAfterBalance]);
 
-  // Filtered & sorted history for display
+  // Fetch wallet history
+  useEffect(() => {
+    if (activeTab !== 1 || !telegramId) return;
+
+    if (retryAfterHistory > 0) return; // wait for retry countdown
+
+    setHistoryLoading(true);
+    setRateLimitErrorHistory('');
+    setRetryAfterHistory(0);
+
+    fetch(`https://bingobot-backend-bwdo.onrender.com/api/wallet/history?telegramId=${telegramId}`)
+      .then(async res => {
+        if (res.status === 429) {
+          const json = await res.json();
+          setRateLimitErrorHistory(json.error || 'Too many requests. Please wait before trying again.');
+          setRetryAfterHistory(json.retryAfter || 5);
+          setHistoryLoading(false);
+          return null;
+        }
+        return res.json();
+      })
+      .then(data => {
+        if (!data) return;
+        setHistoryData(data);
+      })
+      .catch(err => console.error('History fetch failed:', err))
+      .finally(() => setHistoryLoading(false));
+  }, [activeTab, telegramId, retryAfterHistory]);
+
   const filteredHistory = [
-    ...(filter === 'all' || filter === 'deposit' ? deposits.map(tx => ({ ...tx, type: 'deposit' })) : []),
-    ...(filter === 'all' || filter === 'withdraw' ? withdrawals.map(tx => ({ ...tx, type: 'withdraw' })) : []),
+    ...(filter === 'all' || filter === 'deposit' ? historyData.deposits.map(tx => ({ ...tx, type: 'deposit' })) : []),
+    ...(filter === 'all' || filter === 'withdraw' ? historyData.withdrawals.map(tx => ({ ...tx, type: 'withdraw' })) : []),
   ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-  // Status badge color
+  // Status Badge
   const getStatusColor = (status) => {
     const colors = {
       pending: 'bg-yellow-500 text-white',
@@ -121,7 +135,7 @@ export default function Wallet({ isBlackToggleOn }) {
     return colors[status] || 'bg-gray-400 text-white';
   };
 
-  // Theming classes (same as before)
+  // Theming
   const containerBg = isBlackToggleOn ? 'bg-gradient-to-br from-gray-900 via-black to-gray-900' : 'bg-gradient-to-br from-purple-200 via-purple-300 to-purple-200';
   const cardBg = isBlackToggleOn ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-800';
   const activeBtnBg = isBlackToggleOn ? 'bg-indigo-700 text-white shadow-inner' : 'bg-purple-600 text-white shadow-inner';
@@ -149,11 +163,11 @@ export default function Wallet({ isBlackToggleOn }) {
           </motion.button>
         </div>
 
-        {/* Rate Limit Banner */}
+        {/* Rate Limit Banner for balance */}
         <AnimatePresence>
-          {retryAfter > 0 && (
+          {retryAfterBalance > 0 && (
             <motion.div
-              key="rate-limit"
+              key="rate-limit-balance"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
@@ -162,7 +176,7 @@ export default function Wallet({ isBlackToggleOn }) {
                          bg-gradient-to-r from-amber-300 via-yellow-300 to-amber-400 text-yellow-900 mb-4"
             >
               <FaSyncAlt className="w-5 h-5 animate-spin-slow text-yellow-800" />
-              <span className="font-medium">{rateLimitError} Retry in <strong>{retryAfter}</strong> second{retryAfter > 1 ? 's' : ''}.</span>
+              <span className="font-medium">{rateLimitErrorBalance} Retry in <strong>{retryAfterBalance}</strong> second{retryAfterBalance > 1 ? 's' : ''}.</span>
             </motion.div>
           )}
         </AnimatePresence>
@@ -219,23 +233,21 @@ export default function Wallet({ isBlackToggleOn }) {
               <span className="font-extrabold text-3xl">{balance} Birr</span>
             </motion.div>
 
-            {/* Bonus & Coins (optional, remove if not in backend) */}
-            {(bonus !== 0 || coins !== 0) && (
-              <div className="space-y-4">
-                <motion.div whileHover={{ scale: 1.02 }} className={`rounded-xl p-4 flex items-center justify-between text-white shadow-md ${bonusBg}`}>
-                  <div className="flex items-center space-x-2">
-                    <FaGift /> <span>Bonus Balance</span>
-                  </div>
-                  <span className="font-bold">{bonus} Birr</span>
-                </motion.div>
-                <motion.div whileHover={{ scale: 1.02 }} className={`rounded-xl p-4 flex items-center justify-between text-white shadow-md ${coinsBg}`}>
-                  <div className="flex items-center space-x-2">
-                    <FaCoins /> <span>Coins</span>
-                  </div>
-                  <span className="font-bold">{coins}</span>
-                </motion.div>
-              </div>
-            )}
+            {/* Bonus & Coins */}
+            <div className="space-y-4">
+              <motion.div whileHover={{ scale: 1.02 }} className={`rounded-xl p-4 flex items-center justify-between text-white shadow-md ${bonusBg}`}>
+                <div className="flex items-center space-x-2">
+                  <FaGift /> <span>Bonus Balance</span>
+                </div>
+                <span className="font-bold">{bonus} Birr</span>
+              </motion.div>
+              <motion.div whileHover={{ scale: 1.02 }} className={`rounded-xl p-4 flex items-center justify-between text-white shadow-md ${coinsBg}`}>
+                <div className="flex items-center space-x-2">
+                  <FaCoins /> <span>Coins</span>
+                </div>
+                <span className="font-bold">{coins}</span>
+              </motion.div>
+            </div>
 
             <motion.button
               whileTap={{ scale: 0.95 }}
@@ -247,6 +259,24 @@ export default function Wallet({ isBlackToggleOn }) {
           </motion.div>
         ) : (
           <>
+            {/* Rate Limit Banner for history */}
+            <AnimatePresence>
+              {retryAfterHistory > 0 && (
+                <motion.div
+                  key="rate-limit-history"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                  className="flex items-center justify-center gap-3 px-4 py-2 rounded-full shadow-md 
+                             bg-gradient-to-r from-amber-300 via-yellow-300 to-amber-400 text-yellow-900 mb-4"
+                >
+                  <FaSyncAlt className="w-5 h-5 animate-spin-slow text-yellow-800" />
+                  <span className="font-medium">{rateLimitErrorHistory} Retry in <strong>{retryAfterHistory}</strong> second{retryAfterHistory > 1 ? 's' : ''}.</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
               {/* Filter Buttons */}
               <div className="flex justify-center space-x-2 mb-4">

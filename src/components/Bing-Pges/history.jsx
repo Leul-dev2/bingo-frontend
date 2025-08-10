@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import { ChevronLeft, RefreshCw, Search, Clock, Award, Calendar } from 'lucide-react';
@@ -21,9 +21,6 @@ export default function History({ isBlackToggleOn }) {
   // NEW states for rate limit info:
   const [retryAfter, setRetryAfter] = useState(0);
   const [rateLimitError, setRateLimitError] = useState('');
-  const [loadingBlocked, setLoadingBlocked] = useState(false); // NEW for client throttling
-
-  const lastFetchTimeRef = useRef(0); // NEW to track last fetch timestamp
 
   const telegramId = urlTelegramId || localStorage.getItem('telegramId');
   const selectedBet = betValues[activeBet];
@@ -38,16 +35,6 @@ export default function History({ isBlackToggleOn }) {
   useEffect(() => {
     const fetchGames = async () => {
       if (!telegramId) return;
-
-      const now = Date.now();
-
-      // Throttle fetch requests: only proceed if 1 second passed and not blocked
-      if (loadingBlocked || now - lastFetchTimeRef.current < 1000) {
-        return; // Skip fetch due to throttle
-      }
-
-      lastFetchTimeRef.current = now;
-      setLoadingBlocked(true);
       setLoading(true);
       setRateLimitError('');
       setRetryAfter(0);
@@ -64,18 +51,15 @@ export default function History({ isBlackToggleOn }) {
           setRetryAfter(json.retryAfter || 5); // default 5 seconds if not specified
           setGames([]); // clear data while rate-limited
           setLoading(false);
-          setLoadingBlocked(false);
           return; // Skip further parsing
         }
 
         const data = await res.json();
         setGames(data);
         setLoading(false);
-        setLoadingBlocked(false);
       } catch (error) {
         setGames([]);
         setLoading(false);
-        setLoadingBlocked(false);
       }
     };
 
@@ -145,13 +129,6 @@ export default function History({ isBlackToggleOn }) {
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Optional: Loading block message */}
-        {loadingBlocked && retryAfter === 0 && (
-          <div className="text-yellow-600 font-semibold mb-4 text-center">
-            Please wait a moment before refreshing data again.
-          </div>
-        )}
 
         {/* Search */}
         <div className="relative">
