@@ -29,6 +29,13 @@ const BingoGame = () => {
   const [hasEmittedGameCount, setHasEmittedGameCount] = React.useState(false);
   const [gracePlayers, setGracePlayers] = useState([]);
   const [isGameEnd, setIsGameEnd] = useState(false);
+  const [callNumberLength, setCallNumberLength] = useState(0);
+
+    const [gameDetails, setGameDetails] = useState({
+    winAmount: '-',
+    playersCount: '-',
+    stakeAmount: '-',
+  });
 
   const hasJoinedRef = useRef(false);
 
@@ -184,9 +191,10 @@ useEffect(() => {
 
   // 6️⃣ Handle number draw
   useEffect(() => {
-    socket.on("numberDrawn", ({ number, label }) => {
+    socket.on("numberDrawn", ({ number, label, callNumberLength }) => {
       setRandomNumber((prev) => [...prev, number]);
       setCalledSet((prev) => new Set(prev).add(label));
+      setCallNumberLength(callNumberLength);
     });
   }, []);
   
@@ -328,6 +336,24 @@ useEffect(() => {
   };
 
 
+    useEffect(() => {
+    // Listen for the "gameDetails" event
+    socket.on("gameDetails", ({ winAmount, playersCount, stakeAmount }) => {
+      // Update the state with the received values
+      setGameDetails({
+        winAmount: winAmount,
+        playersCount: playersCount,
+        stakeAmount: stakeAmount,
+      });
+    });
+
+    // Cleanup the event listener when the component unmounts
+    return () => {
+      socket.off("gameDetails");
+    };
+  }, []); // The empty dependency array ensures this effect runs only once
+
+
   useEffect(() => {
   if (!socket) return;
 
@@ -349,21 +375,6 @@ useEffect(() => {
     socket.off("youAreWinner");
   };
 }, [socket]);
-
-
-
-
-  const handleLeave = () => {
-  socket.emit("playerLeave", { gameId, GameSessionId, playerId });
-
-  socket.emit("checkPlayerCount", { gameId }, (response) => {
-    if (response.playerCount === 0) {
-      socket.emit("setGameInactive", { gameId });
-    }
-    navigate("/");
-  });
-};
-
 
 
 
@@ -408,14 +419,20 @@ useEffect(() => {
   
 
   return (
-    <div className="bg-gradient-to-b from-[#1a002b] via-[#2d003f] to-black min-h-screen flex flex-col items-center p-1 w-full max-w-screen overflow-hidden">
-      <div className="grid grid-cols-5 sm:grid-cols-5 gap-1 w-full text-white text-center">
-        {[gameId, playerCount, telegramId, "Players", "Bet"].map((info, i) => (
+    <div className="bg-gradient-to-b from-[#1a002b] via-[#2d003f] to-black min-h-screen flex flex-col items-center p-1 pb-3 w-full max-w-screen overflow-hidden">
+     <div className="grid grid-cols-5 sm:grid-cols-5 gap-1 w-full text-white text-center">
+        {[
+          `Players: ${gameDetails.playersCount}`, // Correct way to display players count
+          telegramId,
+          `Prize: ${gameDetails.winAmount}`, // Correct way to display win amount
+          `Called: ${callNumberLength} / 75`, // Correct way to display called numbers
+          `Stake: ${gameDetails.stakeAmount}`, // Correct way to display stake amount
+        ].map((info, i) => (
           <button key={i} className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-bold p-1 text-xs rounded w-full">
             {info}
           </button>
         ))}
-      </div>
+    </div>
 
       <div className="flex flex-wrap w-full mt-4">
         <div className="w-1/2 flex justify-center">
