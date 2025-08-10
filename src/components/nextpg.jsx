@@ -2,10 +2,11 @@ import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import socket from "../socket.js"; // ✅ Shared socket instance
 
+
 const BingoGame = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { cartela, cartelaId, gameId, telegramId } = location.state || {};
+  const { cartela, cartelaId, gameId, telegramId, GameSessionId } = location.state || {};
 
   const bingoColors = {
     B: "bg-yellow-500",
@@ -26,6 +27,8 @@ const BingoGame = () => {
   const [gameStarted, setGameStarted] = useState(false);
   const [winnerFound, setWinnerFound] = useState(false);
   const [hasEmittedGameCount, setHasEmittedGameCount] = React.useState(false);
+  const [gracePlayers, setGracePlayers] = useState([]);
+  const [isGameEnd, setIsGameEnd] = useState(false);
 
   const hasJoinedRef = useRef(false);
 
@@ -45,9 +48,40 @@ const BingoGame = () => {
     }
 
     if (!hasJoinedRef.current && gameId && telegramId) {
-      socket.emit("joinGame", { gameId, telegramId });
+      socket.emit("joinGame", { gameId, telegramId, GameSessionId });
       hasJoinedRef.current = true;
     }
+
+
+
+       // --- NEW: Listen for drawnNumbersHistory ---
+    socket.on("drawnNumbersHistory", ({ gameId: receivedGameId, history }) => {
+      if (receivedGameId === gameId) { // Ensure it's for the current game
+        console.log(`✅ 🔥🔥🔥 Received ${history.length} drawn numbers history for game ${receivedGameId}.`);
+
+        // Update randomNumber state with raw numbers
+        const numbers = history.map(item => item.number);
+        setRandomNumber(numbers);
+
+        // Update calledSet state with formatted labels
+        const labels = new Set(history.map(item => item.label));
+        setCalledSet(labels);
+      }
+    });
+
+      const handleSocketConnect = () => {
+        console.log("✅ Socket.IO connected or reconnected!");
+        // Emit joinGame again to ensure state synchronization from server
+        // Only if you're truly in a game context (gameId, telegramId exist)
+        if (gameId && telegramId) {
+            socket.emit("joinGame", { gameId, telegramId, GameSessionId });
+            console.log("✅ Re-emitted joinGame after socket reconnection.");
+            // You might want to reset hasEmittedGameCount here too if applicable,
+            // but for general state sync, joinGame is enough.
+        }
+    };
+
+    socket.on("connect", handleSocketConnect);
 
     // Cleanup on unmount
     return () => {
@@ -56,10 +90,27 @@ const BingoGame = () => {
       socket.off("countdownTick");
       socket.off("gameStart");
       socket.off("numberDrawn");
-      // Optionally disconnect:
+      socket.off("drawnNumbersHistory");
+      // Optionally disconnect:s
       // socket.disconnect();
     };
   }, [gameId, telegramId]);
+
+
+    useEffect(() => {
+    const handleGameEnd = () => {
+      setIsGameEnd(true);
+    };
+
+    socket.on("gameEnd", handleGameEnd);
+
+    return () => {
+      socket.off("gameEnd", handleGameEnd); // Clean up listener
+    };
+  }, []);
+
+
+  
 
   // 2️⃣ Handle player count updates
   useEffect(() => {
@@ -73,24 +124,35 @@ const BingoGame = () => {
     });
   }, []);
 
-  // 3️⃣ Request to start game if enough players
- useEffect(() => {
-  // Game has already started or gameCount has already been sent — don't emit again
-  if (gameStarted || hasEmittedGameCount) return;
 
-  // Only emit when minimum players are ready and game hasn't been triggered yet
-  if (playerCount >= 2) {
+  // Listen to grace player updates from server
+
+
+  // 3️⃣ Request to start game if enough players
+useEffect(() => {
+  if (
+    playerCount >= 2 &&
+    !hasEmittedGameCount &&
+    !gameStarted
+  ) {
     console.log("✅ Emitting gameCount to server...");
-    socket.emit("gameCount", { gameId });
+    socket.emit("gameCount", { gameId, GameSessionId });
     setHasEmittedGameCount(true);
   }
-}, [playerCount, gameStarted, hasEmittedGameCount]);
+}, [playerCount, gameStarted, hasEmittedGameCount, gameId, gracePlayers]);
 
 
 useEffect(() => {
   socket.on("gameReset", () => {
     console.log("🔄 Game reset received, allowing new gameCount emit");
     setHasEmittedGameCount(false);
+    // ✅ NEW: Reset other game states upon a full game reset
+    setRandomNumber([]);
+    setCalledSet(new Set());
+    setSelectedNumbers(new Set());
+    setCountdown(0);
+    setGameStarted(false);
+    setWinnerFound(false);
   });
 
   return () => {
@@ -128,12 +190,6 @@ useEffect(() => {
     });
   }, []);
   
-  // Log all drawn numbers less frequently or use a callback
-  // useEffect(() => {
-  //   if (randomNumber.length > 0) {
-  //     //console.log("🎯 All Drawn Numbers:", randomNumber);
-  //   }
-  // }, [randomNumber]);
 
  const handleCartelaClick = (num) => {
   setSelectedNumbers((prev) => {
@@ -258,6 +314,7 @@ useEffect(() => {
     socket.emit("checkWinner", {
       telegramId,
       gameId,
+      GameSessionId,
       cartelaId, 
       selectedNumbers: selectedArray,        // player card ID
     });
@@ -297,7 +354,7 @@ useEffect(() => {
 
 
   const handleLeave = () => {
-  socket.emit("playerLeave", { gameId, playerId });
+  socket.emit("playerLeave", { gameId, GameSessionId, playerId });
 
   socket.emit("checkPlayerCount", { gameId }, (response) => {
     if (response.playerCount === 0) {
@@ -307,63 +364,12 @@ useEffect(() => {
   });
 };
 
-useEffect(() => {
-  if (!socket) return;
-
-  socket.on("drawHistory", (history) => {
-    if (history.length > 0 && typeof history[0] === "object") {
-      // history is array of objects { number, label }
-      const numbers = history.map(item => item.number);
-      const labels = history.map(item => item.label);
-
-      setRandomNumber(numbers);
-      setCalledSet(new Set(labels));
-    } else {
-      // fallback if just array of numbers
-      setRandomNumber(history);
-      setCalledSet(new Set(history.map(num => {
-        const letterIndex = Math.floor((num - 1) / 15);
-        const letter = ["B", "I", "N", "G", "O"][letterIndex];
-        return `${letter}-${num}`;
-      })));
-    }
-  });
-
-  return () => {
-    socket.off("drawHistory");
-  };
-}, [socket]);
 
 
-
-
-
-//console.log("card numbersss", cartela);
-
-// const declareWinner = (winnerPattern, telegramId) => {
-//   const board = cartela.map((row, rowIndex) =>
-//     row.map((num, colIndex) => ({
-//       value: num,
-//       selected: selectedNumbers.has(num),
-//       isWinning: lastWinnerCells.some(([r, c]) => r === rowIndex && c === colIndex)
-//     }))
-//   );
-
-//   const winnerData = {
-//     telegramId,
-//     gameId,
-//     board,
-//     winnerPattern,
-//     cartelaId
-//   };
-
-//   // Send all winner data to backend
-//   socket.emit("winner", winnerData);
-// };
 
 
 useEffect(() => {
-  const handleWinnerFound = ({ winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId }) => {
+  const handleWinnerFound = ({ winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId, GameSessionId }) => {
     navigate("/winnerPage", {
       state: {
         winnerName,
@@ -373,7 +379,8 @@ useEffect(() => {
         boardNumber,
         playerCount,
         telegramId,
-        gameId
+        gameId,
+        GameSessionId
       }
     });
   };
@@ -390,6 +397,11 @@ useEffect(() => {
     socket.off("winnerError", handleWinnerError);
   };
 }, [navigate]);
+
+
+ const handleLeaving = () => {
+    navigate("/");
+  };
 
 
 
@@ -438,7 +450,7 @@ useEffect(() => {
         <div className="w-1/2 flex flex-col items-center gap-2">
           <div className="bg-gray-300 p-2 rounded-lg text-center text-xs w-[90%]">
             <p>Countdown</p>
-            <p className="text-lg font-bold">{countdown > 0 ? countdown : "Game Started"}</p>
+            <p className="text-lg font-bold">{countdown > 0 ? countdown : "Please Wait"}</p>
           </div>
 
           <div className="bg-purple-600 p-4 rounded-lg text-white flex flex-col items-center w-full max-w-md mx-auto">
@@ -537,13 +549,28 @@ useEffect(() => {
           Bingo!
         </button>
         <div className="w-full flex gap-2">
-          <button className="w-1/2 bg-blue-500 px-4 py-2 text-white rounded-lg text-lg">
-            Refresh
+            <button
+              className="w-1/2 bg-blue-500 px-4 py-2 text-white rounded-lg text-lg"
+              onClick={() => {
+                // Re-emit joinGame to force a state synchronization from the backend
+                if (gameId && telegramId) {
+                  socket.emit("joinGame", { gameId, telegramId, GameSessionId });
+                  console.log("Forced refresh: Re-emitted joinGame to synchronize state.");
+                  // Optional: Reset any client-side-only UI states if necessary
+                  // setSomeTemporaryUIState(false);
+                } else {
+                  console.warn("Cannot force refresh: gameId or telegramId missing.");
+                  // Fallback to full refresh if critical data is missing (unlikely if in game)
+                  window.location.reload();
+                }
+              }}
+            >
+              Refresh
           </button>
           <button
             onClick={() => {
-             socket.emit("playerLeave", { gameId: String(gameId), telegramId }, () => {
-                console.log("player leave emited");
+             socket.emit("playerLeave", { gameId: String(gameId), GameSessionId, telegramId }, () => {
+                console.log("player leave emited🎯🎯", GameSessionId );
                 navigate("/");
               });
             }}
@@ -554,6 +581,27 @@ useEffect(() => {
 
         </div>
       </div>
+
+     {isGameEnd && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm z-50 transition-opacity duration-300">
+          <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center">
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">
+              🎉 Game Over
+            </h2>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
+              The game has ended. You may now leave the room.
+            </p>
+            <button
+              onClick={handleLeaving}
+              className="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-6 rounded-full transition duration-200"
+            >
+              Leave Game
+            </button>
+          </div>
+        </div>
+      )}
+
+
     </div>
   );
 };
