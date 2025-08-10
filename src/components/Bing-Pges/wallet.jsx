@@ -56,66 +56,63 @@ export default function Wallet({ isBlackToggleOn }) {
     return () => clearTimeout(timer);
   }, [retryAfterHistory]);
 
-  // Fetch wallet balance info
-  useEffect(() => {
-    if (!telegramId) return;
+useEffect(() => {
+  if (!telegramId) return;
 
-    if (retryAfterBalance > 0) return; // wait for retry countdown
+  // If retry timers active, wait
+  if ((activeTab === 0 && retryAfterBalance > 0) || (activeTab === 1 && retryAfterHistory > 0)) {
+    return;
+  }
 
+  if (activeTab === 0) {
     setLoading(true);
     setRateLimitErrorBalance('');
     setRetryAfterBalance(0);
+  } else if (activeTab === 1) {
+    setHistoryLoading(true);
+    setRateLimitErrorHistory('');
+    setRetryAfterHistory(0);
+  }
 
-    fetch(`https://bingobot-backend-bwdo.onrender.com/api/wallet?telegramId=${telegramId}`)
-      .then(async res => {
-        if (res.status === 429) {
-          const json = await res.json();
+  fetch(`https://bingobot-backend-bwdo.onrender.com/api/wallet?telegramId=${telegramId}`)
+    .then(async res => {
+      if (res.status === 429) {
+        const json = await res.json();
+        if (activeTab === 0) {
           setRateLimitErrorBalance(json.error || 'Too many requests. Please wait before trying again.');
           setRetryAfterBalance(json.retryAfter || 5);
           setLoading(false);
-          return null; // skip normal parsing
+        } else if (activeTab === 1) {
+          setRateLimitErrorHistory(json.error || 'Too many requests. Please wait before trying again.');
+          setRetryAfterHistory(json.retryAfter || 5);
+          setHistoryLoading(false);
         }
-        return res.json();
-      })
-      .then(data => {
-        if (!data) return;
+        return null;
+      }
+      return res.json();
+    })
+    .then(data => {
+      if (!data) return;
+      if (activeTab === 0) {
         setBalance(data.balance || 0);
         setBonus(data.bonus || 0);
         setCoins(data.coins || 0);
         setPhoneNumber(data.phoneNumber || 'Unknown');
-      })
-      .catch(err => console.error('Wallet fetch failed:', err))
-      .finally(() => setLoading(false));
-  }, [telegramId, retryAfterBalance]);
-
-  // Fetch wallet history
-  useEffect(() => {
-    if (activeTab !== 1 || !telegramId) return;
-
-    if (retryAfterHistory > 0) return; // wait for retry countdown
-
-    setHistoryLoading(true);
-    setRateLimitErrorHistory('');
-    setRetryAfterHistory(0);
-
-    fetch(`https://bingobot-backend-bwdo.onrender.com/api/wallet/history?telegramId=${telegramId}`)
-      .then(async res => {
-        if (res.status === 429) {
-          const json = await res.json();
-          setRateLimitErrorHistory(json.error || 'Too many requests. Please wait before trying again.');
-          setRetryAfterHistory(json.retryAfter || 5);
-          setHistoryLoading(false);
-          return null;
-        }
-        return res.json();
-      })
-      .then(data => {
-        if (!data) return;
-        setHistoryData(data);
-      })
-      .catch(err => console.error('History fetch failed:', err))
-      .finally(() => setHistoryLoading(false));
-  }, [activeTab, telegramId, retryAfterHistory]);
+      } else if (activeTab === 1) {
+        setHistoryData({
+          deposits: data.deposits || [],
+          withdrawals: data.withdrawals || []
+        });
+      }
+    })
+    .catch(err => {
+      console.error('Wallet fetch failed:', err);
+    })
+    .finally(() => {
+      if (activeTab === 0) setLoading(false);
+      if (activeTab === 1) setHistoryLoading(false);
+    });
+}, [telegramId, activeTab, retryAfterBalance, retryAfterHistory]);
 
   const filteredHistory = [
     ...(filter === 'all' || filter === 'deposit' ? historyData.deposits.map(tx => ({ ...tx, type: 'deposit' })) : []),
