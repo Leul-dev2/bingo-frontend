@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react'; // added useRef
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { FaSyncAlt, FaUser } from 'react-icons/fa';
@@ -20,6 +20,11 @@ export default function Profile({ setIsBlackToggleOn, isBlackToggleOn }) {
 
   const navigate = useNavigate();
 
+  // === New debounce states for refresh button ===
+  const [refreshBlocked, setRefreshBlocked] = useState(false);
+  const [refreshCountdown, setRefreshCountdown] = useState(0);
+  const lastRefreshTimeRef = useRef(0);
+
   // Initialize toggle from localStorage on mount
   useEffect(() => {
     const storedToggle = localStorage.getItem('blackToggle');
@@ -36,12 +41,22 @@ export default function Profile({ setIsBlackToggleOn, isBlackToggleOn }) {
     });
   };
 
-  // Countdown timer for retry
+  // Countdown timer for retry (backend rate limit)
   useEffect(() => {
     if (retryAfter <= 0) return;
     const timer = setTimeout(() => setRetryAfter(retryAfter - 1), 1000);
     return () => clearTimeout(timer);
   }, [retryAfter]);
+
+  // Countdown timer for refresh button debounce block
+  useEffect(() => {
+    if (refreshCountdown <= 0) {
+      setRefreshBlocked(false);
+      return;
+    }
+    const timer = setTimeout(() => setRefreshCountdown(refreshCountdown - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [refreshCountdown]);
 
   // Fetch combined profile data with rate-limit handling
   useEffect(() => {
@@ -84,6 +99,23 @@ export default function Profile({ setIsBlackToggleOn, isBlackToggleOn }) {
       .finally(() => setLoading(false));
   }, [urlTelegramId, retryAfter]);
 
+  // New debounced refresh button handler
+  const handleRefreshClick = () => {
+    const now = Date.now();
+    const diff = now - lastRefreshTimeRef.current;
+
+    if (refreshBlocked) return; // blocked, ignore click
+
+    if (diff < 500) { // less than 500ms (2 req/sec)
+      setRefreshBlocked(true);
+      setRefreshCountdown(5); // block for 5 seconds
+      return;
+    }
+
+    lastRefreshTimeRef.current = now;
+    window.location.reload();
+  };
+
   /////////////////////////////////////////////////////////////////////////
 
   const handleInvite = () => {
@@ -120,14 +152,27 @@ export default function Profile({ setIsBlackToggleOn, isBlackToggleOn }) {
           <h1 className={`text-xl font-bold ${headerText}`}>Profile</h1>
           <motion.button
             whileTap={{ rotate: 360 }}
-            className="p-2 bg-purple-600 text-white rounded-lg shadow-md"
-            onClick={() => window.location.reload()}
+            className={`p-2 rounded-lg shadow-md ${
+              refreshBlocked
+                ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
+                : 'bg-purple-600 text-white'
+            }`}
+            onClick={handleRefreshClick}
+            disabled={refreshBlocked}
+            aria-label="Refresh profile"
           >
             <FaSyncAlt />
           </motion.button>
         </div>
 
-        {/* Rate Limit Banner */}
+        {/* Show refresh debounce countdown */}
+        {refreshBlocked && (
+          <div className="text-center text-yellow-600 font-semibold mb-4">
+            Too many refresh requests. Please wait {refreshCountdown} second{refreshCountdown > 1 ? 's' : ''}.
+          </div>
+        )}
+
+        {/* Rate Limit Banner from backend */}
         <AnimatePresence>
           {retryAfter > 0 && (
             <motion.div
