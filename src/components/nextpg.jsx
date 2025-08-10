@@ -191,12 +191,22 @@ useEffect(() => {
 
   // 6️⃣ Handle number draw
   useEffect(() => {
-    socket.on("numberDrawn", ({ number, label, callNumberLength }) => {
-      setRandomNumber((prev) => [...prev, number]);
-      setCalledSet((prev) => new Set(prev).add(label));
-      setCallNumberLength(callNumberLength);
-    });
-  }, []);
+  // Define the function to handle the event
+  const handleNumberDrawn = ({ number, label, callNumberLength }) => {
+    setRandomNumber((prev) => [...prev, number]);
+    setCalledSet((prev) => new Set(prev).add(label));
+    setCallNumberLength(callNumberLength);
+  };
+
+  // Set up the listener
+  socket.on("numberDrawn", handleNumberDrawn);
+
+  // Return the cleanup function
+  return () => {
+    // This runs when the component unmounts
+    socket.off("numberDrawn", handleNumberDrawn);
+  };
+}, []);
   
 
  const handleCartelaClick = (num) => {
@@ -420,12 +430,12 @@ useEffect(() => {
 
   return (
     <div className="bg-gradient-to-b from-[#1a002b] via-[#2d003f] to-black min-h-screen flex flex-col items-center p-1 pb-3 w-full max-w-screen overflow-hidden">
-     <div className="grid grid-cols-5 sm:grid-cols-5 gap-1 w-full text-white text-center">
+     <div className="grid grid-cols-4 sm:grid-cols-4 gap-1 w-full text-white text-center">
         {[
           `Players: ${gameDetails.playersCount}`, // Correct way to display players count
-          telegramId,
+         // telegramId,
           `Prize: ${gameDetails.winAmount}`, // Correct way to display win amount
-          `Called: ${callNumberLength} / 75`, // Correct way to display called numbers
+          `Call: ${callNumberLength}`, // Correct way to display called numbers
           `Stake: ${gameDetails.stakeAmount}`, // Correct way to display stake amount
         ].map((info, i) => (
           <button key={i} className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-bold p-1 text-xs rounded w-full">
