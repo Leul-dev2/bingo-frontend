@@ -469,8 +469,7 @@ const startGame = async () => {
     setIsStarting(true); // Block double-clicking
 
     try {
-        // 🧠 Step 1: Check if a game is already running
-        // Consider also checking for GameSessionId existence here if needed
+        // ... (Step 1: Check game status remains the same)
         const statusRes = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/games/${gameId}/status`);
         const statusData = await statusRes.json();
 
@@ -480,7 +479,7 @@ const startGame = async () => {
             return;
         }
 
-        // 🟢 Step 2: Start game - backend checks player balance and game state
+        // ... (Step 2: Start game fetch call remains the same)
         const response = await fetch("https://bingobot-backend-bwdo.onrender.com/api/games/start", {
             method: "POST",
             headers: {
@@ -492,60 +491,41 @@ const startGame = async () => {
         const data = await response.json();
 
         if (response.ok && data.success) {
-            // 🟢 The backend now returns the GameSessionId. Capture it here.
-            const { GameSessionId: currentSessionId } = data; 
-            
-            // ✅ Step 3: Game is ready, join the socket room with the new GameSessionId
-            // 🟢 Pass the GameSessionId to the backend
-            socket.emit("joinGame", { 
-                gameId, 
-                telegramId, 
+            const { GameSessionId: currentSessionId } = data;
+
+            // ⭐ Step 3: Game is ready, join the socket room.
+            socket.emit("joinGame", {
+                gameId,
+                telegramId,
                 GameSessionId: currentSessionId
             });
 
-            // ✅ Step 4: Listen for player count updates
-            socket.off("playerCountUpdate").on("playerCountUpdate", ({ playerCount }) => {
-                setPlayerCount(playerCount);
+            // ✅ Step 4: Immediately navigate to the game page.
+            // The API response is the source of truth, so this is safe.
+            navigate("/game", {
+                state: {
+                    gameId,
+                    telegramId,
+                    GameSessionId: currentSessionId,
+                    cartelaId,
+                    cartela,
+                    playerCount: 1, // Start with 1, the new page will update it
+                },
             });
 
-            // ✅ Step 5: Listen for gameId confirmation and navigate
-            socket.off("gameId").on("gameId", (res) => {
-                const { 
-                    gameId: receivedGameId, 
-                    GameSessionId: receivedSessionId, // 🟢 Capture the GameSessionId from the socket event
-                    telegramId: receivedTelegramId 
-                } = res;
-
-                if (receivedGameId && receivedTelegramId && receivedSessionId) {
-                    // 🟢 Pass the GameSessionId to the navigation state
-                    navigate("/game", {
-                        state: {
-                            gameId: receivedGameId,
-                            telegramId: receivedTelegramId,
-                            GameSessionId: receivedSessionId, // 🟢 Add this to the state
-                            cartelaId,
-                            cartela,
-                            playerCount,
-                        },
-                    });
-                } else {
-                    setAlertMessage("Invalid game or user data received!");
-                }
-            });
+            // ❌ Removed the socket.off("gameId").on("gameId", ...) listener
+            // as it is no longer needed. The `Maps` call is now
+            // triggered by the API response itself, which is faster.
 
         } else {
-            // 🚨 Backend rejected the request
             setAlertMessage(data.error || "Error starting the game");
             console.error("Game start error:", data.error);
         }
-
     } catch (error) {
         setAlertMessage("Error connecting to the backend");
         console.error("Connection error:", error);
     } finally {
-        // We can place setIsStarting(false) here or inside the `if` and `else` blocks
-        // depending on the desired behavior.
-        setIsStarting(false); 
+        setIsStarting(false);
     }
 };
 
