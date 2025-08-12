@@ -88,9 +88,14 @@ const BingoGame = () => {
     const handleWinnerConfirmed = ({ winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId, GameSessionId }) => {
       navigate("/winnerPage", { state: { winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId, GameSessionId } });
     };
-    const handleWinnerError = ({ message }) => {
-      alert(message || "Winner verification failed. Please try again.");
-    };
+    const handleWinnerError = () => {
+
+  socket.emit("playerLeave", { gameId: String(gameId), GameSessionId, telegramId }, () => {
+    // This callback runs after the server receives the "playerLeave" event
+    console.log("player leave emited🎯🎯", GameSessionId);
+    navigate("/");
+    });
+  };
 
     socket.on("connect", handleSocketConnect);
     socket.on("playerCountUpdate", handlePlayerCountUpdate);
