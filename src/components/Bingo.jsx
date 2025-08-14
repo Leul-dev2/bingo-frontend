@@ -275,11 +275,18 @@ setCartela([]);
 setCartelaIdInParent(null);
 sessionStorage.removeItem("mySelectedCardId");
 });
+
 socket.on("cardError", ({ message }) => {
-setAlertMessage(message || "Card selection failed.");
-setCartela([]);
-//setCartelaId(null);
-sessionStorage.removeItem("mySelectedCardId");
+    // Show an error message to the user
+    setAlertMessage(message || "Card selection failed.");
+    
+    // Explicitly set the player as cardless
+    setCartela([]); // Clear the visual card data
+    setCartelaIdInParent(null); // Clear the parent state's card ID
+    sessionStorage.removeItem("mySelectedCardId"); // Remove the card from local storage
+
+    // Release the request lock
+    lastRequestIdRef.current = 0;
 });
 // socket.on("otherCardSelected", ({ telegramId: otherId, cardId }) => {
 // setOtherSelectedCards((prev) => ({
