@@ -1,5 +1,5 @@
 // App.jsx
-import React, { useState, useEffect, useRef } from "react"; // Import useRef
+import React, { useState, useEffect, useRef } from "react";
 import { BrowserRouter as Router, Routes, Route, useSearchParams } from "react-router-dom";
 import { io } from "socket.io-client";
 
@@ -21,7 +21,6 @@ import CheckWithdrawalPage from "./components/payment/CheckWithdrwal";
 // Initialize socket connection globally
 const socket = io("https://bingobot-backend-bwdo.onrender.com");
 
-// New wrapper component to handle initial URL params
 const AppContent = ({ isBlackToggleOn, setIsBlackToggleOn, socket }) => {
   console.log("🔥 AppContent component rendered/re-rendered.");
   const [searchParams] = useSearchParams();
@@ -35,25 +34,35 @@ const AppContent = ({ isBlackToggleOn, setIsBlackToggleOn, socket }) => {
     urlGameId || localStorage.getItem("gameChoice")
   );
 
-  // LIFTED STATE: State to hold the currently selected card ID
   const [selectedCartelaId, setSelectedCartelaId] = useState(null);
-
-  // LIFTED STATE & REF: Lifted from Bingo component
   const [otherSelectedCards, setOtherSelectedCards] = useState({});
   const emitLockRef = useRef(false);
 
   // Define the centralized client-side card cleanup function
   const clearClientCardState = (cardIdToClear) => {
     console.log("♻️ Client-side card state cleanup initiated for:", cardIdToClear);
-    //setSelectedCartelaId(null); // Clear the main selected card
+    
+    // ⭐ FIX: Only clear the main selected card if a game start is signaled (cardIdToClear is null)
+    if (cardIdToClear === null) {
+        setSelectedCartelaId(null);
+        sessionStorage.removeItem("mySelectedCardId");
+        console.log("Game started, clearing your card selection.");
+    }
+    
     emitLockRef.current = false; // Reset the lock
 
     setOtherSelectedCards((prevCards) => {
       const updated = { ...prevCards };
+      
+      // If the game is starting and no specific card is passed, clear all other cards.
+      if (!cardIdToClear) {
+          console.log("Clearing all other selected cards.");
+          return {};
+      }
+
+      // Otherwise, just remove the specified card.
       const keyToRemove = Object.keys(updated).find(
-        (key) =>
-          updated[key] === cardIdToClear ||
-          String(updated[key]) === String(cardIdToClear)
+        (key) => String(updated[key]) === String(cardIdToClear)
       );
 
       if (keyToRemove) {
@@ -66,26 +75,35 @@ const AppContent = ({ isBlackToggleOn, setIsBlackToggleOn, socket }) => {
     });
   };
 
-  // Move the socket listener for "cardAvailable" here in AppContent
   useEffect(() => {
     if (socket) {
-      console.log("Attaching cardAvailable listener in AppContent");
-      // Use a named function or a useCallback wrapped function if you need
-      // to avoid re-creating this handler on every render for optimization
-      const handleCardAvailable = ({ cardId }) => {
-        console.log("♻️ Socket Event: cardAvailable received for:", cardId);
-        // Call the centralized cleanup function
-       clearClientCardState(cardId);
+      console.log("Attaching socket listeners in AppContent");
+
+      // ⭐ NEW: Listener for a full game reset
+      const handleGameCardReset = () => {
+        console.log("♻️ Socket Event: gameCardResetOngameStart received. Resetting all cards.");
+        clearClientCardState(null); // Signal a full reset
       };
 
+      // Existing listener for single card availability
+      const handleCardAvailable = ({ cardId }) => {
+        console.log("♻️ Socket Event: cardAvailable received for:", cardId);
+        clearClientCardState(cardId); // Signal to clear a specific card
+      };
+
+      // Attach both listeners
+      socket.on("gameCardResetOngameStart", handleGameCardReset);
       socket.on("cardAvailable", handleCardAvailable);
 
+
+      // Clean up both listeners
       return () => {
-        console.log("Detaching cardAvailable listener in AppContent");
+        console.log("Detaching socket listeners in AppContent");
+        socket.off("gameCardResetOngameStart", handleGameCardReset);
         socket.off("cardAvailable", handleCardAvailable);
       };
     }
-  }, [socket]); // Dependencies: socket
+  }, [socket]);
 
   useEffect(() => {
     if (urlTelegramId && urlTelegramId !== localStorage.getItem("telegramId")) {
@@ -102,10 +120,8 @@ const AppContent = ({ isBlackToggleOn, setIsBlackToggleOn, socket }) => {
     localStorage.setItem("blackToggle", String(isBlackToggleOn));
   }, [isBlackToggleOn]);
 
-
   return (
     <Routes>
-      {/* Routes WITHOUT Nav (Layout) */}
       <Route
         path="/game"
         element={
@@ -113,10 +129,8 @@ const AppContent = ({ isBlackToggleOn, setIsBlackToggleOn, socket }) => {
             selectedCartelaId={selectedCartelaId}
             telegramId={telegramId}
             gameId={gameId}
-            // Pass the states/ref needed for BingoGame if it manipulates them
             otherSelectedCards={otherSelectedCards}
             emitLockRef={emitLockRef}
-            // If BingoGame can also trigger the cleanup, pass the function
             onClearClientCardState={clearClientCardState}
           />
         }
@@ -125,10 +139,9 @@ const AppContent = ({ isBlackToggleOn, setIsBlackToggleOn, socket }) => {
       <Route path="/PaymentForm" element={<PaymentForm />} />
       <Route path="/payment-success" element={<PaymentSuccess />} />
       <Route path="/instruction" element={<Instruction />} />
-      <Route path="/withdrawal-Form" element={<WithdrawForm />} />      
+      <Route path="/withdrawal-Form" element={<WithdrawForm />} />
       <Route path="/Check-Withdraw" element={<CheckWithdrawalPage />} />
 
-      {/* Routes WITH Nav - Layout will now handle the common logic */}
       <Route
         path="/"
         element={
@@ -139,7 +152,6 @@ const AppContent = ({ isBlackToggleOn, setIsBlackToggleOn, socket }) => {
             telegramId={telegramId}
             cartelaId={selectedCartelaId}
             setCartelaIdInParent={setSelectedCartelaId}
-            // NEW PROP: Pass the centralized cleanup function to Layout
             onClearClientCardState={clearClientCardState}
           />
         }
@@ -152,11 +164,9 @@ const AppContent = ({ isBlackToggleOn, setIsBlackToggleOn, socket }) => {
               setCartelaIdInParent={setSelectedCartelaId}
               cartelaId={selectedCartelaId}
               socket={socket}
-              // NEW PROPS for Bingo:
               otherSelectedCards={otherSelectedCards}
               setOtherSelectedCards={setOtherSelectedCards}
               emitLockRef={emitLockRef}
-              // If Bingo needs to explicitly trigger the cleanup, pass it
               onClearClientCardState={clearClientCardState}
             />
           }
