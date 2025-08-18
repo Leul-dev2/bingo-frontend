@@ -34,6 +34,7 @@ const BingoGame = () => {
   // ✅ New state to manage audio on/off
   const [isAudioOn, setIsAudioOn] = useState(false);
   const [audioPrimed, setAudioPrimed] = useState(false);
+  const [failedBingo, setFailedBingo] = useState(null);
 
     const [gameDetails, setGameDetails] = useState({
     winAmount: '-',
@@ -93,9 +94,22 @@ const BingoGame = () => {
       }
 
     };
-     
-   
-    
+
+   const handleBingoClaimFailed = ({ message, reason, telegramId, gameId, cardId, card, lastTwoNumbers, selectedNumbers }) => {
+    navigate("/winnerFailed", { 
+        state: { 
+            message, 
+            reason, 
+            telegramId,
+            gameId,
+            cardId,
+            card, 
+            lastTwoNumbers, 
+            selectedNumbers 
+          } 
+        });
+    };
+ 
 
     const handleGameDetails = ({ winAmount, playersCount, stakeAmount }) => {
       setGameDetails({ winAmount, playersCount, stakeAmount });
@@ -123,6 +137,7 @@ const BingoGame = () => {
     socket.on("gameDetails", handleGameDetails);
     socket.on("winnerConfirmed", handleWinnerConfirmed);
     socket.on("winnerError", handleWinnerError);
+    socket.on("bingoClaimFailed", handleBingoClaimFailed);
 
     // 3. Cleanup Function
     return () => {
@@ -136,7 +151,8 @@ const BingoGame = () => {
       socket.off("numberDrawn", handleNumberDrawn);
       socket.off("gameDetails", handleGameDetails);
       socket.off("winnerConfirmed", handleWinnerConfirmed);
-      socket.off("winnerError", handleWinnerError);
+      socket.off("winnerError", handleWinnerError); 
+      socket.off("bingoClaimFailed", handleBingoClaimFailed);
     };
   }, [gameId, telegramId, GameSessionId, navigate, isAudioOn]);
 

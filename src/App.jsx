@@ -17,6 +17,7 @@ import PaymentForm from "./components/payment/DepositeForm";
 import Instruction from "./components/instruction/instruction";
 import WithdrawForm from "./components/payment/WithdrawalForm";
 import CheckWithdrawalPage from "./components/payment/CheckWithdrwal";
+import WinnerFailed from "./components/WinnerFailed";
 
 // Initialize socket connection globally
 const socket = io("https://bingobot-backend-bwdo.onrender.com");
@@ -136,6 +137,7 @@ const AppContent = ({ isBlackToggleOn, setIsBlackToggleOn, socket }) => {
         }
       />
       <Route path="/winnerPage" element={<WinnerPage />} />
+       <Route path="/winnerFailed" element={<WinnerFailed />} />
       <Route path="/PaymentForm" element={<PaymentForm />} />
       <Route path="/payment-success" element={<PaymentSuccess />} />
       <Route path="/instruction" element={<Instruction />} />
