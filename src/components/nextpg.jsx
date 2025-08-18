@@ -29,103 +29,103 @@ const BingoGame = () => {
   const [hasEmittedGameCount, setHasEmittedGameCount] = React.useState(false);
   const [gracePlayers, setGracePlayers] = useState([]);
   const [isGameEnd, setIsGameEnd] = useState(false);
+  const [callNumberLength, setCallNumberLength] = useState(0);
+
+    const [gameDetails, setGameDetails] = useState({
+    winAmount: '-',
+    playersCount: '-',
+    stakeAmount: '-',
+  });
 
   const hasJoinedRef = useRef(false);
 
-  useEffect(() => {
-  if (!cartelaId || isNaN(Number(cartelaId))) {
-    console.error("❌ cartelaId is missing or invalid in location.state");
-    alert("Something went wrong. Please reselect your card.");
-    navigate("/"); // or redirect to card selection
-    }
-  }, [cartelaId]);
-
-
-  // 1️⃣ Connect socket and joinGame
-  useEffect(() => {
+ useEffect(() => {
+    // 1. Initial Connection and Join Game Logic
     if (!socket.connected) {
       socket.connect();
     }
-
     if (!hasJoinedRef.current && gameId && telegramId) {
       socket.emit("joinGame", { gameId, telegramId, GameSessionId });
       hasJoinedRef.current = true;
     }
 
-
-
-       // --- NEW: Listen for drawnNumbersHistory ---
-    socket.on("drawnNumbersHistory", ({ gameId: receivedGameId, history }) => {
-      if (receivedGameId === gameId) { // Ensure it's for the current game
-        console.log(`✅ 🔥🔥🔥 Received ${history.length} drawn numbers history for game ${receivedGameId}.`);
-
-        // Update randomNumber state with raw numbers
+    // 2. All Event Listeners in a Single Place
+    const handleSocketConnect = () => {
+      console.log("✅ Socket.IO connected or reconnected!");
+      if (gameId && telegramId) {
+        socket.emit("joinGame", { gameId, telegramId, GameSessionId });
+      }
+    };
+    const handlePlayerCountUpdate = ({ playerCount }) => setPlayerCount(playerCount);
+    const handleCountdownTick = ({ countdown }) => setCountdown(countdown);
+    const handleGameStart = () => setGameStarted(true);
+    const handleGameEnd = () => setIsGameEnd(true);
+    const handleGameReset = () => {
+      console.log("🔄 Game reset received, allowing new gameCount emit");
+      setHasEmittedGameCount(false);
+      setRandomNumber([]);
+      setCalledSet(new Set());
+      setSelectedNumbers(new Set());
+      setCountdown(0);
+      setGameStarted(false);
+    };
+    const handleDrawnNumbersHistory = ({ gameId: receivedGameId, history }) => {
+      if (receivedGameId === gameId) {
         const numbers = history.map(item => item.number);
-        setRandomNumber(numbers);
-
-        // Update calledSet state with formatted labels
         const labels = new Set(history.map(item => item.label));
+        setRandomNumber(numbers);
         setCalledSet(labels);
       }
-    });
-
-      const handleSocketConnect = () => {
-        console.log("✅ Socket.IO connected or reconnected!");
-        // Emit joinGame again to ensure state synchronization from server
-        // Only if you're truly in a game context (gameId, telegramId exist)
-        if (gameId && telegramId) {
-            socket.emit("joinGame", { gameId, telegramId, GameSessionId });
-            console.log("✅ Re-emitted joinGame after socket reconnection.");
-            // You might want to reset hasEmittedGameCount here too if applicable,
-            // but for general state sync, joinGame is enough.
-        }
     };
+    const handleNumberDrawn = ({ number, label, callNumberLength }) => {
+      setRandomNumber((prev) => [...prev, number]);
+      setCalledSet((prev) => new Set(prev).add(label));
+      setCallNumberLength(callNumberLength);
+    };
+    const handleGameDetails = ({ winAmount, playersCount, stakeAmount }) => {
+      setGameDetails({ winAmount, playersCount, stakeAmount });
+    };
+    const handleWinnerConfirmed = ({ winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId, GameSessionId }) => {
+      navigate("/winnerPage", { state: { winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId, GameSessionId } });
+    };
+    const handleWinnerError = () => {
+
+  socket.emit("playerLeave", { gameId: String(gameId), GameSessionId, telegramId }, () => {
+    // This callback runs after the server receives the "playerLeave" event
+    console.log("player leave emited🎯🎯", GameSessionId);
+    navigate("/");
+    });
+  };
 
     socket.on("connect", handleSocketConnect);
-
-    // Cleanup on unmount
-    return () => {
-      socket.off("playerCountUpdate");
-      socket.off("countdownUpdate");
-      socket.off("countdownTick");
-      socket.off("gameStart");
-      socket.off("numberDrawn");
-      socket.off("drawnNumbersHistory");
-      // Optionally disconnect:s
-      // socket.disconnect();
-    };
-  }, [gameId, telegramId]);
-
-
-    useEffect(() => {
-    const handleGameEnd = () => {
-      setIsGameEnd(true);
-    };
-
+    socket.on("playerCountUpdate", handlePlayerCountUpdate);
+    socket.on("countdownTick", handleCountdownTick);
+    socket.on("gameStart", handleGameStart);
     socket.on("gameEnd", handleGameEnd);
+    socket.on("gameReset", handleGameReset);
+    socket.on("drawnNumbersHistory", handleDrawnNumbersHistory);
+    socket.on("numberDrawn", handleNumberDrawn);
+    socket.on("gameDetails", handleGameDetails);
+    socket.on("winnerConfirmed", handleWinnerConfirmed);
+    socket.on("winnerError", handleWinnerError);
 
+    // 3. Cleanup Function
     return () => {
-      socket.off("gameEnd", handleGameEnd); // Clean up listener
+      socket.off("connect", handleSocketConnect);
+      socket.off("playerCountUpdate", handlePlayerCountUpdate);
+      socket.off("countdownTick", handleCountdownTick);
+      socket.off("gameStart", handleGameStart);
+      socket.off("gameEnd", handleGameEnd);
+      socket.off("gameReset", handleGameReset);
+      socket.off("drawnNumbersHistory", handleDrawnNumbersHistory);
+      socket.off("numberDrawn", handleNumberDrawn);
+      socket.off("gameDetails", handleGameDetails);
+      socket.off("winnerConfirmed", handleWinnerConfirmed);
+      socket.off("winnerError", handleWinnerError);
     };
-  }, []);
-
+  }, [gameId, telegramId, GameSessionId, navigate]);
 
   
-
-  // 2️⃣ Handle player count updates
-  useEffect(() => {
-    socket.on("playerCountUpdate", ({ playerCount }) => {
-      console.log("✅ Player count received:", playerCount);
-      setPlayerCount(playerCount);
-    });
-
-    socket.on("countdownUpdate", ({ countdown }) => {
-      setCountdown(countdown);
-    });
-  }, []);
-
-
-  // Listen to grace player updates from server
 
 
   // 3️⃣ Request to start game if enough players
@@ -142,36 +142,6 @@ useEffect(() => {
 }, [playerCount, gameStarted, hasEmittedGameCount, gameId, gracePlayers]);
 
 
-useEffect(() => {
-  socket.on("gameReset", () => {
-    console.log("🔄 Game reset received, allowing new gameCount emit");
-    setHasEmittedGameCount(false);
-    // ✅ NEW: Reset other game states upon a full game reset
-    setRandomNumber([]);
-    setCalledSet(new Set());
-    setSelectedNumbers(new Set());
-    setCountdown(0);
-    setGameStarted(false);
-    setWinnerFound(false);
-  });
-
-  return () => {
-    socket.off("gameReset");
-  };
-}, []);
-
-
-  // 4️⃣ Countdown and game start
-  useEffect(() => {
-    socket.on("countdownTick", ({ countdown }) => {
-      setCountdown(countdown);
-    });
-
-    socket.on("gameStart", () => {
-      setGameStarted(true);
-    });
-  }, []);
-
   // 5️⃣ Local countdown timer
   useEffect(() => {
     if (countdown > 0) {
@@ -182,13 +152,7 @@ useEffect(() => {
     }
   }, [countdown]);
 
-  // 6️⃣ Handle number draw
-  useEffect(() => {
-    socket.on("numberDrawn", ({ number, label }) => {
-      setRandomNumber((prev) => [...prev, number]);
-      setCalledSet((prev) => new Set(prev).add(label));
-    });
-  }, []);
+
   
 
  const handleCartelaClick = (num) => {
@@ -353,21 +317,6 @@ useEffect(() => {
 
 
 
-  const handleLeave = () => {
-  socket.emit("playerLeave", { gameId, GameSessionId, playerId });
-
-  socket.emit("checkPlayerCount", { gameId }, (response) => {
-    if (response.playerCount === 0) {
-      socket.emit("setGameInactive", { gameId });
-    }
-    navigate("/");
-  });
-};
-
-
-
-
-
 useEffect(() => {
   const handleWinnerFound = ({ winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId, GameSessionId }) => {
     navigate("/winnerPage", {
@@ -385,41 +334,30 @@ useEffect(() => {
     });
   };
 
-  const handleWinnerError = ({ message }) => {
-    alert(message || "Winner verification failed. Please try again.");
-  };
-
-  socket.on("winnerConfirmed", handleWinnerFound);
-  socket.on("winnerError", handleWinnerError);
-
-  return () => {
-    socket.off("winnerConfirmed", handleWinnerFound);
-    socket.off("winnerError", handleWinnerError);
-  };
 }, [navigate]);
-
-
- const handleLeaving = () => {
-    navigate("/");
-  };
-
 
 
   
 
   return (
-    <div className="bg-purple-400 min-h-screen flex flex-col items-center p-2 w-full max-w-screen overflow-hidden">
-      <div className="grid grid-cols-5 sm:grid-cols-5 gap-1 w-full p-2 bg-purple-600 text-white text-center">
-        {[gameId, playerCount, telegramId, "Players", "Bet"].map((info, i) => (
-          <button key={i} className="bg-white text-black p-1 text-sm rounded w-full">
+    <div className="bg-gradient-to-b from-[#1a002b] via-[#2d003f] to-black min-h-screen flex flex-col items-center p-1 pb-3 w-full max-w-screen overflow-hidden">
+     <div className="grid grid-cols-4 sm:grid-cols-4 gap-1 w-full text-white text-center mt-3 mb-4">
+        {[
+          `Players: ${gameDetails.playersCount}`, // Correct way to display players count
+         // telegramId,
+          `Prize: ${gameDetails.winAmount}`, // Correct way to display win amount
+          `Call: ${callNumberLength}`, // Correct way to display called numbers
+          `Stake: ${gameDetails.stakeAmount}`, // Correct way to display stake amount
+        ].map((info, i) => (
+          <button key={i} className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-bold p-1 text-xs rounded w-full">
             {info}
           </button>
         ))}
-      </div>
+    </div>
 
-      <div className="flex flex-wrap w-full mt-4">
+      <div className="flex flex-wrap w-full mt-3">
         <div className="w-1/2 flex justify-center">
-          <div className="grid grid-cols-5 gap-1 bg-purple-300 p-2 rounded-lg text-xs w-[90%]">
+          <div className="grid grid-cols-5 gap-1  bg-[#2a0047] p-2 rounded-lg text-xs w-[90%]">
           {["B", "I", "N", "G", "O"].map((letter, i) => (
             <div key={i} className={`text-white text-center p-2 font-bold rounded ${bingoColors[letter]}`}>
               {letter}
@@ -435,8 +373,8 @@ useEffect(() => {
                   key={randomNumberLabel}
                   className={`text-center p-1 rounded ${
                    calledSet.has(randomNumberLabel) // Check if number has been drawn
-                      ? "bg-yellow-500" // Mark all drawn numbers
-                      : "bg-gray-200"
+                      ? "bg-gradient-to-b from-yellow-400 to-orange-500 text-black" // Mark all drawn numbers
+                      : "bg-gray-800 text-gray-300"
                   }`}
                 >
                   {number}
@@ -453,37 +391,41 @@ useEffect(() => {
             <p className="text-lg font-bold">{countdown > 0 ? countdown : "Please Wait"}</p>
           </div>
 
-          <div className="bg-purple-600 p-4 rounded-lg text-white flex flex-col items-center w-full max-w-md mx-auto">
-  <p className="font-bold text-sm sm:text-base mb-2">Last 4 Calls</p>
-  
-  <div className="flex justify-center gap-2 sm:gap-4">
-    {randomNumber.slice(-3).map((num, index) => {
+          <div className="bg-gradient-to-b from-purple-800 to-purple-900 p-4 rounded-lg text-white flex flex-col items-center w-full max-w-md mx-auto">
+  <p className="font-bold text-sm mb-2">Last Number Called</p>
+        <div className="flex justify-center items-center gap-4">
+          {/* Main Display for Last Drawn Number */}
+          <div className="w-16 h-16 flex items-center justify-center text-3xl font-extrabold rounded-full shadow-[0_0_20px_#37ebf3] bg-[#37ebf3] text-purple-900">
+            {randomNumber.slice(-1)}
+          </div>
+           </div>
+</div>
+
+
+       {/* Called Numbers Section */}
+<div className="bg-gradient-to-b from-gray-800 to-gray-900 p-2 rounded-lg w-full max-w-md mx-auto">
+  <p className="text-center font-bold text-xs sm:text-sm text-yellow-400 md:text-base">Recent Calls</p>
+   <div className="flex justify-center gap-2 sm:gap-4">
+  {randomNumber.slice(-4, -1).map((num, index)  => {
       // Define an array of colors for the backgrounds
       const colors = [
-        "bg-red-500", // Red
-        "bg-green-500", // Green
-        "bg-blue-500", // Blue
-        "bg-yellow-500", // Yellow
+        "bg-red-800", // Red
+        "bg-green-800", // Green
+        "bg-blue-800", // Blue
       ];
 
       return (
         <div
           key={index}
-          className={`w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 flex items-center justify-center 
-                      text-base sm:text-lg md:text-xl font-extrabold rounded-full shadow-xl 
-                      ${colors[index] || "bg-gray-500"}`}
+          className={`w-10 h-10 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center 
+                      text-base sm:text-sm md:text-xl font-extrabold rounded-full shadow-xl text-white
+                      ${colors[index]}`}
         >
           {num}
         </div>
       );
     })}
   </div>
-</div>
-
-
-       {/* Called Numbers Section */}
-<div className="bg-gray-100 p-2 rounded-lg w-full max-w-md mx-auto">
-  <p className="text-center font-bold text-xs sm:text-sm md:text-base">Called Numbers</p>
   <div className="grid grid-cols-5 gap-1 mt-2 text-xs sm:text-sm">
     {calledNumbers.map((num, i) => {
       const letter = num.charAt(0);
@@ -498,14 +440,14 @@ useEffect(() => {
 
 {/* Bingo Card */}
 {cartela.length > 0 && (
-  <div className="bg-purple-300 p-4 rounded-lg w-full max-w-md mx-auto">
+  <div className="bg-gradient-to-b from-purple-800 to-purple-900 p-4 rounded-lg w-full max-w-md mx-auto">
     
     {/* BINGO Header */}
     <div className="grid grid-cols-5 gap-1 mb-2">
       {["B", "I", "N", "G", "O"].map((letter, i) => (
         <div
           key={i}
-          className="md:w-10 md:h-10 w-8 h-8 sm:w-12 sm:h-12 flex items-center justify-center font-bold text-white text-base sm:text-lg bg-purple-700 rounded-lg shadow-md"
+          className="md:w-10 md:h-10 w-8 h-8 sm:w-12 sm:h-12 flex items-center justify-center font-bold text-white text-base sm:text-lg bg-gradient-to-b from-purple-700 to-purple-900 rounded-lg shadow-md"
         >
           {letter}
         </div>
@@ -523,16 +465,16 @@ useEffect(() => {
             <div
               key={`${rowIndex}-${colIndex}`}
               onClick={() => handleCartelaClick(num)} // Click to mark
-              className={`md:w-10 md:h-10 w-8 h-8 sm:w-12 sm:h-12 flex items-center justify-center font-bold text-sm sm:text-lg border rounded-lg shadow-md cursor-pointer transition
-                ${
-                  isFreeSpace
-                    ? "bg-green-500 text-white" // Free space
-                    : isSelected
-                    ? "bg-green-500 text-white" // Marked number
-                    : "bg-white text-black border-gray-400"
-                }`}
+              className={`md:w-10 md:h-10 w-8 h-8 flex items-center justify-center font-bold text-sm sm:text-lg border rounded-lg shadow-md cursor-pointer transition
+               ${
+                isFreeSpace
+                  ? "bg-gradient-to-b from-green-400 to-green-600 text-white"
+                  : isSelected
+                  ? "bg-gradient-to-b from-green-400 to-green-600 text-white"
+                  : "bg-white text-black"
+              }`}
             >
-              {isFreeSpace ? "*" : num}
+              {isFreeSpace ? "⭐" : num}
             </div>
           );
         })
@@ -545,12 +487,13 @@ useEffect(() => {
       </div>
 
       <div className="w-full flex flex-col items-center gap-2 mt-4">
-       <button onClick={() => checkForWin(selectedNumbers, telegramId)} className="w-full bg-orange-500 px-4 py-2 text-white rounded-lg text-lg">
+       <button onClick={() => checkForWin(selectedNumbers, telegramId)} 
+        className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 px-4 py-2 text-white rounded-lg text-lg font-bold shadow-lg transition-all duration-200" >
           Bingo!
         </button>
         <div className="w-full flex gap-2">
             <button
-              className="w-1/2 bg-blue-500 px-4 py-2 text-white rounded-lg text-lg"
+               className="w-1/2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 px-4 py-2 text-white rounded-lg text-lg font-semibold shadow-md transition-all duration-200"
               onClick={() => {
                 // Re-emit joinGame to force a state synchronization from the backend
                 if (gameId && telegramId) {
@@ -574,7 +517,7 @@ useEffect(() => {
                 navigate("/");
               });
             }}
-            className="w-1/2 bg-green-500 px-4 py-2 text-white rounded-lg text-lg"
+            className="w-1/2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 px-4 py-2 text-white rounded-lg text-lg font-semibold shadow-md transition-all duration-200"
           >
             Leave
           </button>
@@ -583,7 +526,7 @@ useEffect(() => {
       </div>
 
      {isGameEnd && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm z-50 transition-opacity duration-300">
+        <div className="fixed inset-0 flex items-center justify-center  bg-opacity-80 backdrop-blur-sm z-50 transition-opacity duration-300">
           <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center">
             <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">
               🎉 Game Over
@@ -592,9 +535,13 @@ useEffect(() => {
               The game has ended. You may now leave the room.
             </p>
             <button
-              onClick={handleLeaving}
-              className="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-6 rounded-full transition duration-200"
-            >
+              className="w-1/2 bg-gradient-to-r from-green-500 to-emerald-600 px-4 py-2 text-white rounded-lg text-lg font-semibold shadow-md"
+              onClick={() => {
+              socket.emit("playerLeave", { gameId: String(gameId), GameSessionId, telegramId }, () => {
+                console.log("player leave emited🎯🎯", GameSessionId );
+                navigate("/");
+              });
+            }} >
               Leave Game
             </button>
           </div>

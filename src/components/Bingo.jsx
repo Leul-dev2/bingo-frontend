@@ -71,6 +71,7 @@ const [countdown, setCountdown] = useState(null);
 const [isStarting, setIsStarting] = useState(false);
 const [isSocketReady, setIsSocketReady] = useState(false);
 const hasInitialSyncRun = useRef(false);
+const lastRequestIdRef = useRef(0); 
 
 
 const bgGradient = isBlackToggleOn
@@ -124,6 +125,11 @@ return;
 const handleCardSelections = (cards) => {
   console.log("💡 Initial card selections received:", cards);
   const reformatted = {};
+
+   if (lastRequestIdRef.current > 0) {
+    console.log("⚠ Skipping selections update due to pending request");
+    return;
+  }
   
   for (const [cardId, tId] of Object.entries(cards)) {
     if (tId === telegramId) {
@@ -153,6 +159,12 @@ return newState;
 const handleInitialCardStates = (data) => {
     console.log("💡 Frontend: Received initialCardStates (full board sync):", data);
     const { takenCards } = data; // Backend sends: { "cardId": { cardId: N, takenBy: 'TID', isTaken: true } }
+
+    if (lastRequestIdRef.current > 0) {
+      console.log("⚠ Skipping initial restore because a newer request is pending.");
+      return;
+    }
+
 
     const newOtherSelectedCardsMap = {};
     for (const cardId in takenCards) {
@@ -239,24 +251,42 @@ socket.on("balanceUpdated", (newBalance) => { setUserBalance(newBalance); });
 socket.on("gameStatusUpdate", (status) => { setGameStatus(status); });
 socket.on("currentCardSelections", handleCardSelections);
 socket.on("cardConfirmed", (data) => {
- console.log("DEBUG: Frontend received cardConfirmed data:", data);
- const confirmedCardId = Number(data.cardId);
-setCartelaIdInParent(confirmedCardId);
-setCartela(data.card);
-sessionStorage.setItem("mySelectedCardId", data.cardId);
-setGameStatus("Ready to Start");
+  console.log("DEBUG: Frontend received cardConfirmed data:", data);
+
+  // Ignore stale confirmations
+  if (data.requestId !== lastRequestIdRef.current) {
+    console.warn(`Ignoring stale confirmation. Current: ${lastRequestIdRef.current}, Received: ${data.requestId}`);
+    return;
+  }
+
+  const confirmedCardId = Number(data.cardId);
+  setCartelaIdInParent(confirmedCardId);
+  setCartela(data.card);
+  sessionStorage.setItem("mySelectedCardId", data.cardId);
+  setGameStatus("Ready to Start");
+
+   // ✅ Safe to allow new requests now
+  lastRequestIdRef.current = 0;
 });
+
 socket.on("cardUnavailable", ({ cardId }) => {
 setAlertMessage(`🚫 Card ${cardId} is already taken by another player.`);
 setCartela([]);
 setCartelaIdInParent(null);
 sessionStorage.removeItem("mySelectedCardId");
 });
+
 socket.on("cardError", ({ message }) => {
-setAlertMessage(message || "Card selection failed.");
-setCartela([]);
-//setCartelaId(null);
-sessionStorage.removeItem("mySelectedCardId");
+    // Show an error message to the user
+    setAlertMessage(message || "Card selection failed.");
+    
+    // Explicitly set the player as cardless
+    setCartela([]); // Clear the visual card data
+    setCartelaIdInParent(null); // Clear the parent state's card ID
+    sessionStorage.removeItem("mySelectedCardId"); // Remove the card from local storage
+
+    // Release the request lock
+    lastRequestIdRef.current = 0;
 });
 // socket.on("otherCardSelected", ({ telegramId: otherId, cardId }) => {
 // setOtherSelectedCards((prev) => ({
@@ -276,7 +306,7 @@ socket.on("cardsReset", ({ gameId: resetGameId }) => {
 if (resetGameId === gameId) {
 setOtherSelectedCards({});
 setCartela([]);
-//setCartelaId(null);
+setCartelaIdInParent(null);
 sessionStorage.removeItem("mySelectedCardId");
 // console.log("🔄 Cards have been reset for this game.");
 hasInitialSyncRun.current = false; // Allow re-sync on next mount if desired
@@ -353,42 +383,42 @@ const handleLocalCartelaIdChange = (newCartelaId) => {
 
 // 🟢 Select a bingo card
 const handleNumberClick = (number) => {
-console.log("Clicked button ID:", number);
-if (emitLockRef.current && number === cartelaId) return; // prevent double click on same card
-if (emitLockRef.current && number !== cartelaId) {
-// Allow changing the card - unlock first so the emit can happen
-emitLockRef.current = false;
-}
+  console.log("Clicked button ID:", number);
 
-// if (!isSocketReady) {
-//   console.warn("Socket not ready. Please wait...");
-//   return;
-// }
+  if (emitLockRef.current && number === cartelaId) return; // prevent double click on same card
+  if (emitLockRef.current && number !== cartelaId) {
+    emitLockRef.current = false; // Allow changing the card
+  }
 
-const selectedCard = bingoCards.find(card => card.id === number);
+  const selectedCard = bingoCards.find(card => card.id === number);
+  if (!selectedCard) {
+    handleLocalCartelaIdChange(null); 
+    console.error("Card not found for ID:", number);
+    return;
+  }
 
-emitLockRef.current = true; // ✅ LOCK IMMEDIATELY
+  // Increment requestId
+  lastRequestIdRef.current += 1;
+  const requestId = lastRequestIdRef.current;
 
-if (selectedCard) {
-handleLocalCartelaIdChange(number);
-setCartela(selectedCard.card);
-//setCartelaId(number);
-setGameStatus("Ready to Start");
+  emitLockRef.current = true; // Lock click
 
-//sessionStorage.setItem("mySelectedCardId", number);
+  // Optimistic UI update
+  handleLocalCartelaIdChange(number);
+  setCartela(selectedCard.card);
+  setGameStatus("Ready to Start");
 
-socket.emit("cardSelected", {
-telegramId,
-gameId,
-cardId: number,
-card: selectedCard.card,
-});
-console.log("card emited to the backend")
-} else {
-handleLocalCartelaIdChange(null); 
-console.error("Card not found for ID:", number);
-}
+  // Send request to backend with requestId
+  socket.emit("cardSelected", {
+    telegramId,
+    gameId,
+    cardId: number,
+    card: selectedCard.card,
+    requestId
+  });
+  console.log(`Card emitted to backend with requestId: ${requestId}`);
 };
+
 
 
 useEffect(() => {
@@ -469,8 +499,7 @@ const startGame = async () => {
     setIsStarting(true); // Block double-clicking
 
     try {
-        // 🧠 Step 1: Check if a game is already running
-        // Consider also checking for GameSessionId existence here if needed
+        // ... (Step 1: Check game status remains the same)
         const statusRes = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/games/${gameId}/status`);
         const statusData = await statusRes.json();
 
@@ -480,7 +509,7 @@ const startGame = async () => {
             return;
         }
 
-        // 🟢 Step 2: Start game - backend checks player balance and game state
+        // ... (Step 2: Start game fetch call remains the same)
         const response = await fetch("https://bingobot-backend-bwdo.onrender.com/api/games/start", {
             method: "POST",
             headers: {
@@ -492,60 +521,41 @@ const startGame = async () => {
         const data = await response.json();
 
         if (response.ok && data.success) {
-            // 🟢 The backend now returns the GameSessionId. Capture it here.
-            const { GameSessionId: currentSessionId } = data; 
-            
-            // ✅ Step 3: Game is ready, join the socket room with the new GameSessionId
-            // 🟢 Pass the GameSessionId to the backend
-            socket.emit("joinGame", { 
-                gameId, 
-                telegramId, 
+            const { GameSessionId: currentSessionId } = data;
+
+            // ⭐ Step 3: Game is ready, join the socket room.
+            socket.emit("joinGame", {
+                gameId,
+                telegramId,
                 GameSessionId: currentSessionId
             });
 
-            // ✅ Step 4: Listen for player count updates
-            socket.off("playerCountUpdate").on("playerCountUpdate", ({ playerCount }) => {
-                setPlayerCount(playerCount);
+            // ✅ Step 4: Immediately navigate to the game page.
+            // The API response is the source of truth, so this is safe.
+            navigate("/game", {
+                state: {
+                    gameId,
+                    telegramId,
+                    GameSessionId: currentSessionId,
+                    cartelaId,
+                    cartela,
+                    playerCount: 1, // Start with 1, the new page will update it
+                },
             });
 
-            // ✅ Step 5: Listen for gameId confirmation and navigate
-            socket.off("gameId").on("gameId", (res) => {
-                const { 
-                    gameId: receivedGameId, 
-                    GameSessionId: receivedSessionId, // 🟢 Capture the GameSessionId from the socket event
-                    telegramId: receivedTelegramId 
-                } = res;
-
-                if (receivedGameId && receivedTelegramId && receivedSessionId) {
-                    // 🟢 Pass the GameSessionId to the navigation state
-                    navigate("/game", {
-                        state: {
-                            gameId: receivedGameId,
-                            telegramId: receivedTelegramId,
-                            GameSessionId: receivedSessionId, // 🟢 Add this to the state
-                            cartelaId,
-                            cartela,
-                            playerCount,
-                        },
-                    });
-                } else {
-                    setAlertMessage("Invalid game or user data received!");
-                }
-            });
+            // ❌ Removed the socket.off("gameId").on("gameId", ...) listener
+            // as it is no longer needed. The `Maps` call is now
+            // triggered by the API response itself, which is faster.
 
         } else {
-            // 🚨 Backend rejected the request
             setAlertMessage(data.error || "Error starting the game");
             console.error("Game start error:", data.error);
         }
-
     } catch (error) {
         setAlertMessage("Error connecting to the backend");
         console.error("Connection error:", error);
     } finally {
-        // We can place setIsStarting(false) here or inside the `if` and `else` blocks
-        // depending on the desired behavior.
-        setIsStarting(false); 
+        setIsStarting(false);
     }
 };
 
