@@ -121,7 +121,7 @@ const WinnerFailed = () => {
           onClick={playAgain}
           className="mt-8 w-full py-3 bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white font-bold rounded-full shadow-md transition-transform transform hover:scale-105"
         >
-          Play Agains
+          Play Again
         </button>
       </div>
     </div>
