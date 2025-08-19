@@ -69,14 +69,16 @@ export default function History({ isBlackToggleOn }) {
   }, [activeTab, activeBet, retryAfter, telegramId, selectedBet]);
 
   // ✅ Unified filter: search + winners-only (Recent tab)
-  const filteredGames = games
-    // Recent tab (0): only winners, My Games tab: keep all
-    .filter(g => (activeTab === 0 ? Number(g.win) > 0 : true))
-    // Search by user or ref (case-insensitive)
-    .filter(g =>
-      (g.user || '').toLowerCase().includes(search.toLowerCase()) ||
-      (g.ref || '').toLowerCase().includes(search.toLowerCase())
-    );
+  // Unified filter: search + winners-only (Recent tab)
+const filteredGames = games
+  // Recent tab (0): only winners, My Games tab: keep all
+  .filter(g => (activeTab === 0 ? Number(g.win) > 0 : true))
+  // Search by ref or player/username (case-insensitive)
+  .filter(g =>
+    (g.ref || '').toLowerCase().includes(search.toLowerCase()) ||
+    (g.user || '').toLowerCase().includes(search.toLowerCase())
+  );
+
 
   // Backgrounds and text colors based on toggle
   const containerBg = isBlackToggleOn
@@ -140,7 +142,7 @@ export default function History({ isBlackToggleOn }) {
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search by ref or ID..."
+            placeholder="Search by player or ref..."
             className={`w-full pl-12 pr-4 py-2 rounded-lg border focus:outline-none focus:ring-2 ${
               isBlackToggleOn
                 ? 'border-gray-600 bg-gray-900 text-gray-200 focus:ring-indigo-600'
