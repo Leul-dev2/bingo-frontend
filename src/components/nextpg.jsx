@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import socket from "../socket.js"; // ✅ Shared socket instance
 
 
+
 const BingoGame = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -30,6 +31,10 @@ const BingoGame = () => {
   const [gracePlayers, setGracePlayers] = useState([]);
   const [isGameEnd, setIsGameEnd] = useState(false);
   const [callNumberLength, setCallNumberLength] = useState(0);
+  // ✅ New state to manage audio on/off
+  const [isAudioOn, setIsAudioOn] = useState(false);
+  const [audioPrimed, setAudioPrimed] = useState(false);
+  const [failedBingo, setFailedBingo] = useState(null);
 
     const [gameDetails, setGameDetails] = useState({
     winAmount: '-',
@@ -78,10 +83,34 @@ const BingoGame = () => {
       }
     };
     const handleNumberDrawn = ({ number, label, callNumberLength }) => {
+      console.log("⭐⭐ numbers drawn", number);
       setRandomNumber((prev) => [...prev, number]);
       setCalledSet((prev) => new Set(prev).add(label));
       setCallNumberLength(callNumberLength);
+
+       // ✅ Conditionally play audio based on the isAudioOn state
+      if (isAudioOn) {
+        playAudioForNumber(number);
+      }
+
     };
+
+   const handleBingoClaimFailed = ({ message, reason, telegramId, gameId, cardId, card, lastTwoNumbers, selectedNumbers }) => {
+    navigate("/winnerFailed", { 
+        state: { 
+            message, 
+            reason, 
+            telegramId,
+            gameId,
+            cardId,
+            card, 
+            lastTwoNumbers, 
+            selectedNumbers 
+          } 
+        });
+    };
+ 
+
     const handleGameDetails = ({ winAmount, playersCount, stakeAmount }) => {
       setGameDetails({ winAmount, playersCount, stakeAmount });
     };
@@ -108,6 +137,7 @@ const BingoGame = () => {
     socket.on("gameDetails", handleGameDetails);
     socket.on("winnerConfirmed", handleWinnerConfirmed);
     socket.on("winnerError", handleWinnerError);
+    socket.on("bingoClaimFailed", handleBingoClaimFailed);
 
     // 3. Cleanup Function
     return () => {
@@ -121,11 +151,24 @@ const BingoGame = () => {
       socket.off("numberDrawn", handleNumberDrawn);
       socket.off("gameDetails", handleGameDetails);
       socket.off("winnerConfirmed", handleWinnerConfirmed);
-      socket.off("winnerError", handleWinnerError);
+      socket.off("winnerError", handleWinnerError); 
+      socket.off("bingoClaimFailed", handleBingoClaimFailed);
     };
-  }, [gameId, telegramId, GameSessionId, navigate]);
+  }, [gameId, telegramId, GameSessionId, navigate, isAudioOn]);
 
   
+  // ✅ New: Function to dynamically play the correct audio file
+const playAudioForNumber = (number) => {
+  if (!isAudioOn) return;
+
+  // Use the correct, consistent path with a leading slash
+  const audio = new Audio(`/audio/audio${number}.mp3`); 
+  audio.currentTime = 0;
+  console.log("audio is triggereed 🎯🎯");
+  audio.play().catch((error) => {
+    console.error(`🔊 Failed to play audio ${number}:`, error);
+  });
+};
 
 
   // 3️⃣ Request to start game if enough players
@@ -341,19 +384,45 @@ useEffect(() => {
 
   return (
     <div className="bg-gradient-to-b from-[#1a002b] via-[#2d003f] to-black min-h-screen flex flex-col items-center p-1 pb-3 w-full max-w-screen overflow-hidden">
-     <div className="grid grid-cols-4 sm:grid-cols-4 gap-1 w-full text-white text-center mt-3 mb-4">
-        {[
-          `Players: ${gameDetails.playersCount}`, // Correct way to display players count
-         // telegramId,
-          `Prize: ${gameDetails.winAmount}`, // Correct way to display win amount
-          `Call: ${callNumberLength}`, // Correct way to display called numbers
-          `Stake: ${gameDetails.stakeAmount}`, // Correct way to display stake amount
-        ].map((info, i) => (
-          <button key={i} className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-bold p-1 text-xs rounded w-full">
-            {info}
-          </button>
-        ))}
-    </div>
+    <div className="grid grid-cols-5 sm:grid-cols-5 gap-1 w-full text-white text-center mt-3 mb-4">
+        {[
+          `Players: ${gameDetails.playersCount}`, // Correct way to display players count
+          `Prize: ${gameDetails.winAmount}`, // Correct way to display win amount
+          `Call: ${callNumberLength}`, // Correct way to display called numbers
+          `Stake: ${gameDetails.stakeAmount}`, // Correct way to display stake amount
+        ].map((info, i) => (
+          <button key={i} className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-bold p-1 text-xs rounded w-full">
+            {info}
+          </button>
+        ))}
+      <button
+          onClick={() => {
+            if (!isAudioOn) {
+              // User is trying to enable audio — prime it
+              const audio = new Audio(`audio/audio1.mp3`);
+              audio.volume = 0; // Silent play to satisfy browser
+              audio
+                .play()
+                .then(() => {
+                  audio.pause();
+                  audio.currentTime = 0;
+                  console.log("✅ Audio unlocked");
+                  setIsAudioOn(true); // Enable audio
+                })
+                .catch((err) => {
+                  console.warn("❌ Audio unlock failed:", err);
+                  alert("Audio could not be enabled. Please try clicking again.");
+                });
+            } else {
+              setIsAudioOn(false); // Mute audio
+            }
+          }}
+          className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-bold p-1 text-xs rounded w-full"
+        >
+          {`${isAudioOn ? "🔊" : "🔇"}`}
+      </button>
+
+    </div>
 
       <div className="flex flex-wrap w-full mt-3">
         <div className="w-1/2 flex justify-center">
