@@ -68,19 +68,15 @@ export default function History({ isBlackToggleOn }) {
     }
   }, [activeTab, activeBet, retryAfter, telegramId, selectedBet]);
 
-const filteredGames = games
-  // Show only wins if tab is 'My Games' (activeTab !== 0)
-  .filter(g => activeTab !== 0 ? Number(g.win) > 0 : true)
-  // Filter by username or ref
-  .filter(g =>
-    (g.user || '')       // username
-      .toLowerCase()
-      .includes(search.toLowerCase()) ||
-    (g.ref || '')        // fallback ref
-      .toLowerCase()
-      .includes(search.toLowerCase())
-  );
-
+  // ✅ Unified filter: search + winners-only (Recent tab)
+  const filteredGames = games
+    // Recent tab (0): only winners, My Games tab: keep all
+    .filter(g => (activeTab === 0 ? Number(g.win) > 0 : true))
+    // Search by user or ref (case-insensitive)
+    .filter(g =>
+      (g.user || '').toLowerCase().includes(search.toLowerCase()) ||
+      (g.ref || '').toLowerCase().includes(search.toLowerCase())
+    );
 
   // Backgrounds and text colors based on toggle
   const containerBg = isBlackToggleOn
