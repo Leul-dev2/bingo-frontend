@@ -68,17 +68,15 @@ export default function History({ isBlackToggleOn }) {
     }
   }, [activeTab, activeBet, retryAfter, telegramId, selectedBet]);
 
+  // ✅ Unified filter: search + winners-only (Recent tab)
+  // Unified filter: search + winners-only (Recent tab)
 const filteredGames = games
-  // Show only wins if tab is 'My Games' (activeTab !== 0)
-  .filter(g => activeTab !== 0 ? Number(g.win) > 0 : true)
-  // Filter by username or ref
+  // Recent tab (0): only winners, My Games tab: keep all
+  .filter(g => (activeTab === 0 ? Number(g.win) > 0 : true))
+  // Search by ref or player/username (case-insensitive)
   .filter(g =>
-    (g.user || '')       // username
-      .toLowerCase()
-      .includes(search.toLowerCase()) ||
-    (g.ref || '')        // fallback ref
-      .toLowerCase()
-      .includes(search.toLowerCase())
+    (g.ref || '').toLowerCase().includes(search.toLowerCase()) ||
+    (g.user || '').toLowerCase().includes(search.toLowerCase())
   );
 
 
@@ -144,7 +142,7 @@ const filteredGames = games
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search by ref or ID..."
+            placeholder="Search by player or ref..."
             className={`w-full pl-12 pr-4 py-2 rounded-lg border focus:outline-none focus:ring-2 ${
               isBlackToggleOn
                 ? 'border-gray-600 bg-gray-900 text-gray-200 focus:ring-indigo-600'
