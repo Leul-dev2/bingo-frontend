@@ -41,7 +41,7 @@ export default function History({ isBlackToggleOn }) {
 
       try {
         const res = await fetch(
-          `https://bingobot-backend-bwdo.onrender.com/api/history?user=${telegramId}&bet=${selectedBet}&tab=${activeTab}`
+          `https://api.bingoogame.com/api/history?user=${telegramId}&bet=${selectedBet}&tab=${activeTab}`
         );
 
         if (res.status === 429) {

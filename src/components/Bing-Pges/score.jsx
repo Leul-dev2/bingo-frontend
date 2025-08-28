@@ -28,7 +28,7 @@ export default function Score({ isBlackToggleOn }) {
     const fetchPlayers = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`https://bingobot-backend-bwdo.onrender.com/api/Score?time=${timeKeys[activeTab]}`);
+        const res = await fetch(`https://api.bingoogame.com/api/Score?time=${timeKeys[activeTab]}`);
 
         if (res.status === 429) {
           const { retryAfter: serverRetry, error } = await res.json();

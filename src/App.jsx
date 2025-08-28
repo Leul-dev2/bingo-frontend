@@ -20,7 +20,7 @@ import CheckWithdrawalPage from "./components/payment/CheckWithdrwal";
 import WinnerFailed from "./components/WinnerFailed";
 
 // Initialize socket connection globally
-const socket = io("https://bingobot-backend-bwdo.onrender.com");
+const socket = io("https://api.bingoogame.com");
 
 const AppContent = ({ isBlackToggleOn, setIsBlackToggleOn, socket }) => {
   console.log("🔥 AppContent component rendered/re-rendered.");

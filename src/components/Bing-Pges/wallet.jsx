@@ -74,7 +74,7 @@ useEffect(() => {
     setRetryAfterHistory(0);
   }
 
-  fetch(`https://bingobot-backend-bwdo.onrender.com/api/wallet?telegramId=${telegramId}`)
+  fetch(`https://api.bingoogame.com/api/wallet?telegramId=${telegramId}`)
     .then(async res => {
       if (res.status === 429) {
         const json = await res.json();
