@@ -1,11 +1,13 @@
-import { io } from "socket.io-client";
+const { io } = require("socket.io-client");
 
-const SOCKET_URL = "https://api.bingoogame.com";
-
-console.log(`[Frontend] Attempting to connect to: ${SOCKET_URL}`);
-
-const socket = io(SOCKET_URL, {
-  autoConnect: false,
+const socket = io("https://api.bingoogame.com", {
+  transports: ["websocket"]
 });
 
-export default socket;
+socket.on("connect", () => {
+  console.log("✅ Connected:", socket.id);
+});
+
+socket.on("connect_error", (err) => {
+  console.error("❌ Error:", err.message);
+});
