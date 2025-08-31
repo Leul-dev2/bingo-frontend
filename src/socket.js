@@ -11,3 +11,6 @@ socket.on("connect", () => {
 socket.on("connect_error", (err) => {
   console.error("❌ Error:", err.message);
 });
+
+
+export default socket;
