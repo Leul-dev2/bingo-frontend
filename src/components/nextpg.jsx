@@ -29,7 +29,7 @@ const BingoGame = () => {
   const [winnerFound, setWinnerFound] = useState(false);
   const [hasEmittedGameCount, setHasEmittedGameCount] = React.useState(false);
   const [gracePlayers, setGracePlayers] = useState([]);
-  const [isGameEnd, setIsGameEnd] = useState(false);
+//  const [isGameEnd, setIsGameEnd] = useState(false);
   const [callNumberLength, setCallNumberLength] = useState(0);
   // ✅ New state to manage audio on/off
   const [isAudioOn, setIsAudioOn] = useState(false);
@@ -65,10 +65,10 @@ const BingoGame = () => {
     const handlePlayerCountUpdate = ({ playerCount }) => setPlayerCount(playerCount);
     const handleCountdownTick = ({ countdown }) => setCountdown(countdown);
     const handleGameStart = () => setGameStarted(true);
-    const handleGameEnd = () => {
-      console.log("gameEnd is called 🤪🚀⭐", isGameEnd);
-      setIsGameEnd(true);
-    } 
+    // const handleGameEnd = () => {
+    //   console.log("gameEnd is called 🤪🚀⭐", isGameEnd);
+    //   setIsGameEnd(true);
+    // } 
     const handleGameReset = () => {
       console.log("🔄 Game reset received, allowing new gameCount emit");
       setHasEmittedGameCount(false);
@@ -134,7 +134,7 @@ const BingoGame = () => {
     socket.on("playerCountUpdate", handlePlayerCountUpdate);
     socket.on("countdownTick", handleCountdownTick);
     socket.on("gameStart", handleGameStart);
-    socket.on("gameEnd", handleGameEnd);
+    //socket.on("gameEnd", handleGameEnd);
     socket.on("gameReset", handleGameReset);
     socket.on("drawnNumbersHistory", handleDrawnNumbersHistory);
     socket.on("numberDrawn", handleNumberDrawn);
@@ -598,7 +598,7 @@ useEffect(() => {
         </div>
       </div>
 
-     {isGameEnd && (
+     {/* {isGameEnd && (
         <div className="fixed inset-0 flex items-center justify-center  bg-opacity-80 backdrop-blur-sm z-50 transition-opacity duration-300">
           <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center">
             <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">
@@ -619,7 +619,7 @@ useEffect(() => {
             </button>
           </div>
         </div>
-      )}
+      )} */}
 
 
     </div>
