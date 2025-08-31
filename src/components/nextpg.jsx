@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import socket from "../socket.js"; // ✅ Shared socket instance
+import socket from "../socket"; // ✅ Shared socket instance
 
 
 
@@ -58,9 +58,9 @@ const BingoGame = () => {
     const handleSocketConnect = () => {
       console.log("✅ Socket.IO connected or reconnected!");
       console.log("inside socket 🤪🚀⭐", isGameEnd);
-      // if (gameId && telegramId) {
-      //   socket.emit("joinGame", { gameId, telegramId, GameSessionId });
-      // }
+      if (gameId && telegramId) {
+         socket.emit("joinGame", { gameId, telegramId, GameSessionId });
+      }
     };
     const handlePlayerCountUpdate = ({ playerCount }) => setPlayerCount(playerCount);
     const handleCountdownTick = ({ countdown }) => setCountdown(countdown);

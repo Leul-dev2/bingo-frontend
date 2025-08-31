@@ -1,7 +1,7 @@
 // App.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { BrowserRouter as Router, Routes, Route, useSearchParams } from "react-router-dom";
-import { io } from "socket.io-client";
+import socket from "./socket"; // ✅ Shared socket instance
 
 // Import your components
 import Bingo from "./components/Bingo";
@@ -20,7 +20,7 @@ import CheckWithdrawalPage from "./components/payment/CheckWithdrwal";
 import WinnerFailed from "./components/WinnerFailed";
 
 // Initialize socket connection globally
-const socket = io("https://api.bingoogame.com");
+//const socket = io("https://api.bingoogame.com");
 
 const AppContent = ({ isBlackToggleOn, setIsBlackToggleOn, socket }) => {
   console.log("🔥 AppContent component rendered/re-rendered.");
