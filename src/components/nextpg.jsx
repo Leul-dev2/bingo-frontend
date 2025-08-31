@@ -57,6 +57,7 @@ const BingoGame = () => {
     // 2. All Event Listeners in a Single Place
     const handleSocketConnect = () => {
       console.log("✅ Socket.IO connected or reconnected!");
+      console.log("inside socket connect 🤪🚀⭐", isGameEnd);
       if (gameId && telegramId) {
         socket.emit("joinGame", { gameId, telegramId, GameSessionId });
       }
@@ -64,7 +65,10 @@ const BingoGame = () => {
     const handlePlayerCountUpdate = ({ playerCount }) => setPlayerCount(playerCount);
     const handleCountdownTick = ({ countdown }) => setCountdown(countdown);
     const handleGameStart = () => setGameStarted(true);
-    const handleGameEnd = () => setIsGameEnd(true);
+    const handleGameEnd = () => {
+      console.log("gameEnd is called 🤪🚀⭐", isGameEnd);
+      setIsGameEnd(true);
+    } 
     const handleGameReset = () => {
       console.log("🔄 Game reset received, allowing new gameCount emit");
       setHasEmittedGameCount(false);
