@@ -2,7 +2,6 @@ import bingoCards from "../assets/bingoCards.json"; // Import the JSON file
 import { useEffect, useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useLocation } from "react-router-dom";
-import { io } from "socket.io-client";
 
 
 // Initialize socket connection

@@ -1,7 +1,11 @@
 import { io } from "socket.io-client";
 
-const socket = io("https://api.bingoogame.com", {
-  autoConnect: false, // we'll connect manually
+const SOCKET_URL = "https://api.bingoogame.com";
+
+console.log(`[Frontend] Attempting to connect to: ${SOCKET_URL}`);
+
+const socket = io(SOCKET_URL, {
+  autoConnect: false,
 });
 
 export default socket;
