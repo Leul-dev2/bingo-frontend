@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import socket from "../socket"; // ✅ Shared socket instance
+import socket from "../../socket"; // ✅ Shared socket instance
 
 
 

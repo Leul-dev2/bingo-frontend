@@ -1,7 +1,7 @@
 // App.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { BrowserRouter as Router, Routes, Route, useSearchParams } from "react-router-dom";
-import socket from "./socket"; // ✅ Shared socket instance
+import socket from "../socket"; // ✅ Shared socket instance
 
 // Import your components
 import Bingo from "./components/Bingo";
