@@ -37,56 +37,55 @@ const WinnerPage = () => {
     navigate(`/?user=${myTelegramId}&game=${gameId}`);
   };
 
-  return (
-    <div className="bg-purple-100 min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 md:p-8">
-      
-      {/* Celebration Header */}
-      <div className="text-center mb-8 animate-fade-in">
-        <h1 className="text-3xl sm:text-2xl md:text-3xl font-extrabold text-purple-700 leading-tight">
-          🎉 Congratulations!
-        </h1>
-        <h2 className="text-xl sm:text-xl font-semibold text-gray-800 mt-4">
-          The winner is...
-        </h2>
-      </div>
-
-      {/* Winner & Prize Information Card */}
-      <div className="bg-gradient-to-b from-white to-gray-300 p-2 rounded-2xl shadow-xl w-full max-w-sm text-center transform scale-100 transition-transform duration-500 ease-out animate-scale-up">
-        <p className="text-3xl sm:text-4xl font-black text-yellow-500 mb-2">
-          {winnerName}
-        </p>
-        <div className="flex items-center justify-center space-x-2 text-2xl sm:text-3xl font-bold text-green-600">
-          <span>Prize:</span>
-          <span className="text-yellow-500">${prizeAmount}</span>
-        </div>
-      </div>
-
-      {/* Winning Board Display Section */}
-      <div className="mt-3 w-full sm:w-4/5 md:w-2/3  max-w-lg animate-slide-up">
-        <h3 className="text-center text-xl font-bold text-purple-700 mb-4">
-          Winning Board
-        </h3>
-        <div className="bg-white p-2 rounded-2xl shadow-xl">
-          <p className="text-center text-sm font-semibold text-gray-500 mb-2">
-            Board Number: {boardNumber}
-          </p>
-        
-          {renderBingoBoard(winningBoardCells)}
-        </div>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="mt-4 flex flex-col sm:flex-row gap-4 w-full max-w-xs animate-fade-in delay-500">
-        <button
-          onClick={() => playAgain()}
-          className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white font-bold px-6 py-3 rounded-xl shadow-lg hover:bg-blue-700 transition duration-300 transform hover:scale-105"
-        >
-          Play Again
-        </button>
-      </div>
-
+ return (
+  <div className="bg-gradient-to-br from-purple-100 via-pink-100 to-yellow-50 min-h-screen flex flex-col items-center justify-center p-6">
+    
+    {/* Celebration Header */}
+    <div className="text-center mb-10 animate-fade-in">
+      <h1 className="text-4xl md:text-5xl font-extrabold text-purple-700 drop-shadow-lg">
+        🎉 Congratulations! 🎉
+      </h1>
+      <h2 className="text-2xl md:text-3xl font-semibold text-gray-800 mt-3">
+        The Winner is...
+      </h2>
     </div>
-  );
+
+    {/* Winner & Prize Information Card */}
+    <div className="bg-gradient-to-b from-white to-gray-200 p-8 rounded-3xl shadow-2xl w-full max-w-md text-center animate-scale-up">
+      <p className="text-4xl md:text-5xl font-black text-yellow-500 drop-shadow mb-4">
+        {winnerName}
+      </p>
+      <div className="flex items-center justify-center gap-2 text-2xl md:text-3xl font-bold text-green-700">
+        <span className="tracking-wide">Prize:</span>
+        <span className="text-yellow-500">${prizeAmount}</span>
+      </div>
+    </div>
+
+    {/* Winning Board Display Section */}
+    <div className="mt-8 w-full sm:w-4/5 md:w-2/3 max-w-lg animate-slide-up">
+      <h3 className="text-center text-xl md:text-2xl font-bold text-purple-700 mb-4">
+        Winning Board
+      </h3>
+      <div className="bg-white p-6 rounded-2xl shadow-lg">
+        <p className="text-center text-sm font-semibold text-gray-500 mb-3">
+          Board Number: <span className="text-gray-700">{boardNumber}</span>
+        </p>
+        {renderBingoBoard(winningBoardCells)}
+      </div>
+    </div>
+
+    {/* Action Button */}
+    <div className="mt-10 flex justify-center animate-fade-in delay-500">
+      <button
+        onClick={playAgain}
+        className="px-8 py-3 text-lg font-bold text-white rounded-full shadow-xl bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 transform transition duration-300 hover:scale-105 active:scale-95"
+      >
+        Play Again
+      </button>
+    </div>
+  </div>
+);
+
 };
 
 export default WinnerPage;

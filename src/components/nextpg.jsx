@@ -35,6 +35,7 @@ const BingoGame = () => {
   const [isAudioOn, setIsAudioOn] = useState(false);
   const [audioPrimed, setAudioPrimed] = useState(false);
   const [failedBingo, setFailedBingo] = useState(null);
+  const [lastCalledLabel, setLastCalledLabel] = useState(null);
 
     const [gameDetails, setGameDetails] = useState({
     winAmount: '-',
@@ -77,6 +78,7 @@ const BingoGame = () => {
       setSelectedNumbers(new Set());
       setCountdown(0);
       setGameStarted(false);
+      setLastCalledLabel(null);
     };
     const handleDrawnNumbersHistory = ({ gameId: receivedGameId, history }) => {
       if (receivedGameId === gameId) {
@@ -84,6 +86,9 @@ const BingoGame = () => {
         const labels = new Set(history.map(item => item.label));
         setRandomNumber(numbers);
         setCalledSet(labels);
+        if (history.length > 0) {
+            setLastCalledLabel(history[history.length - 1].label);
+        }
       }
     };
     const handleNumberDrawn = ({ number, label, callNumberLength }) => {
@@ -91,6 +96,7 @@ const BingoGame = () => {
       setRandomNumber((prev) => [...prev, number]);
       setCalledSet((prev) => new Set(prev).add(label));
       setCallNumberLength(callNumberLength);
+      setLastCalledLabel(label);
 
        // ✅ Conditionally play audio based on the isAudioOn state
       if (isAudioOn) {
@@ -468,11 +474,11 @@ useEffect(() => {
   <p className="font-bold text-sm mb-2">Last Number Called</p>
         <div className="flex justify-center items-center gap-4">
           {/* Main Display for Last Drawn Number */}
-          <div className="w-16 h-16 flex items-center justify-center text-3xl font-extrabold rounded-full shadow-[0_0_20px_#37ebf3] bg-[#37ebf3] text-purple-900">
-            {randomNumber.slice(-1)}
-          </div>
+        <div className="w-22 h-22 flex items-center justify-center text-3xl font-extrabold rounded-full shadow-[0_0_20px_#37ebf3] bg-[#37ebf3] text-purple-900">
+            {lastCalledLabel ? lastCalledLabel : "-"}
+        </div>
            </div>
-</div>
+      </div>
 
 
        {/* Called Numbers Section */}

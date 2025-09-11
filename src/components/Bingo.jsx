@@ -57,7 +57,7 @@ const gameId = urlGameId || localStorage.getItem("gameChoice");
 const navigate = useNavigate();
 //const [cartelaId, setCartelaId] = useState(null);
 const [cartela, setCartela] = useState([]);
-const [gameStatus, setGameStatus] = useState("");
+const [gameStatus, setGameStatus] = useState(false);
 const [userBalance, setUserBalance] = useState(null);
 const [alertMessage, setAlertMessage] = useState("");
 const numbers = Array.from({ length: 100 }, (_, i) => i + 1);
@@ -75,7 +75,11 @@ const lastRequestIdRef = useRef(0);
 
 const bgGradient = isBlackToggleOn
 ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900'
-: 'bg-purple-400';
+: 'bg-gradient-to-br from-violet-300 via-purple-400 to-indigo-500'
+
+
+
+
 
 const alertBg = isBlackToggleOn ? 'bg-red-900' : 'bg-red-100';
 const alertText = isBlackToggleOn ? 'text-red-300' : 'text-red-700';
@@ -247,7 +251,10 @@ socket.on("initialCardStates", handleInitialCardStates);
 socket.on("userconnected", (res) => { setResponse(res.telegramId); });
 //socket.on("roundEnded", handleReset);
 socket.on("balanceUpdated", (newBalance) => { setUserBalance(newBalance); });
-socket.on("gameStatusUpdate", (status) => { setGameStatus(status); });
+socket.on("gameStatusUpdate", (status) => { 
+  setGameStatus(status);
+    console.log("the game status",status);
+ });
 socket.on("currentCardSelections", handleCardSelections);
 socket.on("cardConfirmed", (data) => {
   console.log("DEBUG: Frontend received cardConfirmed data:", data);
@@ -577,20 +584,52 @@ return (
 )}
 
 
-<div className="flex justify-around w-full max-w-lg mb-2">
-<div className={`${cardBg} ${cardText} px-10 py-1 rounded-3xl text-center font-bold text-sm`}>
-Balance<br />
-<span className="font-bold">{userBalance !== null ? `${userBalance} Birr` : "Loading..."}</span>
-</div>
-<div className={`${cardBg} ${cardText} px-3 py-1 rounded-3xl text-center font-bold text-sm`}>
-Game <br />
-<span className="font-bold">{count}</span>
-</div>
-<div className={`${cardBg} ${cardText} px-10 py-1 rounded-3xl text-center text-sm font-bold`}>
-Game Choice<br />
-<span className="font-bold">{gameId} </span>
-</div>
-</div>
+<div className="flex justify-between items-stretch w-full max-w-xl mb-6 gap-3 px-2 sm:px-4">
+  {/* Balance Card */}
+  <div className="flex-1 flex flex-col justify-center bg-[#3D74B6]
+                  text-white px-2 rounded-2xl text-center shadow-lg 
+                  transition-transform transform hover:scale-105">
+    <p className="text-sm sm:text-base font-semibold tracking-wide opacity-90">
+      Balance
+    </p>
+    <span className="text-md sm:text-md font-extrabold block">
+      {userBalance !== null ? `${userBalance} ብር` : "Loading..."}
+    </span>
+  </div>
+
+  {/* Game Count Card */}
+  <div className="flex-1 flex flex-col justify-center items-center bg-gradient-to-br from-blue-500 via-cyan-500 to-sky-400 
+                  text-white text-center shadow-lg rounded-2xl
+                  transition-transform transform hover:scale-105">
+    {gameStarted ? (
+       <button className="mt-2 flex items-center space-x-2 
+                  px-2 py-3 rounded-2xl text-white font-extrabold text-lg sm:text-xl 
+                  transition-transform transform hover:scale-105">
+            <span className="animate-bounce">Wait 🛑</span>
+        </button>
+    ) : (
+      <button className="mt-2 flex items-center space-x-2 
+                  px-2 py-3 rounded-2xl text-white font-extrabold text-lg sm:text-xl 
+                  transition-transform transform hover:scale-105">
+               <span>PLAY</span>
+              <span className="animate-bounce ">▶️</span>
+      </button>
+    )}
+  </div>
+
+  {/* Game Choice Card */}
+  <div className="flex-1 flex flex-col justify-center bg-[#FFD93D]
+                  text-white px-2 rounded-2xl text-center shadow-lg 
+                  transition-transform transform hover:scale-105">
+    <p className="text-sm sm:text-base font-semibold tracking-wide opacity-90">
+      ባለ
+    </p>
+    <span className="text-lg sm:text-xl font-extrabold block">
+      {gameId}
+    </span>
+  </div>
+</div> 
+
 
 <div className="grid grid-cols-10 gap-1 py-1 px-2 max-w-lg w-full text-xs">
 {numbers.map((num) => {
@@ -615,10 +654,10 @@ className={`w-8 h-8 flex items-center justify-center rounded-md border border-gr
 </div>
 
 {cartela.length > 0 && (
-<div className="grid grid-cols-5 gap-1 p-2 bg-transparent text-white">
+<div className="grid grid-cols-5 gap-1 p-1 bg-transparent text-white">
 {cartela.flat().map((num, index) => (
-<div key={index} className={`w-10 h-10 flex items-center justify-center border border-white rounded-lg text-xs font-bold ${cellBg}`}>
-{num}
+<div key={index} className={`w-6 h-6 flex items-center justify-center border border-white rounded-lg text-xs font-bold ${cellBg}`}>
+ {num}
 </div>
 ))}
 </div>
@@ -626,7 +665,7 @@ className={`w-8 h-8 flex items-center justify-center rounded-md border border-gr
 
 <div className="flex gap-2 mt-3">
 <button onClick={resetGame} className={`${refreshBtnBg} text-white px-3 py-1 rounded-lg shadow-md text-sm`}>
-Refresh
+  Refresh
 </button>
 <button
 onClick={startGame}
