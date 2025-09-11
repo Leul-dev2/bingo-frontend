@@ -72,14 +72,14 @@ const WinnerFailed = () => {
       <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-blue-100 rounded-full blur-2xl opacity-30"></div>
       
       <h1 className="text-4xl font-extrabold text-red-600 mb-3 animate-pulse drop-shadow">
-        Not a Winner 😔
+        በመጨረሻዎቹ  ሁለት ቁጥሮች አልተዘጋም!
       </h1>
       <p className="text-gray-600 text-lg mb-6">{message}</p>
 
       {/* Last Numbers */}
       <div className="mb-8">
         <h3 className="text-sm uppercase tracking-wide text-gray-500 mb-2">
-          Last 2 Numbers Drawn
+          መጨረሻ ላይ የወጡት ቁጥሮች
         </h3>
         <div className="flex justify-center gap-4">
           {lastTwoNumbers.map((num, index) => (
@@ -95,7 +95,7 @@ const WinnerFailed = () => {
 
       {/* Bingo Card */}
       <div className="bg-gray-50 p-6 rounded-2xl shadow-inner">
-        <h2 className="text-xl font-semibold text-gray-800 mb-2">Your Bingo Card</h2>
+        <h2 className="text-xl font-semibold text-gray-800 mb-2">Bingo Card</h2>
         <p className="text-sm text-gray-500 mb-4">
           Card ID: <span className="font-mono text-gray-700">{cardId}</span>
         </p>
@@ -118,7 +118,7 @@ const WinnerFailed = () => {
       {/* Play Again Button */}
       <button
         onClick={playAgain}
-        className="mt-10 w-full py-3 bg-gradient-to-r from-indigo-500 to-indigo-700 hover:from-indigo-600 hover:to-indigo-800 text-white text-lg font-bold rounded-full shadow-lg transition-transform transform hover:scale-105 active:scale-95"
+        className="mt-5 w-full py-3 bg-gradient-to-r from-indigo-500 to-indigo-700 hover:from-indigo-600 hover:to-indigo-800 text-white text-lg font-bold rounded-full shadow-lg transition-transform transform hover:scale-105 active:scale-95"
       >
         Play Again
       </button>

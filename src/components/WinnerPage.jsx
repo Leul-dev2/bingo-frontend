@@ -41,10 +41,7 @@ const WinnerPage = () => {
   <div className="bg-gradient-to-br from-purple-100 via-pink-100 to-yellow-50 min-h-screen flex flex-col items-center justify-center p-6">
     
     {/* Celebration Header */}
-    <div className="text-center mb-10 animate-fade-in">
-      <h1 className="text-4xl md:text-5xl font-extrabold text-purple-700 drop-shadow-lg">
-        🎉 Congratulations! 🎉
-      </h1>
+    <div className="text-center mb-5 animate-fade-in">
       <h2 className="text-2xl md:text-3xl font-semibold text-gray-800 mt-3">
         The Winner is...
       </h2>
@@ -62,10 +59,7 @@ const WinnerPage = () => {
     </div>
 
     {/* Winning Board Display Section */}
-    <div className="mt-8 w-full sm:w-4/5 md:w-2/3 max-w-lg animate-slide-up">
-      <h3 className="text-center text-xl md:text-2xl font-bold text-purple-700 mb-4">
-        Winning Board
-      </h3>
+    <div className="mt-2 w-full sm:w-4/5 md:w-2/3 max-w-lg animate-slide-up">
       <div className="bg-white p-6 rounded-2xl shadow-lg">
         <p className="text-center text-sm font-semibold text-gray-500 mb-3">
           Board Number: <span className="text-gray-700">{boardNumber}</span>
@@ -75,7 +69,7 @@ const WinnerPage = () => {
     </div>
 
     {/* Action Button */}
-    <div className="mt-10 flex justify-center animate-fade-in delay-500">
+    <div className="mt-4 flex justify-center animate-fade-in delay-500">
       <button
         onClick={playAgain}
         className="px-8 py-3 text-lg font-bold text-white rounded-full shadow-xl bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 transform transition duration-300 hover:scale-105 active:scale-95"
