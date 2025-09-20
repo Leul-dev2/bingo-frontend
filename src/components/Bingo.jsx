@@ -59,6 +59,7 @@ const navigate = useNavigate();
 const [cartela, setCartela] = useState([]);
 const [gameStatus, setGameStatus] = useState(false);
 const [userBalance, setUserBalance] = useState(null);
+const [bonusBalance, setUserBonusBalance] = useState(null);
 const [alertMessage, setAlertMessage] = useState("");
 const numbers = Array.from({ length: 100 }, (_, i) => i + 1);
 const [response, setResponse] = useState("");
@@ -108,6 +109,7 @@ const res = await fetch(`https://api.bingoogame.com/api/users/getUser?telegramId
 if (!res.ok) throw new Error("User not found");
 const data = await res.json();
 setUserBalance(data.balance);
+setUserBonusBalance(data.bonus_balance);
 } catch (err) {
 console.error(err);
 setAlertMessage("Error fetching user data.");
@@ -584,51 +586,63 @@ return (
 )}
 
 
-<div className="flex justify-between items-stretch w-full max-w-xl mb-6 gap-3 px-2 sm:px-4">
-  {/* Balance Card */}
-  <div className="flex-1 flex flex-col justify-center bg-[#3D74B6]
-                  text-white px-2 rounded-2xl text-center shadow-lg 
-                  transition-transform transform hover:scale-105">
-    <p className="text-sm sm:text-base font-semibold tracking-wide opacity-90">
-      Balance
-    </p>
-    <span className="text-md sm:text-md font-extrabold block">
-      {userBalance !== null ? `${userBalance} ብር` : "Loading..."}
-    </span>
-  </div>
+<div className="flex justify-between items-stretch w-full max-w-xl mb-3 gap-1 px-1 sm:px-2">
+    {/* Balance Card */}
+    <div className="flex-1 flex flex-col justify-center bg-[#3D74B6]
+                  text-white px-2 rounded-2xl text-center shadow-lg 
+                  transition-transform transform hover:scale-105">
+        <p className="text-sm sm:text-base font-semibold tracking-wide opacity-90">
+            Balance
+        </p>
+        <span className="text-md sm:text-md font-extrabold block">
+            {userBalance !== null ? `${userBalance} ብር` : "Loading..."}
+        </span>
+    </div>
 
-  {/* Game Count Card */}
-  <div className="flex-1 flex flex-col justify-center items-center bg-gradient-to-br from-blue-500 via-cyan-500 to-sky-400 
-                  text-white text-center shadow-lg rounded-2xl
-                  transition-transform transform hover:scale-105">
-    {gameStarted ? (
-       <button className="mt-2 flex items-center space-x-2 
-                  px-2 py-3 rounded-2xl text-white font-extrabold text-lg sm:text-xl 
-                  transition-transform transform hover:scale-105">
-            <span className="animate-bounce">Wait 🛑</span>
-        </button>
-    ) : (
-      <button className="mt-2 flex items-center space-x-2 
-                  px-2 py-3 rounded-2xl text-white font-extrabold text-lg sm:text-xl 
-                  transition-transform transform hover:scale-105">
-               <span>PLAY</span>
-              <span className="animate-bounce ">▶️</span>
-      </button>
-    )}
-  </div>
+    {/* Bonus Balance Card */}
+    <div className="flex-1 flex flex-col justify-center bg-[#51B33B]
+                  text-white px-2 rounded-2xl text-center shadow-lg 
+                  transition-transform transform hover:scale-105">
+        <p className="text-sm sm:text-base font-semibold tracking-wide opacity-90">
+            Bonus
+        </p>
+        <span className="text-md sm:text-md font-extrabold block">
+            {bonusBalance !== null ? `${bonusBalance} ብር` : "Loading..."}
+        </span>
+    </div>
 
-  {/* Game Choice Card */}
-  <div className="flex-1 flex flex-col justify-center bg-[#FFD93D]
-                  text-white px-2 rounded-2xl text-center shadow-lg 
-                  transition-transform transform hover:scale-105">
-    <p className="text-sm sm:text-base font-semibold tracking-wide opacity-90">
-      ባለ
-    </p>
-    <span className="text-lg sm:text-xl font-extrabold block">
-      {gameId}
-    </span>
-  </div>
-</div> 
+    {/* Game Count Card */}
+    <div className="flex-1 flex flex-col justify-center items-center bg-gradient-to-br from-blue-500 via-cyan-500 to-sky-400 
+                  text-white text-center shadow-lg rounded-2xl
+                  transition-transform transform hover:scale-105">
+        {gameStarted ? (
+            <button className="mt-2 flex flex-col items-center space-x-2 
+                  px-2 py-3 rounded-2xl text-white font-extrabold text-lg sm:text-xl 
+                  transition-transform transform hover:scale-105">
+                <span className="animate-bounce">Wait 🛑</span>
+            </button>
+        ) : (
+            <button className="mt-2 flex flex-col items-center space-x-2 
+                  px-2 py-3 rounded-2xl text-white font-extrabold text-lg sm:text-xl 
+                  transition-transform transform hover:scale-105">
+                <span>PLAY</span>
+                <span className="animate-bounce  ">▶️</span>
+            </button>
+        )}
+    </div>
+
+    {/* Game Choice Card */}
+    <div className="flex-1 flex flex-col justify-center bg-[#FFD93D]
+                  text-white px-2 rounded-2xl text-center shadow-lg 
+                  transition-transform transform hover:scale-105">
+        <p className="text-sm sm:text-base font-semibold tracking-wide opacity-90">
+            ባለ
+        </p>
+        <span className="text-lg sm:text-xl font-extrabold block">
+            {gameId}
+        </span>
+    </div>
+</div>
 
 
 <div className="grid grid-cols-10 gap-1 py-1 px-2 max-w-lg w-full text-xs">
@@ -663,7 +677,7 @@ className={`w-8 h-8 flex items-center justify-center rounded-md border border-gr
 </div>
 )}
 
-<div className="flex gap-2 mt-3">
+<div className="flex gap-2 mt-2">
 <button onClick={resetGame} className={`${refreshBtnBg} text-white px-3 py-1 rounded-lg shadow-md text-sm`}>
   Refresh
 </button>
