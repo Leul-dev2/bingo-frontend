@@ -586,63 +586,52 @@ return (
 )}
 
 
-<div className="flex justify-between items-stretch w-full max-w-xl mb-3 gap-1 px-1 sm:px-2">
-    {/* Balance Card */}
-    <div className="flex-1 flex flex-col justify-center bg-[#3D74B6]
-                  text-white px-2 rounded-2xl text-center shadow-lg 
-                  transition-transform transform hover:scale-105">
-        <p className="text-sm sm:text-base font-semibold tracking-wide opacity-90">
-            Balance
-        </p>
-        <span className="text-md sm:text-md font-extrabold block">
-            {userBalance !== null ? `${userBalance} ብር` : "Loading..."}
-        </span>
-    </div>
+<div className="grid grid-cols-4 sm:grid-cols-4 gap-2 w-full max-w-xl text-white text-center mb-2">
+  {/* Balance Card */}
+  <div className="flex flex-col justify-center bg-[#3D74B6] max-h-[24vh] rounded-2xl shadow-lg transition-transform transform hover:scale-105">
+    <p className="text-sm sm:text-base font-semibold tracking-wide opacity-90">
+      Balance
+    </p>
+    <span className="text-md sm:text-md font-extrabold block">
+      {userBalance !== null ? `${userBalance} ብር` : "Loading..."}
+    </span>
+  </div>
 
-    {/* Bonus Balance Card */}
-    <div className="flex-1 flex flex-col justify-center bg-[#51B33B]
-                  text-white px-2 rounded-2xl text-center shadow-lg 
-                  transition-transform transform hover:scale-105">
-        <p className="text-sm sm:text-base font-semibold tracking-wide opacity-90">
-            Bonus
-        </p>
-        <span className="text-md sm:text-md font-extrabold block">
-            {bonusBalance !== null ? `${bonusBalance} ብር` : "Loading..."}
-        </span>
-    </div>
+  {/* Bonus Balance Card */}
+  <div className="flex flex-col justify-center bg-[#51B33B] max-h-[24vh] rounded-2xl shadow-lg transition-transform transform hover:scale-105">
+    <p className="text-sm sm:text-base font-semibold tracking-wide opacity-90">
+      Bonus
+    </p>
+    <span className="text-md sm:text-md font-extrabold block">
+      {bonusBalance !== null ? `${bonusBalance} ብር` : "Loading..."}
+    </span>
+  </div>
 
-    {/* Game Count Card */}
-    <div className="flex-1 flex flex-col justify-center items-center bg-gradient-to-br from-blue-500 via-cyan-500 to-sky-400 
-                  text-white text-center shadow-lg rounded-2xl
-                  transition-transform transform hover:scale-105">
-        {gameStarted ? (
-            <button className="mt-2 flex flex-col items-center space-x-2 
-                  px-2 py-3 rounded-2xl text-white font-extrabold text-lg sm:text-xl 
-                  transition-transform transform hover:scale-105">
-                <span className="animate-bounce">Wait 🛑</span>
-            </button>
-        ) : (
-            <button className="mt-2 flex flex-col items-center space-x-2 
-                  px-2 py-3 rounded-2xl text-white font-extrabold text-lg sm:text-xl 
-                  transition-transform transform hover:scale-105">
-                <span>PLAY</span>
-                <span className="animate-bounce  ">▶️</span>
-            </button>
-        )}
-    </div>
+  {/* Game Count Card */}
+  <div className="flex flex-col justify-center items-center bg-gradient-to-br from-blue-500 via-cyan-500 to-sky-400 max-h-[24vh] shadow-lg rounded-2xl transition-transform transform hover:scale-105">
+    {gameStarted ? (
+      <button className="flex flex-col justify-center items-center text-white font-extrabold text-lg sm:text-xl transition-transform transform hover:scale-105">
+        <span className="animate-bounce">Wait 🛑</span>
+      </button>
+    ) : (
+      <button className="flex flex-col justify-center items-center text-white font-extrabold text-lg sm:text-xl transition-transform transform hover:scale-105">
+        <span>PLAY</span>
+        <span className="animate-bounce">▶️</span>
+      </button>
+    )}
+  </div>
 
-    {/* Game Choice Card */}
-    <div className="flex-1 flex flex-col justify-center bg-[#FFD93D]
-                  text-white px-2 rounded-2xl text-center shadow-lg 
-                  transition-transform transform hover:scale-105">
-        <p className="text-sm sm:text-base font-semibold tracking-wide opacity-90">
-            ባለ
-        </p>
-        <span className="text-lg sm:text-xl font-extrabold block">
-            {gameId}
-        </span>
-    </div>
+  {/* Game Choice Card */}
+  <div className="flex flex-col justify-center bg-[#FFD93D] max-h-[24vh] rounded-2xl shadow-lg transition-transform transform hover:scale-105">
+    <p className="text-sm sm:text-base font-semibold tracking-wide opacity-90">
+      ባለ
+    </p>
+    <span className="text-lg sm:text-xl font-extrabold block">
+      {gameId}
+    </span>
+  </div>
 </div>
+
 
 
 <div className="grid grid-cols-10 gap-1 py-1 px-2 max-w-lg w-full text-xs">
