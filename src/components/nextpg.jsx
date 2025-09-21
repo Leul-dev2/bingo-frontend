@@ -106,19 +106,6 @@ const BingoGame = () => {
     };
 
 
-     // ✅ Load saved state on mount
-  useEffect(() => {
-    const savedAudioState = localStorage.getItem("isAudioOn");
-    if (savedAudioState !== null) {
-      setIsAudioOn(savedAudioState === "true");
-    }
-  }, []);
-
-  // ✅ Save whenever it changes
-  useEffect(() => {
-    localStorage.setItem("isAudioOn", isAudioOn);
-  }, [isAudioOn]);
-
    const handleBingoClaimFailed = ({ message, reason, telegramId, gameId, cardId, card, lastTwoNumbers, selectedNumbers }) => {
     navigate("/winnerFailed", { 
         state: { 
@@ -382,26 +369,40 @@ useEffect(() => {
 }, [socket]);
 
 
+   // ✅ Load saved state on mount
+  useEffect(() => {
+    const savedAudioState = localStorage.getItem("isAudioOn");
+    if (savedAudioState !== null) {
+      setIsAudioOn(savedAudioState === "true");
+    }
+  }, []);
+
+  // ✅ Save whenever it changes
+  useEffect(() => {
+    localStorage.setItem("isAudioOn", isAudioOn);
+  }, [isAudioOn]);
 
 
-useEffect(() => {
-  const handleWinnerFound = ({ winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId, GameSessionId }) => {
-    navigate("/winnerPage", {
-      state: {
-        winnerName,
-        prizeAmount,
-        board,
-        winnerPattern,
-        boardNumber,
-        playerCount,
-        telegramId,
-        gameId,
-        GameSessionId
-      }
-    });
-  };
 
-}, [navigate]);
+
+// useEffect(() => {
+//   const handleWinnerFound = ({ winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId, GameSessionId }) => {
+//     navigate("/winnerPage", {
+//       state: {
+//         winnerName,
+//         prizeAmount,
+//         board,
+//         winnerPattern,
+//         boardNumber,
+//         playerCount,
+//         telegramId,
+//         gameId,
+//         GameSessionId
+//       }
+//     });
+//   };
+
+// }, [navigate]);
 
 
   
