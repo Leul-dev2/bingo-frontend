@@ -105,6 +105,20 @@ const BingoGame = () => {
 
     };
 
+
+     // ✅ Load saved state on mount
+  useEffect(() => {
+    const savedAudioState = localStorage.getItem("isAudioOn");
+    if (savedAudioState !== null) {
+      setIsAudioOn(savedAudioState === "true");
+    }
+  }, []);
+
+  // ✅ Save whenever it changes
+  useEffect(() => {
+    localStorage.setItem("isAudioOn", isAudioOn);
+  }, [isAudioOn]);
+
    const handleBingoClaimFailed = ({ message, reason, telegramId, gameId, cardId, card, lastTwoNumbers, selectedNumbers }) => {
     navigate("/winnerFailed", { 
         state: { 
