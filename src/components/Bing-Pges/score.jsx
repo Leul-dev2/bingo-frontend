@@ -11,6 +11,24 @@ export default function Score({ isBlackToggleOn }) {
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [retryAfter, setRetryAfter] = useState(0); // NEW state for retry countdown
+  const filtered = players.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+
+  // Add this state near your other useState hooks
+    const [page, setPage] = useState(0);
+    const pageSize = 7;
+
+    const start = page * pageSize;
+    const end = start + pageSize;
+    const paginatedPlayers = filtered.slice(start, end);
+
+    const handlePrev = () => {
+      if (page > 0) setPage(page - 1);
+    };
+
+    const handleNext = () => {
+      if (end < filtered.length) setPage(page + 1);
+    };
+
 
   useEffect(() => {
     let countdownTimer;
@@ -58,7 +76,6 @@ export default function Score({ isBlackToggleOn }) {
     }
   }, [activeTab, retryAfter]);
 
-  const filtered = players.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
 
   // Conditional classes for dark mode toggle
   const containerBg = isBlackToggleOn
@@ -175,7 +192,7 @@ export default function Score({ isBlackToggleOn }) {
         </AnimatePresence>
 
         {/* Players List or Loader */}
-        {loading ? (
+       {loading ? (
           <div className="flex space-x-2 justify-center py-8">
             {[...Array(3)].map((_, i) => (
               <motion.div
@@ -192,36 +209,56 @@ export default function Score({ isBlackToggleOn }) {
             ))}
           </div>
         ) : (
-          <motion.ul className="space-y-3">
-            {filtered.map((p) => (
-              <motion.li
-                key={p.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: p.id * 0.05 }}
-                className={`flex items-center justify-between rounded-lg p-3 shadow-md ${cardBg}`}
+          <>
+            <motion.ul className="space-y-3">
+              {paginatedPlayers.map((p) => (
+                <motion.li
+                  key={p.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: p.id * 0.05 }}
+                  className={`flex items-center justify-between rounded-lg p-3 shadow-md ${cardBg}`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
+                        isBlackToggleOn ? 'bg-gray-700 text-gray-300' : 'bg-purple-500 text-white'
+                      }`}
+                    >
+                      {p.name.charAt(0)}
+                    </div>
+                    <div>
+                      <div className={`${isBlackToggleOn ? 'text-gray-300' : 'text-gray-800'} font-semibold`}>
+                        {p.name}
+                      </div>
+                      <div className={`${isBlackToggleOn ? 'text-gray-500' : 'text-gray-400'} text-sm`}>
+                        {p.phoneMasked}
+                      </div>
+                    </div>
+                  </div>
+                  <div className={`text-xl font-bold ${scoreTextColor}`}>{p.score}</div>
+                </motion.li>
+              ))}
+            </motion.ul>
+
+            {/* Prev / Next Controls */}
+            <div className="flex justify-between mt-4">
+              <button
+                onClick={handlePrev}
+                disabled={page === 0}
+                className="px-3 py-1 rounded-lg bg-red-300 disabled:opacity-90 text-black font-extrabold"
               >
-                <div className="flex items-center space-x-3">
-                  <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
-                      isBlackToggleOn ? 'bg-gray-700 text-gray-300' : 'bg-purple-500 text-white'
-                    }`}
-                  >
-                    {p.name.charAt(0)}
-                  </div>
-                  <div>
-                    <div className={`${isBlackToggleOn ? 'text-gray-300' : 'text-gray-800'} font-semibold`}>
-                      {p.name}
-                    </div>
-                    <div className={`${isBlackToggleOn ? 'text-gray-500' : 'text-gray-400'} text-sm`}>
-                      {p.phoneMasked}
-                    </div>
-                  </div>
-                </div>
-                <div className={`text-xl font-bold ${scoreTextColor}`}>{p.score}</div>
-              </motion.li>
-            ))}
-          </motion.ul>
+                Prev
+              </button>
+              <button
+                onClick={handleNext}
+                disabled={end >= filtered.length}
+                className="px-3 py-1 rounded-lg bg-green-300 disabled:opacity-90 text-black font-extrabold"
+              >
+                Next
+              </button>
+            </div>
+          </>
         )}
       </div>
     </div>

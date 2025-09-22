@@ -119,7 +119,7 @@ export default function Profile({ setIsBlackToggleOn, isBlackToggleOn }) {
   /////////////////////////////////////////////////////////////////////////
 
   const handleInvite = () => {
-    const inviteLink = 'https://t.me/bossbingosbot'; // replace with your bot link
+    const inviteLink = 'https://t.me/danbingosbot'; // replace with your bot link
     const shareText = encodeURIComponent('Check out this awesome bot: ' + inviteLink);
     const telegramShareUrl = `https://t.me/share/url?text=${shareText}`;
     window.open(telegramShareUrl, '_blank');
@@ -247,7 +247,7 @@ export default function Profile({ setIsBlackToggleOn, isBlackToggleOn }) {
           </button>
         </motion.div>
 
-        <motion.div
+        {/* <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1.3 }}
@@ -259,7 +259,7 @@ export default function Profile({ setIsBlackToggleOn, isBlackToggleOn }) {
           >
             💳 Go to Payment
           </button>
-        </motion.div>
+        </motion.div> */}
 
         {/* Settings */}
         <motion.div

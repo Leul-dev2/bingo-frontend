@@ -22,6 +22,39 @@ export default function History({ isBlackToggleOn }) {
   const [retryAfter, setRetryAfter] = useState(0);
   const [rateLimitError, setRateLimitError] = useState('');
 
+
+ // ✅ Unified filter: search + winners-only (Recent tab)
+  const filteredGames = games
+  // Recent tab (0): only winners, My Games tab: keep all
+  .filter(g => (activeTab === 0 ? Number(g.win) > 0 : true))
+  // Search by ref or player/username (case-insensitive)
+  .filter(g =>
+    (g.ref || '').toLowerCase().includes(search.toLowerCase()) ||
+    (g.user || '').toLowerCase().includes(search.toLowerCase())
+  );
+  const [page, setPage] = useState(0);
+  const pageSize = 7;
+
+  const start = page * pageSize;
+  const end = start + pageSize;
+  const paginatedGames = filteredGames.slice(start, end);
+
+
+  const handlePrev = () => {
+  if (page > 0) setPage(page - 1);
+    };
+
+    const handleNext = () => {
+      if (end < filteredGames.length) setPage(page + 1);
+    };
+
+
+    useEffect(() => {
+      setPage(0);
+    }, [search, activeTab, activeBet]);
+
+
+
   const telegramId = urlTelegramId || localStorage.getItem('telegramId');
   const selectedBet = betValues[activeBet];
 
@@ -67,17 +100,6 @@ export default function History({ isBlackToggleOn }) {
       fetchGames();
     }
   }, [activeTab, activeBet, retryAfter, telegramId, selectedBet]);
-
-  // ✅ Unified filter: search + winners-only (Recent tab)
-  // Unified filter: search + winners-only (Recent tab)
-const filteredGames = games
-  // Recent tab (0): only winners, My Games tab: keep all
-  .filter(g => (activeTab === 0 ? Number(g.win) > 0 : true))
-  // Search by ref or player/username (case-insensitive)
-  .filter(g =>
-    (g.ref || '').toLowerCase().includes(search.toLowerCase()) ||
-    (g.user || '').toLowerCase().includes(search.toLowerCase())
-  );
 
 
   // Backgrounds and text colors based on toggle
@@ -184,34 +206,35 @@ const filteredGames = games
         </div>
 
         {/* Games List or Loading */}
-        <div>
-          {loading ? (
-            <div className="flex justify-center py-10 space-x-3">
-              {[...Array(4)].map((_, i) => (
-                <motion.div
-                  key={i}
-                  className={`w-8 h-8 rounded-full shadow-md animate-pulse ${
-                    isBlackToggleOn
-                      ? 'bg-gray-700'
-                      : 'bg-gradient-to-br from-purple-400 to-pink-400'
-                  }`}
-                  initial={{ scale: 0.6, opacity: 0.7 }}
-                  animate={{ scale: [0.6, 1, 0.6], opacity: [0.7, 1, 0.7] }}
-                  transition={{ repeat: Infinity, duration: 1, delay: i * 0.15 }}
-                />
-              ))}
-            </div>
-          ) : filteredGames.length === 0 ? (
-            <motion.div
-              className={`text-center font-semibold py-10 ${textPrimary}`}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-            >
-              No history found.
-            </motion.div>
-          ) : (
+       <div>
+        {loading ? (
+          <div className="flex justify-center py-10 space-x-3">
+            {[...Array(4)].map((_, i) => (
+              <motion.div
+                key={i}
+                className={`w-8 h-8 rounded-full shadow-md animate-pulse ${
+                  isBlackToggleOn
+                    ? 'bg-gray-700'
+                    : 'bg-gradient-to-br from-purple-400 to-pink-400'
+                }`}
+                initial={{ scale: 0.6, opacity: 0.7 }}
+                animate={{ scale: [0.6, 1, 0.6], opacity: [0.7, 1, 0.7] }}
+                transition={{ repeat: Infinity, duration: 1, delay: i * 0.15 }}
+              />
+            ))}
+          </div>
+        ) : filteredGames.length === 0 ? (
+          <motion.div
+            className={`text-center font-semibold py-10 ${textPrimary}`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            No history found.
+          </motion.div>
+        ) : (
+          <>
             <motion.ul className="space-y-4">
-              {filteredGames.map((game, idx) => (
+              {paginatedGames.map((game, idx) => (
                 <motion.li
                   key={game.ref}
                   initial={{ opacity: 0, y: 20 }}
@@ -249,8 +272,30 @@ const filteredGames = games
                 </motion.li>
               ))}
             </motion.ul>
-          )}
-        </div>
+
+            {/* Prev/Next Controls */}
+            <div className="flex justify-between mt-4">
+              <button
+                onClick={handlePrev}
+                disabled={page === 0}
+               className="px-3 py-1 rounded-lg bg-red-300 disabled:opacity-90 text-black font-extrabold"
+              >
+                Prev
+              </button>
+              <span className="text-sm text-gray-500">
+                Page {page + 1} of {Math.ceil(filteredGames.length / pageSize)}
+              </span>
+              <button
+                onClick={handleNext}
+                disabled={end >= filteredGames.length}
+                className="px-3 py-1 rounded-lg bg-green-300 disabled:opacity-90 text-black font-extrabold"
+              >
+                Next
+              </button>
+            </div>
+          </>
+        )}
+      </div>
       </div>
     </div>
   );
