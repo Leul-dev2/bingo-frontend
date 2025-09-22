@@ -29,6 +29,13 @@ export default function Score({ isBlackToggleOn }) {
       if (end < filtered.length) setPage(page + 1);
     };
 
+    useEffect(() => {
+      if (page > 0 && start >= filtered.length) {
+        setPage(Math.max(0, Math.ceil(filtered.length / pageSize) - 1));
+      }
+    }, [filtered, page, start, pageSize]);
+
+
 
   useEffect(() => {
     let countdownTimer;
@@ -250,6 +257,9 @@ export default function Score({ isBlackToggleOn }) {
               >
                 Prev
               </button>
+              <span className="text-sm font-medium text-gray-700">
+              Page {page + 1} of {Math.ceil(filtered.length / pageSize)}
+            </span>
               <button
                 onClick={handleNext}
                 disabled={end >= filtered.length}
