@@ -541,7 +541,7 @@ useEffect(() => {
       {["B", "I", "N", "G", "O"].map((letter, i) => (
         <div
           key={i}
-          className="md:w-10 md:h-10 w-8 h-8 sm:w-12 sm:h-12 flex items-center justify-center font-bold text-white text-base sm:text-lg bg-gradient-to-b from-purple-700 to-purple-900 rounded-lg shadow-md"
+          className={`md:w-10 md:h-10 w-8 h-8 sm:w-12 sm:h-12 flex items-center justify-center font-bold text-white text-base sm:text-lg rounded-full shadow-md ${bingoColors[letter]}`}
         >
           {letter}
         </div>
@@ -580,14 +580,14 @@ useEffect(() => {
         </div>
       </div>
 
-      <div className="w-full flex flex-col items-center gap-2 mt-2">
+      <div className="w-full flex flex-col items-center gap-2 mt-3">
        <button onClick={() => checkForWin(selectedNumbers, telegramId)} 
         className="w-[95%] bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 px-4 py-2 text-white rounded-4xl text-lg font-bold shadow-lg transition-all duration-200" >
           Bingo!
         </button>
-        <div className="w-full flex gap-3 justify-center">
+        <div className="w-full flex gap-3 justify-center mt-1">
             <button
-               className=" bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 px-12 h-6 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
+               className=" bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 px-14 h-8 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
               onClick={() => {
                 // Re-emit joinGame to force a state synchronization from the backend
                 if (gameId && telegramId) {
@@ -611,7 +611,7 @@ useEffect(() => {
                 navigate("/");
               });
             }}
-            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 px-12 h-6 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
+            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 px-14 h-8 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
           >
             Leave
           </button>
