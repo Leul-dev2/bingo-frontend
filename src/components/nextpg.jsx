@@ -2,6 +2,25 @@ import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import socket from "../../socket"; // ✅ Shared socket instance
 
+// Top of file, after imports
+const BingoCell = React.memo(({ num, isFreeSpace, isSelected, onClick }) => {
+  return (
+    <div
+      onClick={onClick}
+      className={`md:w-10 md:h-10 w-8 h-8 flex items-center justify-center font-bold text-sm sm:text-lg border rounded-lg shadow-md cursor-pointer transition
+        ${
+          isFreeSpace
+            ? "bg-gradient-to-b from-green-400 to-green-600 text-white"
+            : isSelected
+            ? "bg-gradient-to-b from-green-400 to-green-600 text-white"
+            : "bg-white text-black"
+        }`}
+    >
+      {isFreeSpace ? "⭐" : num}
+    </div>
+  );
+});
+
 
 
 const BingoGame = () => {
@@ -36,6 +55,7 @@ const BingoGame = () => {
   const [audioPrimed, setAudioPrimed] = useState(false);
   const [failedBingo, setFailedBingo] = useState(null);
   const [lastCalledLabel, setLastCalledLabel] = useState(null);
+  const saveTimeout = useRef(null);
 
     const [gameDetails, setGameDetails] = useState({
     winAmount: '-',
@@ -210,16 +230,18 @@ useEffect(() => {
   
 
  const handleCartelaClick = (num) => {
-  setSelectedNumbers((prev) => {
-    const newSelection = new Set(prev);
-    if (newSelection.has(num)) {
-      newSelection.delete(num);
-    } else {
-      newSelection.add(num);
-    }
+  const newSelection = new Set(selectedNumbers);
+  if (newSelection.has(num)) {
+    newSelection.delete(num);
+  } else {
+    newSelection.add(num);
+  }
+  setSelectedNumbers(newSelection);
+
+  if (saveTimeout.current) clearTimeout(saveTimeout.current);
+  saveTimeout.current = setTimeout(() => {
     localStorage.setItem("selectedNumbers", JSON.stringify([...newSelection]));
-    return newSelection;
-  });
+  }, 300); // save after 300ms of inactivity
 };
 
   
@@ -556,20 +578,14 @@ useEffect(() => {
           const isSelected = selectedNumbers.has(num); // Check if number is marked
 
           return (
-            <div
+           <BingoCell
               key={`${rowIndex}-${colIndex}`}
-              onClick={() => handleCartelaClick(num)} // Click to mark
-              className={`md:w-10 md:h-10 w-8 h-8 flex items-center justify-center font-bold text-sm sm:text-lg border rounded-lg shadow-md cursor-pointer transition
-               ${
-                isFreeSpace
-                  ? "bg-gradient-to-b from-green-400 to-green-600 text-white"
-                  : isSelected
-                  ? "bg-gradient-to-b from-green-400 to-green-600 text-white"
-                  : "bg-white text-black"
-              }`}
-            >
-              {isFreeSpace ? "⭐" : num}
-            </div>
+              num={num}
+              isFreeSpace={isFreeSpace}
+              isSelected={isSelected}
+              onClick={() => handleCartelaClick(num)}
+            />
+
           );
         })
       )}
