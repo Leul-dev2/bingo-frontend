@@ -656,6 +656,8 @@ className={`w-8 h-8 flex items-center justify-center rounded-md border border-gr
 })}
 </div>
 
+
+<div className="flex gap-3 items-center mt-2">
 {cartela.length > 0 && (
 <div className="grid grid-cols-5 gap-1 p-1 bg-transparent text-white">
 {cartela.flat().map((num, index) => (
@@ -683,6 +685,9 @@ className={`${
 
 </div>
 </div>
+</div>
+
+
 
 
 </>

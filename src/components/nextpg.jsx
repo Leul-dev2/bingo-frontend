@@ -449,7 +449,7 @@ useEffect(() => {
 
     </div>
 
-      <div className="flex flex-wrap w-full">
+      <div className="flex flex-wrap w-full mt-2">
         <div className="w-[45%] flex justify-center">
           <div className="grid grid-cols-5 bg-[#2a0047] p-1 gap-2 rounded-lg text-xs w-[90%] ">
           {["B", "I", "N", "G", "O"].map((letter, i) => (
@@ -534,7 +534,7 @@ useEffect(() => {
 
 {/* Bingo Card */}
 {cartela.length > 0 && (
-  <div className="bg-gradient-to-b from-purple-800 to-purple-900 p-4 rounded-lg w-full max-w-md mx-auto h-[80%]">
+  <div className="bg-gradient-to-b from-purple-800 to-purple-900 p-4 rounded-lg w-full max-w-md mx-auto h-[80%] mt-1">
     
     {/* BINGO Header */}
     <div className="grid grid-cols-5 gap-1 mb-2">
