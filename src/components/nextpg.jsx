@@ -409,7 +409,7 @@ useEffect(() => {
 
   return (
     <div className="bg-gradient-to-b from-[#1a002b] via-[#2d003f] to-black min-h-screen flex flex-col items-center p-1 pb-3 w-full max-w-screen overflow-hidden">
-    <div className="grid grid-cols-5 sm:grid-cols-5 gap-1 w-full text-white text-center mt-3 mb-4">
+    <div className="grid grid-cols-5 sm:grid-cols-5 gap-1 w-full text-white text-center mt-2 mb-2">
         {[
           `Players: ${gameDetails.playersCount}`, // Correct way to display players count
           `Prize: ${gameDetails.winAmount}`, // Correct way to display win amount
@@ -449,11 +449,11 @@ useEffect(() => {
 
     </div>
 
-      <div className="flex flex-wrap w-full mt-3">
-        <div className="w-1/2 flex justify-center">
-          <div className="grid grid-cols-5 gap-1  bg-[#2a0047] p-2 rounded-lg text-xs w-[90%]">
+      <div className="flex flex-wrap w-full">
+        <div className="w-[45%] flex justify-center">
+          <div className="grid grid-cols-5 bg-[#2a0047] p-1 gap-2 rounded-lg text-xs w-[90%] ">
           {["B", "I", "N", "G", "O"].map((letter, i) => (
-            <div key={i} className={`text-white text-center p-2 font-bold rounded ${bingoColors[letter]}`}>
+            <div key={i} className={`text-white text-center text-xs font-bold rounded-full h-4 w-6 ${bingoColors[letter]}`}>
               {letter}
             </div>
           ))}
@@ -465,10 +465,10 @@ useEffect(() => {
               return (
                 <div
                   key={randomNumberLabel}
-                  className={`text-center p-1 rounded ${
+                  className={`text-center rounded ${
                    calledSet.has(randomNumberLabel) // Check if number has been drawn
                       ? "bg-gradient-to-b from-yellow-400 to-orange-500 text-black" // Mark all drawn numbers
-                      : "bg-gray-800 text-gray-300"
+                      : "bg-gray-800 text-gray-400 font-bold"
                   }`}
                 >
                   {number}
@@ -479,17 +479,17 @@ useEffect(() => {
           </div>
         </div>
 
-        <div className="w-1/2 flex flex-col items-center gap-2">
-          <div className="bg-gray-300 p-2 rounded-lg text-center text-xs w-[90%]">
+        <div className="w-[55%] flex flex-col items-center gap-1">
+          <div className="bg-gray-300 p-2 rounded-lg text-center text-xs w-[90%] flex-row flex items-center h-[7%] justify-around">
             <p>Countdown</p>
-            <p className="text-lg font-bold">{countdown > 0 ? countdown : "Please Wait"}</p>
+            <p className="text-lg font-bold">{countdown > 0 ? countdown : "Wait"}</p>
           </div>
 
-          <div className="bg-gradient-to-b from-purple-800 to-purple-900 p-4 rounded-lg text-white flex flex-col items-center w-full max-w-md mx-auto">
-  <p className="font-bold text-sm mb-2">Last Number Called</p>
+      <div className="bg-gradient-to-b from-purple-800 to-purple-900 rounded-lg text-white flex flex-row justify-around items-center w-full max-w-md mx-auto">
+     <p className="font-bold text-xs">Current Number</p>
         <div className="flex justify-center items-center gap-4">
           {/* Main Display for Last Drawn Number */}
-        <div className="w-22 h-22 flex items-center justify-center text-3xl font-extrabold rounded-full shadow-[0_0_20px_#37ebf3] bg-[#37ebf3] text-purple-900">
+        <div className="w-14 h-14 flex items-center justify-center text-xl font-extrabold rounded-full shadow-[0_0_20px_#37ebf3] bg-[#37ebf3] text-purple-900">
             {lastCalledLabel ? lastCalledLabel : "-"}
         </div>
            </div>
@@ -498,7 +498,7 @@ useEffect(() => {
 
        {/* Called Numbers Section */}
 <div className="bg-gradient-to-b from-gray-800 to-gray-900 p-2 rounded-lg w-full max-w-md mx-auto">
-  <p className="text-center font-bold text-xs sm:text-sm text-yellow-400 md:text-base">Recent Calls</p>
+  <p className="text-center font-bold text-xs sm:text-sm text-yellow-400 md:text-base mb-1">Recent Calls</p>
    <div className="flex justify-center gap-2 sm:gap-4">
   {randomNumber.slice(-4, -1).map((num, index)  => {
       // Define an array of colors for the backgrounds
@@ -511,8 +511,8 @@ useEffect(() => {
       return (
         <div
           key={index}
-          className={`w-10 h-10 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center 
-                      text-base sm:text-sm md:text-xl font-extrabold rounded-full shadow-xl text-white
+          className={`w-6 h-6 sm:w-6 sm:h-6 md:w-6 md:h-6 flex items-center justify-center 
+                      text-base text-xs md:text-sm font-extrabold rounded-full shadow-xl text-white
                       ${colors[index]}`}
         >
           {num}
@@ -534,7 +534,7 @@ useEffect(() => {
 
 {/* Bingo Card */}
 {cartela.length > 0 && (
-  <div className="bg-gradient-to-b from-purple-800 to-purple-900 p-4 rounded-lg w-full max-w-md mx-auto">
+  <div className="bg-gradient-to-b from-purple-800 to-purple-900 p-4 rounded-lg w-full max-w-md mx-auto h-[80%]">
     
     {/* BINGO Header */}
     <div className="grid grid-cols-5 gap-1 mb-2">
@@ -549,7 +549,7 @@ useEffect(() => {
     </div>
 
     {/* Bingo Numbers Grid */}
-    <div className="grid grid-cols-5 gap-1">
+    <div className="grid grid-cols-5  h-[90%]">
       {cartela.map((row, rowIndex) =>
         row.map((num, colIndex) => {
           const isFreeSpace = rowIndex === 2 && colIndex === 2; // Middle space (FREE)
@@ -580,14 +580,14 @@ useEffect(() => {
         </div>
       </div>
 
-      <div className="w-full flex flex-col items-center gap-2 mt-4">
+      <div className="w-full flex flex-col items-center gap-2 mt-2">
        <button onClick={() => checkForWin(selectedNumbers, telegramId)} 
-        className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 px-4 py-2 text-white rounded-lg text-lg font-bold shadow-lg transition-all duration-200" >
+        className="w-[95%] bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 px-4 py-2 text-white rounded-4xl text-lg font-bold shadow-lg transition-all duration-200" >
           Bingo!
         </button>
-        <div className="w-full flex gap-2">
+        <div className="w-full flex gap-3 justify-center">
             <button
-               className="w-1/2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 px-4 py-2 text-white rounded-lg text-lg font-semibold shadow-md transition-all duration-200"
+               className=" bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 px-12 h-6 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
               onClick={() => {
                 // Re-emit joinGame to force a state synchronization from the backend
                 if (gameId && telegramId) {
@@ -611,7 +611,7 @@ useEffect(() => {
                 navigate("/");
               });
             }}
-            className="w-1/2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 px-4 py-2 text-white rounded-lg text-lg font-semibold shadow-md transition-all duration-200"
+            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 px-12 h-6 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
           >
             Leave
           </button>
