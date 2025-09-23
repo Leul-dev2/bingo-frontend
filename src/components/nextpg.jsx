@@ -7,7 +7,7 @@ const BingoCell = React.memo(({ num, isFreeSpace, isSelected, onClick }) => {
   return (
     <div
       onClick={onClick}
-      className={`md:w-10 md:h-10 w-8 h-8 flex items-center justify-center font-bold text-sm sm:text-lg border rounded-lg shadow-md cursor-pointer transition
+      className={`md:w-10 md:h-10 w-9 h-8 flex items-center justify-center font-extrabold text-md sm:text-lg border rounded-lg shadow-md cursor-pointer transition
         ${
           isFreeSpace
             ? "bg-gradient-to-b from-green-400 to-green-600 text-white"
@@ -471,7 +471,7 @@ useEffect(() => {
 
     </div>
 
-      <div className="flex flex-wrap w-full mt-2">
+      <div className="flex flex-wrap w-full mt-1">
         <div className="w-[45%] flex justify-center">
           <div className="grid grid-cols-5 bg-[#2a0047] p-1 gap-2 rounded-lg text-xs w-[90%] ">
           {["B", "I", "N", "G", "O"].map((letter, i) => (
