@@ -10,32 +10,30 @@ export default function Score({ isBlackToggleOn }) {
   const [search, setSearch] = useState('');
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [retryAfter, setRetryAfter] = useState(0); // NEW state for retry countdown
+  const [retryAfter, setRetryAfter] = useState(0);
+
+  const [page, setPage] = useState(0);
+  const pageSize = 7;
+
+  // Pagination and search are correctly calculated based on state
   const filtered = players.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+  const start = page * pageSize;
+  const end = start + pageSize;
+  const paginatedPlayers = filtered.slice(start, end);
 
-  // Add this state near your other useState hooks
-    const [page, setPage] = useState(0);
-    const pageSize = 7;
+  const handlePrev = () => {
+    if (page > 0) setPage(page - 1);
+  };
 
-    const start = page * pageSize;
-    const end = start + pageSize;
-    const paginatedPlayers = filtered.slice(start, end);
+  const handleNext = () => {
+    if (end < filtered.length) setPage(page + 1);
+  };
 
-    const handlePrev = () => {
-      if (page > 0) setPage(page - 1);
-    };
-
-    const handleNext = () => {
-      if (end < filtered.length) setPage(page + 1);
-    };
-
-    useEffect(() => {
-      if (page > 0 && start >= filtered.length) {
-        setPage(Math.max(0, Math.ceil(filtered.length / pageSize) - 1));
-      }
-    }, [filtered, page, start, pageSize]);
-
-
+  useEffect(() => {
+    if (page > 0 && start >= filtered.length) {
+      setPage(Math.max(0, Math.ceil(filtered.length / pageSize) - 1));
+    }
+  }, [filtered, page, start, pageSize]);
 
   useEffect(() => {
     let countdownTimer;
@@ -59,7 +57,7 @@ export default function Score({ isBlackToggleOn }) {
           const { retryAfter: serverRetry, error } = await res.json();
           setRetryAfter(serverRetry || 5);
           console.warn(error || 'Rate limit exceeded');
-          setPlayers([]); // clear players list while waiting
+          setPlayers([]);
           setLoading(false);
           return;
         }
@@ -67,11 +65,12 @@ export default function Score({ isBlackToggleOn }) {
         const data = await res.json();
         const masked = data.map((p, i) => ({
           id: i + 1,
-          name: p.username,
-          phoneMasked: p._id.replace(/^(\d{5})\d{3}(\d{2})$/, '$1**$2'),
+          name: p.username || 'Unknown Player',
+          phoneMasked: p._id ? p._id.replace(/^(\d{5})\d{3}(\d{2})$/, '$1**$2') : 'N/A',
           score: p.gamesPlayed
         }));
         setPlayers(masked);
+        setPage(0); // Reset page to 0 when new data is fetched
       } catch {
         setPlayers([]);
       }
@@ -83,8 +82,6 @@ export default function Score({ isBlackToggleOn }) {
     }
   }, [activeTab, retryAfter]);
 
-
-  // Conditional classes for dark mode toggle
   const containerBg = isBlackToggleOn
     ? 'bg-gradient-to-br from-gray-900 via-black to-gray-900'
     : 'bg-gradient-to-br from-purple-200 via-purple-300 to-purple-200';
@@ -120,27 +117,26 @@ export default function Score({ isBlackToggleOn }) {
           </motion.button>
         </div>
 
-      {/* Retry Banner */}
-<AnimatePresence>
-  {retryAfter > 0 && (
-    <motion.div
-      key="retry-banner"
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      transition={{ duration: 0.3 }}
-      className="flex items-center justify-center gap-3 px-4 py-2 rounded-full shadow-md 
-                 bg-gradient-to-r from-amber-300 via-yellow-300 to-amber-400 text-yellow-900"
-    >
-      <RefreshCw className="w-5 h-5 animate-spin-slow text-yellow-800" />
-      <span className="font-medium">
-        Too many requests — retry in{" "}
-        <span className="font-bold">{retryAfter}</span>{" "}
-        second{retryAfter > 1 ? "s" : ""}
-      </span>
-    </motion.div>
-  )}
-</AnimatePresence>
+        {/* Retry Banner */}
+        <AnimatePresence>
+          {retryAfter > 0 && (
+            <motion.div
+              key="retry-banner"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+              className="flex items-center justify-center gap-3 px-4 py-2 rounded-full shadow-md bg-gradient-to-r from-amber-300 via-yellow-300 to-amber-400 text-yellow-900"
+            >
+              <RefreshCw className="w-5 h-5 animate-spin-slow text-yellow-800" />
+              <span className="font-medium">
+                Too many requests — retry in{" "}
+                <span className="font-bold">{retryAfter}</span>{" "}
+                second{retryAfter > 1 ? "s" : ""}
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Search */}
         <div className="relative">
@@ -199,62 +195,59 @@ export default function Score({ isBlackToggleOn }) {
         </AnimatePresence>
 
         {/* Players List or Loader */}
-       {loading ? (
-          <div className="flex space-x-2 justify-center py-8">
-            {[...Array(3)].map((_, i) => (
-              <motion.div
-                key={i}
-                className={`w-6 h-6 rounded-full shadow-md animate-pulse ${
-                  isBlackToggleOn
-                    ? 'bg-gray-700'
-                    : 'bg-gradient-to-br from-purple-400 to-pink-400'
-                }`}
-                initial={{ scale: 0.6, opacity: 0.6 }}
-                animate={{ scale: [0.6, 1, 0.6], opacity: [0.6, 1, 0.6] }}
-                transition={{ repeat: Infinity, duration: 1, delay: i * 0.2 }}
-              />
-            ))}
-          </div>
-        ) : (
-          <>
-            <motion.ul className="space-y-3">
-              {paginatedPlayers.map((p, index) => (
-                <motion.li
-                  key={p._id || index}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className={`flex items-center justify-between rounded-lg p-3 shadow-md ${cardBg}`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
-                        isBlackToggleOn ? 'bg-gray-700 text-gray-300' : 'bg-purple-500 text-white'
-                      }`}
-                    >
-                      {/* Use optional chaining to safely access charAt() */}
-                      {p.username?.charAt(0) || 'N/A'}
-                    </div>
-                    <div>
-                      <div className={`${isBlackToggleOn ? 'text-gray-300' : 'text-gray-800'} font-semibold`}>
-                        {/* Use the correct property: username */}
-                        {p.username}
-                      </div>
-                      {/* Conditionally display the Telegram ID */}
-                      {p._id && (
-                        <div className={`${isBlackToggleOn ? 'text-gray-500' : 'text-gray-400'} text-sm`}>
-                          @{p._id}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className={`text-xl font-bold ${scoreTextColor}`}>
-                    {/* Use the correct property: gamesPlayed */}
-                    {p.gamesPlayed}
-                  </div>
-                </motion.li>
-              ))}
-            </motion.ul>
+        {loading ? (
+          <div className="flex space-x-2 justify-center py-8">
+            {[...Array(3)].map((_, i) => (
+              <motion.div
+                key={i}
+                className={`w-6 h-6 rounded-full shadow-md animate-pulse ${
+                  isBlackToggleOn
+                    ? 'bg-gray-700'
+                    : 'bg-gradient-to-br from-purple-400 to-pink-400'
+                }`}
+                initial={{ scale: 0.6, opacity: 0.6 }}
+                animate={{ scale: [0.6, 1, 0.6], opacity: [0.6, 1, 0.6] }}
+                transition={{ repeat: Infinity, duration: 1, delay: i * 0.2 }}
+              />
+            ))}
+          </div>
+        ) : (
+          <>
+            <motion.ul className="space-y-3">
+              {paginatedPlayers.map((p, index) => (
+                <motion.li
+                  // FIX: Use the 'id' created in the useEffect hook
+                  key={p.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className={`flex items-center justify-between rounded-lg p-3 shadow-md ${cardBg}`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
+                        isBlackToggleOn ? 'bg-gray-700 text-gray-300' : 'bg-purple-500 text-white'
+                      }`}
+                    >
+                      {/* FIX: Use p.name for character and full name */}
+                      {p.name.charAt(0)}
+                    </div>
+                    <div>
+                      <div className={`${isBlackToggleOn ? 'text-gray-300' : 'text-gray-800'} font-semibold`}>
+                        {p.name}
+                      </div>
+                      <div className={`${isBlackToggleOn ? 'text-gray-500' : 'text-gray-400'} text-sm`}>
+                        {p.phoneMasked}
+                      </div>
+                    </div>
+                  </div>
+                  <div className={`text-xl font-bold ${scoreTextColor}`}>
+                    {/* FIX: Use p.score for the score value */}
+                    {p.score}
+                  </div>
+                </motion.li>
+              ))}
+            </motion.ul>
 
             {/* Prev / Next Controls */}
             <div className="flex justify-between mt-4">
@@ -266,8 +259,8 @@ export default function Score({ isBlackToggleOn }) {
                 Prev
               </button>
               <span className="text-sm font-medium text-gray-700">
-              Page {page + 1} of {Math.ceil(filtered.length / pageSize)}
-            </span>
+                Page {page + 1} of {Math.ceil(filtered.length / pageSize)}
+              </span>
               <button
                 onClick={handleNext}
                 disabled={end >= filtered.length}
