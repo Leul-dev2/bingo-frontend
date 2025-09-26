@@ -199,54 +199,63 @@ export default function Score({ isBlackToggleOn }) {
         </AnimatePresence>
 
         {/* Players List or Loader */}
-       {loading ? (
-          <div className="flex space-x-2 justify-center py-8">
-            {[...Array(3)].map((_, i) => (
-              <motion.div
-                key={i}
-                className={`w-6 h-6 rounded-full shadow-md animate-pulse ${
-                  isBlackToggleOn
-                    ? 'bg-gray-700'
-                    : 'bg-gradient-to-br from-purple-400 to-pink-400'
-                }`}
-                initial={{ scale: 0.6, opacity: 0.6 }}
-                animate={{ scale: [0.6, 1, 0.6], opacity: [0.6, 1, 0.6] }}
-                transition={{ repeat: Infinity, duration: 1, delay: i * 0.2 }}
-              />
-            ))}
-          </div>
-        ) : (
-          <>
-            <motion.ul className="space-y-3">
-              {paginatedPlayers.map((p) => (
-                <motion.li
-                  key={p.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: p.id * 0.05 }}
-                  className={`flex items-center justify-between rounded-lg p-3 shadow-md ${cardBg}`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
-                        isBlackToggleOn ? 'bg-gray-700 text-gray-300' : 'bg-purple-500 text-white'
-                      }`}
-                    >
-                      {p.name.charAt(0)}
-                    </div>
-                    <div>
-                      <div className={`${isBlackToggleOn ? 'text-gray-300' : 'text-gray-800'} font-semibold`}>
-                        {p.name}
-                      </div>
-                      <div className={`${isBlackToggleOn ? 'text-gray-500' : 'text-gray-400'} text-sm`}>
-                        {p.phoneMasked}
-                      </div>
-                    </div>
-                  </div>
-                  <div className={`text-xl font-bold ${scoreTextColor}`}>{p.score}</div>
-                </motion.li>
-              ))}
-            </motion.ul>
+         {loading ? (
+              <div className="flex space-x-2 justify-center py-8">
+                {[...Array(3)].map((_, i) => (
+                  <motion.div
+                    key={i}
+                    className={`w-6 h-6 rounded-full shadow-md animate-pulse ${
+                      isBlackToggleOn
+                        ? 'bg-gray-700'
+                        : 'bg-gradient-to-br from-purple-400 to-pink-400'
+                    }`}
+                    initial={{ scale: 0.6, opacity: 0.6 }}
+                    animate={{ scale: [0.6, 1, 0.6], opacity: [0.6, 1, 0.6] }}
+                    transition={{ repeat: Infinity, duration: 1, delay: i * 0.2 }}
+                  />
+                ))}
+              </div>
+            ) : (
+              <>
+                <motion.ul className="space-y-3">
+                  {paginatedPlayers.map((p, index) => (
+                    <motion.li
+                      // Use the server's _id for the key, or fallback to index
+                      key={p._id || index}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      className={`flex items-center justify-between rounded-lg p-3 shadow-md ${cardBg}`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div
+                          className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
+                            isBlackToggleOn ? 'bg-gray-700 text-gray-300' : 'bg-purple-500 text-white'
+                          }`}
+                        >
+                          {/* Use the username property */}
+                          {p.username.charAt(0)}
+                        </div>
+                        <div>
+                          <div className={`${isBlackToggleOn ? 'text-gray-300' : 'text-gray-800'} font-semibold`}>
+                            {/* Use the username property */}
+                            {p.username}
+                          </div>
+                          {/* Conditionally render the Telegram ID if it exists */}
+                          {p._id && (
+                            <div className={`${isBlackToggleOn ? 'text-gray-500' : 'text-gray-400'} text-sm`}>
+                              @{p._id}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className={`text-xl font-bold ${scoreTextColor}`}>
+                        {/* Use the gamesPlayed property */}
+                        {p.gamesPlayed}
+                      </div>
+                    </motion.li>
+                  ))}
+                </motion.ul>
 
             {/* Prev / Next Controls */}
             <div className="flex justify-between mt-4">
