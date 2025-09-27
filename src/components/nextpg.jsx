@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback, memo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import socket from "../../socket"; // ✅ Shared socket instance
+import socket from "../../socket";
 
-// Top of file, after imports
-const BingoCell = React.memo(({ num, isFreeSpace, isSelected, onClick }) => {
+const BingoCell = memo(({ num, isFreeSpace, isSelected, onClick }) => {
   return (
     <div
       onClick={onClick}
@@ -21,8 +20,6 @@ const BingoCell = React.memo(({ num, isFreeSpace, isSelected, onClick }) => {
   );
 });
 
-
-
 const BingoGame = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -38,36 +35,60 @@ const BingoGame = () => {
 
   const [randomNumber, setRandomNumber] = useState([]);
   const [calledNumbers, setCalledNumbers] = useState([]);
-  const [currentCall, setCurrentCall] = useState(null);
   const [selectedNumbers, setSelectedNumbers] = useState(new Set());
   const [countdown, setCountdown] = useState(0);
   const [calledSet, setCalledSet] = useState(new Set());
   const [lastWinnerCells, setLastWinnerCells] = useState([]);
   const [playerCount, setPlayerCount] = useState(0);
   const [gameStarted, setGameStarted] = useState(false);
-  const [winnerFound, setWinnerFound] = useState(false);
-  const [hasEmittedGameCount, setHasEmittedGameCount] = React.useState(false);
-  const [gracePlayers, setGracePlayers] = useState([]);
+  const [hasEmittedGameCount, setHasEmittedGameCount] = useState(false);
   const [isGameEnd, setIsGameEnd] = useState(false);
   const [callNumberLength, setCallNumberLength] = useState(0);
-  // ✅ New state to manage audio on/off
   const [isAudioOn, setIsAudioOn] = useState(false);
-  const [audioPrimed, setAudioPrimed] = useState(false);
-  const [failedBingo, setFailedBingo] = useState(null);
   const [lastCalledLabel, setLastCalledLabel] = useState(null);
-  const saveTimeout = useRef(null);
-  const audioMapRef = useRef(new Map());
-
-    const [gameDetails, setGameDetails] = useState({
+  const [gameDetails, setGameDetails] = useState({
     winAmount: '-',
     playersCount: '-',
     stakeAmount: '-',
   });
 
+  const saveTimeout = useRef(null);
+  const audioMapRef = useRef(new Map());
   const hasJoinedRef = useRef(false);
 
- useEffect(() => {
-    // 1. Initial Connection and Join Game Logic
+  useEffect(() => {
+    const loadAudio = () => {
+      for (let i = 1; i <= 75; i++) {
+        const audio = new Audio(`/audio/${i}.mp3`);
+        audio.preload = 'auto';
+        audioMapRef.current.set(i, audio);
+      }
+      console.log("🔊 Audio files preloaded.");
+    };
+    loadAudio();
+
+    const savedAudioState = localStorage.getItem("isAudioOn");
+    if (savedAudioState !== null) {
+      setIsAudioOn(savedAudioState === "true");
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("isAudioOn", isAudioOn.toString());
+  }, [isAudioOn]);
+
+  const playAudioForNumber = useCallback((number) => {
+    if (!isAudioOn) return;
+    const audio = audioMapRef.current.get(number);
+    if (audio) {
+      audio.currentTime = 0;
+      audio.play().catch((error) => console.error(`🔊 Failed to play audio ${number}:`, error));
+    } else {
+      console.warn(`Audio for number ${number} not found.`);
+    }
+  }, [isAudioOn]);
+
+  useEffect(() => {
     if (!socket.connected) {
       socket.connect();
     }
@@ -76,23 +97,17 @@ const BingoGame = () => {
       hasJoinedRef.current = true;
     }
 
-    // 2. All Event Listeners in a Single Place
     const handleSocketConnect = () => {
       console.log("✅ Socket.IO connected or reconnected!");
-      console.log("inside socket 🤪🚀⭐", isGameEnd);
       if (gameId && telegramId) {
-         socket.emit("joinGame", { gameId, telegramId, GameSessionId });
+        socket.emit("joinGame", { gameId, telegramId, GameSessionId });
       }
     };
     const handlePlayerCountUpdate = ({ playerCount }) => setPlayerCount(playerCount);
     const handleCountdownTick = ({ countdown }) => setCountdown(countdown);
     const handleGameStart = () => setGameStarted(true);
-    const handleGameEnd = () => {
-      console.log("gameEnd is called 🤪🚀⭐", isGameEnd);
-      setIsGameEnd(true);
-    } 
+    const handleGameEnd = () => setIsGameEnd(true);
     const handleGameReset = () => {
-      console.log("🔄 Game reset received, allowing new gameCount emit");
       setHasEmittedGameCount(false);
       setRandomNumber([]);
       setCalledSet(new Set());
@@ -101,62 +116,36 @@ const BingoGame = () => {
       setGameStarted(false);
       setLastCalledLabel(null);
     };
-    const handleDrawnNumbersHistory = ({ gameId: receivedGameId, history }) => {
-      if (receivedGameId === gameId) {
-        const numbers = history.map(item => item.number);
-        const labels = new Set(history.map(item => item.label));
-        setRandomNumber(numbers);
-        setCalledSet(labels);
-        if (history.length > 0) {
-            setLastCalledLabel(history[history.length - 1].label);
-        }
+    const handleDrawnNumbersHistory = ({ history }) => {
+      const numbers = history.map(item => item.number);
+      const labels = new Set(history.map(item => item.label));
+      setRandomNumber(numbers);
+      setCalledSet(labels);
+      if (history.length > 0) {
+        setLastCalledLabel(history[history.length - 1].label);
       }
     };
     const handleNumberDrawn = ({ number, label, callNumberLength }) => {
-      console.log("⭐⭐ numbers drawn", number);
       setRandomNumber((prev) => [...prev, number]);
       setCalledSet((prev) => new Set(prev).add(label));
       setCallNumberLength(callNumberLength);
       setLastCalledLabel(label);
-
-       // ✅ Conditionally play audio based on the isAudioOn state
-      if (isAudioOn) {
-        playAudioForNumber(number);
-      }
-
+      playAudioForNumber(number);
     };
-
-
-   const handleBingoClaimFailed = ({ message, reason, telegramId, gameId, cardId, card, lastTwoNumbers, selectedNumbers }) => {
-    navigate("/winnerFailed", { 
-        state: { 
-            message, 
-            reason, 
-            telegramId,
-            gameId,
-            cardId,
-            card, 
-            lastTwoNumbers, 
-            selectedNumbers 
-          } 
-        });
+    const handleBingoClaimFailed = ({ message, reason, telegramId, gameId, cardId, card, lastTwoNumbers, selectedNumbers }) => {
+      navigate("/winnerFailed", { state: { message, reason, telegramId, gameId, cardId, card, lastTwoNumbers, selectedNumbers } });
     };
- 
-
     const handleGameDetails = ({ winAmount, playersCount, stakeAmount }) => {
       setGameDetails({ winAmount, playersCount, stakeAmount });
     };
-    const handleWinnerConfirmed = ({ winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId, GameSessionId }) => {
-      navigate("/winnerPage", { state: { winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId, GameSessionId } });
+    const handleWinnerConfirmed = (data) => {
+      navigate("/winnerPage", { state: data });
     };
     const handleWinnerError = () => {
-
-  socket.emit("playerLeave", { gameId: String(gameId), GameSessionId, telegramId }, () => {
-    // This callback runs after the server receives the "playerLeave" event
-    console.log("player leave emited🎯🎯", GameSessionId);
-    navigate("/");
-    });
-  };
+      socket.emit("playerLeave", { gameId: String(gameId), GameSessionId, telegramId }, () => {
+        navigate("/");
+      });
+    };
 
     socket.on("connect", handleSocketConnect);
     socket.on("playerCountUpdate", handlePlayerCountUpdate);
@@ -171,7 +160,6 @@ const BingoGame = () => {
     socket.on("winnerError", handleWinnerError);
     socket.on("bingoClaimFailed", handleBingoClaimFailed);
 
-    // 3. Cleanup Function
     return () => {
       socket.off("connect", handleSocketConnect);
       socket.off("playerCountUpdate", handlePlayerCountUpdate);
@@ -183,45 +171,18 @@ const BingoGame = () => {
       socket.off("numberDrawn", handleNumberDrawn);
       socket.off("gameDetails", handleGameDetails);
       socket.off("winnerConfirmed", handleWinnerConfirmed);
-      socket.off("winnerError", handleWinnerError); 
+      socket.off("winnerError", handleWinnerError);
       socket.off("bingoClaimFailed", handleBingoClaimFailed);
     };
-  }, [gameId, telegramId, GameSessionId, navigate, isAudioOn]);
+  }, [gameId, telegramId, GameSessionId, navigate, playAudioForNumber]);
 
-  
-  // ✅ New: Function to dynamically play the correct audio file
-// Replace your existing function with this one
-const playAudioForNumber = (number) => {
-  if (!isAudioOn) return;
+  useEffect(() => {
+    if (playerCount >= 2 && !hasEmittedGameCount && !gameStarted) {
+      socket.emit("gameCount", { gameId, GameSessionId });
+      setHasEmittedGameCount(true);
+    }
+  }, [playerCount, gameStarted, hasEmittedGameCount, gameId, GameSessionId]);
 
-  // Get the preloaded audio object from the map
-  const audio = audioMapRef.current.get(number);
-  if (audio) {
-    audio.currentTime = 0; // Ensures audio starts from the beginning
-    audio.play().catch((error) => {
-      console.error(`🔊 Failed to play audio ${number}:`, error);
-    });
-  } else {
-    console.warn(`Audio for number ${number} not found.`);
-  }
-};
-
-
-  // 3️⃣ Request to start game if enough players
-useEffect(() => {
-  if (
-    playerCount >= 2 &&
-    !hasEmittedGameCount &&
-    !gameStarted
-  ) {
-    console.log("✅ Emitting gameCount to server...");
-    socket.emit("gameCount", { gameId, GameSessionId });
-    setHasEmittedGameCount(true);
-  }
-}, [playerCount, gameStarted, hasEmittedGameCount, gameId, gracePlayers]);
-
-
-  // 5️⃣ Local countdown timer
   useEffect(() => {
     if (countdown > 0) {
       const timer = setTimeout(() => {
@@ -231,281 +192,101 @@ useEffect(() => {
     }
   }, [countdown]);
 
+  const handleCartelaClick = useCallback((num) => {
+    const newSelection = new Set(selectedNumbers);
+    if (newSelection.has(num)) {
+      newSelection.delete(num);
+    } else {
+      newSelection.add(num);
+    }
+    setSelectedNumbers(newSelection);
 
-  
+    if (saveTimeout.current) clearTimeout(saveTimeout.current);
+    saveTimeout.current = setTimeout(() => {
+      localStorage.setItem("selectedNumbers", JSON.stringify([...newSelection]));
+    }, 300);
+  }, [selectedNumbers]);
 
- const handleCartelaClick = (num) => {
-  const newSelection = new Set(selectedNumbers);
-  if (newSelection.has(num)) {
-    newSelection.delete(num);
-  } else {
-    newSelection.add(num);
-  }
-  setSelectedNumbers(newSelection);
-
-  if (saveTimeout.current) clearTimeout(saveTimeout.current);
-  saveTimeout.current = setTimeout(() => {
-    localStorage.setItem("selectedNumbers", JSON.stringify([...newSelection]));
-  }, 300); // save after 300ms of inactivity
-};
-
-  
-  const checkForWin = (selectedSet, telegramId) => {
-    const markedNumbers = new Set(selectedSet);
-    const drawnNumbers = new Set(randomNumber); // Numbers that have been drawn
-    const selectedArray = Array.from(selectedSet); // 🔁 Convert Set to Array
-
-    let matchedCellsGlobal = [];
-    let lastWinnerCells = [];
-    let allWinnerCells = [];
-    let lastMatchedPattern = "";
-
-    const countLinePatterns = () => {
-      let matchedRows = 0;
-      let matchedCols = 0;
-      let matchedDiagonals = 0;
-
-      // Check rows
-      cartela.forEach((row, rowIndex) => {
-        const matchedCells = row
-          .map((num, colIndex) =>
-            num === "FREE" || drawnNumbers.has(num) && markedNumbers.has(num)
-              ? [rowIndex, colIndex]
-              : null
-          )
-          .filter((cell) => cell !== null);
-
-        // Check if the row is fully matched
-        if (matchedCells.length === row.length) {
-          matchedRows += 1;
-          matchedCells.forEach((cell) => {
-            const [r, c] = cell;
-            matchedCellsGlobal.push(cartela[r][c]);
-          });
-          lastMatchedPattern = `Row ${rowIndex + 1}`;
-          lastWinnerCells = matchedCells;
-          allWinnerCells.push(...matchedCells);
-          setLastWinnerCells(matchedCells); // Store matched cells in state
-        }
-      });
-
-      // Check columns
-      for (let col = 0; col < 5; col++) {
-        const matchedCells = [];
-        for (let row = 0; row < 5; row++) {
-          const num = cartela[row][col];
-          if (num === "FREE" || drawnNumbers.has(num) && markedNumbers.has(num)) {
-            matchedCells.push([row, col]);
-          }
-        }
-        if (matchedCells.length === 5) {
-          matchedCols += 1;
-          matchedCells.forEach((cell) => {
-            const [r, c] = cell;
-            matchedCellsGlobal.push(cartela[r][c]);
-          });
-          lastMatchedPattern = `Column ${col + 1}`;
-          lastWinnerCells = matchedCells;
-          allWinnerCells.push(...matchedCells);
-          setLastWinnerCells(matchedCells); // Store matched cells in state
-        }
-      }
-
-      // Check diagonals
-      const mainDiagonal = [0, 1, 2, 3, 4].map((i) => [i, i]);
-      const antiDiagonal = [0, 1, 2, 3, 4].map((i) => [i, 4 - i]);
-
-      // Check main diagonal
-      if (mainDiagonal.every(([row, col]) => cartela[row][col] === "FREE" || drawnNumbers.has(cartela[row][col]) && markedNumbers.has(cartela[row][col]))) {
-        matchedDiagonals += 1;
-        mainDiagonal.forEach(([r, c]) => matchedCellsGlobal.push(cartela[r][c]));
-        lastMatchedPattern = "Main Diagonal";
-        lastWinnerCells = mainDiagonal;
-        allWinnerCells.push(...mainDiagonal);
-        setLastWinnerCells(mainDiagonal); // Store matched cells in state
-      }
-
-      // Check anti-diagonal
-      if (antiDiagonal.every(([row, col]) => cartela[row][col] === "FREE" || drawnNumbers.has(cartela[row][col]) && markedNumbers.has(cartela[row][col]))) {
-        matchedDiagonals += 1;
-        antiDiagonal.forEach(([r, c]) => matchedCellsGlobal.push(cartela[r][c]));
-        lastMatchedPattern = "Anti Diagonal";
-        lastWinnerCells = antiDiagonal;
-        allWinnerCells.push(...antiDiagonal);
-        setLastWinnerCells(antiDiagonal); // Store matched cells in state
-      }
-
-     // console.log("Last matched pattern:", lastMatchedPattern);
-     // console.log("Winning cells:", lastWinnerCells);
-      return matchedRows + matchedCols + matchedDiagonals;
-    };
-
-    const winCount = countLinePatterns();
-
-    const winnerPattern = Array(25).fill(false); // Assuming a 5x5 board
-    lastWinnerCells.forEach(([row, col]) => {
-      const index = row * 5 + col;
-      winnerPattern[index] = true;
-    });
-
-    // if (winCount > 0) {
-    //   // alert(`Bingo! Winning Pattern: ${lastMatchedPattern}`);
-    //   declareWinner(winnerPattern, telegramId);
-    //   return lastMatchedPattern;
-    // } else {
-    //   alert("You are not a winner yet! Keep playing.");
-    // }
-
+  const checkForWin = () => {
     socket.emit("checkWinner", {
       telegramId,
       gameId,
       GameSessionId,
-      cartelaId, 
-      selectedNumbers: selectedArray,        // player card ID
+      cartelaId,
+      selectedNumbers: Array.from(selectedNumbers),
     });
-
-  console.log("Sending to backend:", {
-  telegramId,
-  gameId,
-  cartelaId,
-  selectedNumbers: selectedArray
-});
   };
 
-
-  useEffect(() => {
-  if (!socket) return;
-
-  socket.on("gameStateSync", (state) => {
-    setDrawnNumbers(state.drawnNumbers);
-    setGameActive(state.isActive);
-    setPrize(state.prizeAmount);
-    setWinnerPattern(state.winnerPattern);
-    setBoard(state.board);
-    setBoardNumber(state.boardNumber);
-  });
-
-  socket.on("youAreWinner", (winnerData) => {
-    navigate("/winner", { state: winnerData });
-  });
-
-  return () => {
-    socket.off("gameStateSync");
-    socket.off("youAreWinner");
-  };
-}, [socket]);
-
-
-   // ✅ Load saved state on mount
-  useEffect(() => {
-    const savedAudioState = localStorage.getItem("isAudioOn");
-    if (savedAudioState !== null) {
-      setIsAudioOn(savedAudioState === "true");
+  const handleAudioToggle = () => {
+    if (!isAudioOn) {
+      const primeAudio = audioMapRef.current.get(1);
+      if (primeAudio) {
+        primeAudio.volume = 0;
+        primeAudio.play()
+          .then(() => {
+            primeAudio.pause();
+            primeAudio.currentTime = 0;
+            primeAudio.volume = 1;
+            console.log("✅ Audio context unlocked");
+            setIsAudioOn(true);
+          })
+          .catch(err => {
+            console.error("❌ Audio unlock failed:", err);
+            alert("Your browser blocked audio. Please click the button again to enable sound.");
+          });
+      }
+    } else {
+      setIsAudioOn(false);
     }
-  }, []);
-
-  // ✅ Save whenever it changes
-  useEffect(() => {
-    localStorage.setItem("isAudioOn", isAudioOn);
-  }, [isAudioOn]);
-
-
-
-
-// useEffect(() => {
-//   const handleWinnerFound = ({ winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId, GameSessionId }) => {
-//     navigate("/winnerPage", {
-//       state: {
-//         winnerName,
-//         prizeAmount,
-//         board,
-//         winnerPattern,
-//         boardNumber,
-//         playerCount,
-//         telegramId,
-//         gameId,
-//         GameSessionId
-//       }
-//     });
-//   };
-
-// }, [navigate]);
-
-
+  };
   
-
   return (
     <div className="bg-gradient-to-b from-[#1a002b] via-[#2d003f] to-black min-h-screen flex flex-col items-center p-1 pb-3 w-full max-w-screen overflow-hidden">
-    <div className="grid grid-cols-5 sm:grid-cols-5 gap-1 w-full text-white text-center mt-2 mb-2">
-        {[
-          `Players: ${gameDetails.playersCount}`, // Correct way to display players count
-          `Prize: ${gameDetails.winAmount}`, // Correct way to display win amount
-          `Call: ${callNumberLength}`, // Correct way to display called numbers
-          `Stake: ${gameDetails.stakeAmount}`, // Correct way to display stake amount
-        ].map((info, i) => (
-          <button key={i} className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-bold p-1 text-xs rounded w-full">
-            {info}
-          </button>
-        ))}
-      <button
-    // This is the updated onClick for the audio button
-          onClick={() => {
-              if (!isAudioOn) {
-                // Use a preloaded audio file for priming to satisfy browser policy
-                const audio = audioMapRef.current.get(1); 
-                if (audio) {
-                  audio.volume = 0; // Silent play
-                  audio
-                    .play()
-                    .then(() => {
-                      audio.pause();
-                      audio.currentTime = 0;
-                      console.log("✅ Audio unlocked");
-                      setIsAudioOn(true);
-                    })
-                    .catch((err) => {
-                      console.warn("❌ Audio unlock failed:", err);
-                      alert("Audio could not be enabled. Please try clicking again.");
-                    });
-                }
-              } else {
-                setIsAudioOn(false); // Mute audio
-              }
-          }}
+      <div className="grid grid-cols-5 sm:grid-cols-5 gap-1 w-full text-white text-center mt-2 mb-2">
+        {[
+          `Players: ${gameDetails.playersCount}`,
+          `Prize: ${gameDetails.winAmount}`,
+          `Call: ${callNumberLength}`,
+          `Stake: ${gameDetails.stakeAmount}`,
+        ].map((info, i) => (
+          <button key={i} className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-bold p-1 text-xs rounded w-full">
+            {info}
+          </button>
+        ))}
+        <button
+          onClick={handleAudioToggle}
           className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-bold p-1 text-xs rounded w-full"
         >
           {`${isAudioOn ? "🔊" : "🔇"}`}
-      </button>
-
-    </div>
+        </button>
+      </div>
 
       <div className="flex flex-wrap w-full mt-1">
         <div className="w-[45%] flex justify-center">
           <div className="grid grid-cols-5 bg-[#2a0047] p-1 gap-2 rounded-lg text-xs w-[90%] ">
-          {["B", "I", "N", "G", "O"].map((letter, i) => (
-            <div key={i} className={`text-white text-center text-xs font-bold rounded-full h-4 w-6 ${bingoColors[letter]}`}>
-              {letter}
-            </div>
-          ))}
-          {[...Array(15)].map((_, rowIndex) =>
-            ["B", "I", "N", "G", "O"].map((letter, colIndex) => {
-              const number = rowIndex + 1 + colIndex * 15;
-              const randomNumberLabel = `${letter}-${number}`;
-
-              return (
-                <div
-                  key={randomNumberLabel}
-                  className={`text-center rounded ${
-                   calledSet.has(randomNumberLabel) // Check if number has been drawn
-                      ? "bg-gradient-to-b from-yellow-400 to-orange-500 text-black" // Mark all drawn numbers
-                      : "bg-gray-800 text-gray-400 font-bold"
-                  }`}
-                >
-                  {number}
-                </div>
-              );
-            })
-          )}
+            {["B", "I", "N", "G", "O"].map((letter, i) => (
+              <div key={i} className={`text-white text-center text-xs font-bold rounded-full h-4 w-6 ${bingoColors[letter]}`}>
+                {letter}
+              </div>
+            ))}
+            {[...Array(15)].map((_, rowIndex) =>
+              ["B", "I", "N", "G", "O"].map((letter, colIndex) => {
+                const number = rowIndex + 1 + colIndex * 15;
+                const randomNumberLabel = `${letter}-${number}`;
+                return (
+                  <div
+                    key={randomNumberLabel}
+                    className={`text-center rounded ${
+                      calledSet.has(randomNumberLabel)
+                        ? "bg-gradient-to-b from-yellow-400 to-orange-500 text-black"
+                        : "bg-gray-800 text-gray-400 font-bold"
+                    }`}
+                  >
+                    {number}
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
 
@@ -515,123 +296,93 @@ useEffect(() => {
             <p className="text-lg font-bold">{countdown > 0 ? countdown : "Wait"}</p>
           </div>
 
-      <div className="bg-gradient-to-b from-purple-800 to-purple-900 rounded-lg text-white flex flex-row justify-around items-center w-full max-w-md mx-auto">
-     <p className="font-bold text-xs">Current Number</p>
-        <div className="flex justify-center items-center gap-4">
-          {/* Main Display for Last Drawn Number */}
-        <div className="w-14 h-14 flex items-center justify-center text-xl font-extrabold rounded-full shadow-[0_0_20px_#37ebf3] bg-[#37ebf3] text-purple-900">
-            {lastCalledLabel ? lastCalledLabel : "-"}
-        </div>
-           </div>
-      </div>
+          <div className="bg-gradient-to-b from-purple-800 to-purple-900 rounded-lg text-white flex flex-row justify-around items-center w-full max-w-md mx-auto">
+            <p className="font-bold text-xs">Current Number</p>
+            <div className="flex justify-center items-center gap-4">
+              <div className="w-14 h-14 flex items-center justify-center text-xl font-extrabold rounded-full shadow-[0_0_20px_#37ebf3] bg-[#37ebf3] text-purple-900">
+                {lastCalledLabel || "-"}
+              </div>
+            </div>
+          </div>
 
-
-       {/* Called Numbers Section */}
-<div className="bg-gradient-to-b from-gray-800 to-gray-900 p-2 rounded-lg w-full max-w-md mx-auto">
-  <p className="text-center font-bold text-xs sm:text-sm text-yellow-400 md:text-base mb-1">Recent Calls</p>
-   <div className="flex justify-center gap-2 sm:gap-4">
-  {randomNumber.slice(-4, -1).map((num, index)  => {
-      // Define an array of colors for the backgrounds
-      const colors = [
-        "bg-red-800", // Red
-        "bg-green-800", // Green
-        "bg-blue-800", // Blue
-      ];
-
-      return (
-        <div
-          key={index}
-          className={`w-6 h-6 sm:w-6 sm:h-6 md:w-6 md:h-6 flex items-center justify-center 
+          <div className="bg-gradient-to-b from-gray-800 to-gray-900 p-2 rounded-lg w-full max-w-md mx-auto">
+            <p className="text-center font-bold text-xs sm:text-sm text-yellow-400 md:text-base mb-1">Recent Calls</p>
+            <div className="flex justify-center gap-2 sm:gap-4">
+              {randomNumber.slice(-4, -1).map((num, index) => {
+                const colors = ["bg-red-800", "bg-green-800", "bg-blue-800"];
+                return (
+                  <div
+                    key={index}
+                    className={`w-6 h-6 sm:w-6 sm:h-6 md:w-6 md:h-6 flex items-center justify-center 
                       text-base text-xs md:text-sm font-extrabold rounded-full shadow-xl text-white
                       ${colors[index]}`}
-        >
-          {num}
-        </div>
-      );
-    })}
-  </div>
-  <div className="grid grid-cols-5 gap-1 mt-2 text-xs sm:text-sm">
-    {calledNumbers.map((num, i) => {
-      const letter = num.charAt(0);
-      return (
-        <div key={i} className={`p-2 text-center rounded text-white ${bingoColors[letter]} text-xs sm:text-sm`}>
-          {num}
-        </div>
-      );
-    })}
-  </div>
-</div>
+                  >
+                    {num}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
 
-{/* Bingo Card */}
-{cartela.length > 0 && (
-  <div className="bg-gradient-to-b from-purple-800 to-purple-900 p-4 rounded-lg w-full max-w-md mx-auto h-[80%] mt-1">
-    
-    {/* BINGO Header */}
-    <div className="grid grid-cols-5 gap-1 mb-2">
-      {["B", "I", "N", "G", "O"].map((letter, i) => (
-        <div
-          key={i}
-          className={`md:w-10 md:h-10 w-8 h-8 sm:w-12 sm:h-12 flex items-center justify-center font-bold text-white text-base sm:text-lg rounded-full shadow-md ${bingoColors[letter]}`}
-        >
-          {letter}
-        </div>
-      ))}
-    </div>
+          {cartela && cartela.length > 0 && (
+            <div className="bg-gradient-to-b from-purple-800 to-purple-900 p-4 rounded-lg w-full max-w-md mx-auto h-[80%] mt-1">
+              <div className="grid grid-cols-5 gap-1 mb-2">
+                {["B", "I", "N", "G", "O"].map((letter, i) => (
+                  <div
+                    key={i}
+                    className={`md:w-10 md:h-10 w-8 h-8 sm:w-12 sm:h-12 flex items-center justify-center font-bold text-white text-base sm:text-lg rounded-full shadow-md ${bingoColors[letter]}`}
+                  >
+                    {letter}
+                  </div>
+                ))}
+              </div>
 
-    {/* Bingo Numbers Grid */}
-    <div className="grid grid-cols-5  h-[90%]">
-      {cartela.map((row, rowIndex) =>
-        row.map((num, colIndex) => {
-          const isFreeSpace = rowIndex === 2 && colIndex === 2; // Middle space (FREE)
-          const isSelected = selectedNumbers.has(num); // Check if number is marked
-
-          return (
-           <BingoCell
-              key={`${rowIndex}-${colIndex}`}
-              num={num}
-              isFreeSpace={isFreeSpace}
-              isSelected={isSelected}
-              onClick={() => handleCartelaClick(num)}
-            />
-
-          );
-        })
-      )}
-    </div>
-  </div>
- )}
-
+              <div className="grid grid-cols-5 h-[90%]">
+                {cartela.map((row, rowIndex) =>
+                  row.map((num, colIndex) => {
+                    const isFreeSpace = rowIndex === 2 && colIndex === 2;
+                    const isSelected = selectedNumbers.has(num);
+                    return (
+                      <BingoCell
+                        key={`${rowIndex}-${colIndex}`}
+                        num={num}
+                        isFreeSpace={isFreeSpace}
+                        isSelected={isSelected}
+                        onClick={() => handleCartelaClick(num)}
+                      />
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       <div className="w-full flex flex-col items-center gap-2 mt-3">
-       <button onClick={() => checkForWin(selectedNumbers, telegramId)} 
-        className="w-[95%] bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 px-4 py-2 text-white rounded-4xl text-lg font-bold shadow-lg transition-all duration-200" >
+        <button onClick={() => checkForWin(selectedNumbers, telegramId)}
+          className="w-[95%] bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 px-4 py-2 text-white rounded-4xl text-lg font-bold shadow-lg transition-all duration-200" >
           Bingo!
         </button>
         <div className="w-full flex gap-3 justify-center mt-1">
-            <button
-               className=" bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 px-14 h-8 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
-              onClick={() => {
-                // Re-emit joinGame to force a state synchronization from the backend
-                if (gameId && telegramId) {
-                  socket.emit("joinGame", { gameId, telegramId, GameSessionId });
-                  console.log("Forced refresh: Re-emitted joinGame to synchronize state.");
-                  // Optional: Reset any client-side-only UI states if necessary
-                  // setSomeTemporaryUIState(false);
-                } else {
-                  console.warn("Cannot force refresh: gameId or telegramId missing.");
-                  // Fallback to full refresh if critical data is missing (unlikely if in game)
-                  window.location.reload();
-                }
-              }}
-            >
-              Refresh
+          <button
+            className=" bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 px-14 h-8 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
+            onClick={() => {
+              if (gameId && telegramId) {
+                socket.emit("joinGame", { gameId, telegramId, GameSessionId });
+                console.log("Forced refresh: Re-emitted joinGame to synchronize state.");
+              } else {
+                console.warn("Cannot force refresh: gameId or telegramId missing.");
+                window.location.reload();
+              }
+            }}
+          >
+            Refresh
           </button>
           <button
             onClick={() => {
-             socket.emit("playerLeave", { gameId: String(gameId), GameSessionId, telegramId }, () => {
-                console.log("player leave emited🎯🎯", GameSessionId );
+              socket.emit("playerLeave", { gameId: String(gameId), GameSessionId, telegramId }, () => {
+                console.log("player leave emited🎯🎯", GameSessionId);
                 navigate("/");
               });
             }}
@@ -639,12 +390,11 @@ useEffect(() => {
           >
             Leave
           </button>
-
         </div>
       </div>
 
-     {isGameEnd && (
-        <div className="fixed inset-0 flex items-center justify-center  bg-opacity-80 backdrop-blur-sm z-50 transition-opacity duration-300">
+      {isGameEnd && (
+        <div className="fixed inset-0 flex items-center justify-center bg-opacity-80 backdrop-blur-sm z-50 transition-opacity duration-300">
           <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center">
             <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">
               🎉 Game Over
@@ -655,18 +405,16 @@ useEffect(() => {
             <button
               className="w-1/2 bg-gradient-to-r from-green-500 to-emerald-600 px-4 py-2 text-white rounded-lg text-lg font-semibold shadow-md"
               onClick={() => {
-              socket.emit("playerLeave", { gameId: String(gameId), GameSessionId, telegramId }, () => {
-                console.log("player leave emited🎯🎯", GameSessionId );
-                navigate("/");
-              });
-            }} >
+                socket.emit("playerLeave", { gameId: String(gameId), GameSessionId, telegramId }, () => {
+                  console.log("player leave emited🎯🎯", GameSessionId);
+                  navigate("/");
+                });
+              }} >
               Leave Game
             </button>
           </div>
         </div>
       )}
-
-
     </div>
   );
 };
