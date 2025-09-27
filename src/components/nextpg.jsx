@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import socket from "../../socket"; // ✅ Shared socket instance
 
@@ -56,35 +56,14 @@ const BingoGame = () => {
   const [failedBingo, setFailedBingo] = useState(null);
   const [lastCalledLabel, setLastCalledLabel] = useState(null);
   const saveTimeout = useRef(null);
-  const audioMapRef = useRef(new Map());
+
+    const [gameDetails, setGameDetails] = useState({
+    winAmount: '-',
+    playersCount: '-',
+    stakeAmount: '-',
+  });
+
   const hasJoinedRef = useRef(false);
-
-     // ✅ FIX 1: Preload all audio files on component mount
-    useEffect(() => {
-      const loadAudio = () => {
-        for (let i = 1; i <= 75; i++) {
-          const audio = new Audio(`/audio/audio${i}.mp3`);
-          audio.preload = 'auto';
-          audioMapRef.current.set(i, audio);
-        }
-        console.log("🔊 Audio files preloaded.");
-      };
-      loadAudio();
-    }, []);
-
-
-    const playAudioForNumber = useCallback((number) => {
-    if (!isAudioOn) return;
-
-    const audio = audioMapRef.current.get(number);
-    if (audio) {
-      audio.currentTime = 0;
-      audio.play().catch((error) => console.error(`🔊 Failed to play audio ${number}:`, error));
-    } else {
-      console.warn(`Audio for number ${number} not found.`);
-    }
-  }, [isAudioOn]);
-
 
  useEffect(() => {
     // 1. Initial Connection and Join Game Logic
@@ -138,7 +117,11 @@ const BingoGame = () => {
       setCalledSet((prev) => new Set(prev).add(label));
       setCallNumberLength(callNumberLength);
       setLastCalledLabel(label);
-      playAudioForNumber(number);
+
+       // ✅ Conditionally play audio based on the isAudioOn state
+      if (isAudioOn) {
+        playAudioForNumber(number);
+      }
 
     };
 
@@ -202,15 +185,21 @@ const BingoGame = () => {
       socket.off("winnerError", handleWinnerError); 
       socket.off("bingoClaimFailed", handleBingoClaimFailed);
     };
-  }, [gameId, telegramId, GameSessionId, navigate, playAudioForNumber]);
+  }, [gameId, telegramId, GameSessionId, navigate, isAudioOn]);
 
   
+  // ✅ New: Function to dynamically play the correct audio file
+const playAudioForNumber = (number) => {
+  if (!isAudioOn) return;
 
-    const [gameDetails, setGameDetails] = useState({
-    winAmount: '-',
-    playersCount: '-',
-    stakeAmount: '-',
+  // Use the correct, consistent path with a leading slash
+  const audio = new Audio(`/audio/audio${number}.mp3`); 
+  audio.currentTime = 0;
+  console.log("audio is triggereed 🎯🎯");
+  audio.play().catch((error) => {
+    console.error(`🔊 Failed to play audio ${number}:`, error);
   });
+};
 
 
   // 3️⃣ Request to start game if enough players
@@ -402,7 +391,7 @@ useEffect(() => {
 }, [socket]);
 
 
- // Load/Save audio state
+   // ✅ Load saved state on mount
   useEffect(() => {
     const savedAudioState = localStorage.getItem("isAudioOn");
     if (savedAudioState !== null) {
@@ -410,10 +399,35 @@ useEffect(() => {
     }
   }, []);
 
+  // ✅ Save whenever it changes
   useEffect(() => {
     localStorage.setItem("isAudioOn", isAudioOn);
   }, [isAudioOn]);
 
+
+
+
+// useEffect(() => {
+//   const handleWinnerFound = ({ winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId, GameSessionId }) => {
+//     navigate("/winnerPage", {
+//       state: {
+//         winnerName,
+//         prizeAmount,
+//         board,
+//         winnerPattern,
+//         boardNumber,
+//         playerCount,
+//         telegramId,
+//         gameId,
+//         GameSessionId
+//       }
+//     });
+//   };
+
+// }, [navigate]);
+
+
+  
 
   return (
     <div className="bg-gradient-to-b from-[#1a002b] via-[#2d003f] to-black min-h-screen flex flex-col items-center p-1 pb-3 w-full max-w-screen overflow-hidden">
@@ -428,16 +442,33 @@ useEffect(() => {
             {info}
           </button>
         ))}
-       <button
-         onClick={() => {
-        // Toggle the audio state directly. The click is the user gesture.
-        setIsAudioOn(!isAudioOn);
-        console.log(`Audio is now ${!isAudioOn ? "on" : "off"}`);
-     }}
+      <button
+          onClick={() => {
+            if (!isAudioOn) {
+              // User is trying to enable audio — prime it
+              const audio = new Audio(`audio/audio1.mp3`);
+              audio.volume = 0; // Silent play to satisfy browser
+              audio
+                .play()
+                .then(() => {
+                  audio.pause();
+                  audio.currentTime = 0;
+                  console.log("✅ Audio unlocked");
+                  setIsAudioOn(true); // Enable audio
+                })
+                .catch((err) => {
+                  console.warn("❌ Audio unlock failed:", err);
+                  alert("Audio could not be enabled. Please try clicking again.");
+                });
+            } else {
+              setIsAudioOn(false); // Mute audio
+            }
+          }}
           className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-bold p-1 text-xs rounded w-full"
         >
           {`${isAudioOn ? "🔊" : "🔇"}`}
       </button>
+
     </div>
 
       <div className="flex flex-wrap w-full mt-1">
@@ -510,7 +541,6 @@ useEffect(() => {
         </div>
       );
     })}
-
   </div>
   <div className="grid grid-cols-5 gap-1 mt-2 text-xs sm:text-sm">
     {calledNumbers.map((num, i) => {
