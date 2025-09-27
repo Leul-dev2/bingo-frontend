@@ -63,7 +63,7 @@ const BingoGame = () => {
     useEffect(() => {
       const loadAudio = () => {
         for (let i = 1; i <= 75; i++) {
-          const audio = new Audio(`/audio/audio${number}.mp3`);
+          const audio = new Audio(`/audio/audio${i}.mp3`);
           audio.preload = 'auto';
           audioMapRef.current.set(i, audio);
         }
