@@ -56,6 +56,7 @@ const BingoGame = () => {
   const [failedBingo, setFailedBingo] = useState(null);
   const [lastCalledLabel, setLastCalledLabel] = useState(null);
   const saveTimeout = useRef(null);
+  const audioMapRef = useRef(new Map());
 
     const [gameDetails, setGameDetails] = useState({
     winAmount: '-',
@@ -189,16 +190,20 @@ const BingoGame = () => {
 
   
   // ✅ New: Function to dynamically play the correct audio file
+// Replace your existing function with this one
 const playAudioForNumber = (number) => {
   if (!isAudioOn) return;
 
-  // Use the correct, consistent path with a leading slash
-  const audio = new Audio(`/audio/audio${number}.mp3`); 
-  audio.currentTime = 0;
-  console.log("audio is triggereed 🎯🎯");
-  audio.play().catch((error) => {
-    console.error(`🔊 Failed to play audio ${number}:`, error);
-  });
+  // Get the preloaded audio object from the map
+  const audio = audioMapRef.current.get(number);
+  if (audio) {
+    audio.currentTime = 0; // Ensures audio starts from the beginning
+    audio.play().catch((error) => {
+      console.error(`🔊 Failed to play audio ${number}:`, error);
+    });
+  } else {
+    console.warn(`Audio for number ${number} not found.`);
+  }
 };
 
 
@@ -443,26 +448,29 @@ useEffect(() => {
           </button>
         ))}
       <button
+    // This is the updated onClick for the audio button
           onClick={() => {
-            if (!isAudioOn) {
-              // User is trying to enable audio — prime it
-              const audio = new Audio(`audio/audio1.mp3`);
-              audio.volume = 0; // Silent play to satisfy browser
-              audio
-                .play()
-                .then(() => {
-                  audio.pause();
-                  audio.currentTime = 0;
-                  console.log("✅ Audio unlocked");
-                  setIsAudioOn(true); // Enable audio
-                })
-                .catch((err) => {
-                  console.warn("❌ Audio unlock failed:", err);
-                  alert("Audio could not be enabled. Please try clicking again.");
-                });
-            } else {
-              setIsAudioOn(false); // Mute audio
-            }
+              if (!isAudioOn) {
+                // Use a preloaded audio file for priming to satisfy browser policy
+                const audio = audioMapRef.current.get(1); 
+                if (audio) {
+                  audio.volume = 0; // Silent play
+                  audio
+                    .play()
+                    .then(() => {
+                      audio.pause();
+                      audio.currentTime = 0;
+                      console.log("✅ Audio unlocked");
+                      setIsAudioOn(true);
+                    })
+                    .catch((err) => {
+                      console.warn("❌ Audio unlock failed:", err);
+                      alert("Audio could not be enabled. Please try clicking again.");
+                    });
+                }
+              } else {
+                setIsAudioOn(false); // Mute audio
+              }
           }}
           className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-bold p-1 text-xs rounded w-full"
         >
