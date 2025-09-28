@@ -58,8 +58,9 @@ const BingoGame = () => {
   const saveTimeout = useRef(null);
   let lastServerMessage = Date.now();
   let alertShown = false;
+  const HEARTBEAT_TIMEOUT = 3000;
 
-    const [gameDetails, setGameDetails] = useState({
+  const [gameDetails, setGameDetails] = useState({
     winAmount: '-',
     playersCount: '-',
     stakeAmount: '-',
@@ -219,49 +220,49 @@ useEffect(() => {
 }, [playerCount, gameStarted, hasEmittedGameCount, gameId, gracePlayers]);
 
 
-// Show alert banner
-function showNetworkAlert() {
-  if (alertShown) return;
-  alertShown = true;
+  function showNetworkAlert() {
+    if (alertShown) return;
+    alertShown = true;
 
-  const container = document.getElementById("network-alert-container");
+    const container = document.getElementById("network-alert-container");
 
-  const alertDiv = document.createElement("div");
-  alertDiv.className = "fixed top-0 left-0 w-full bg-red-600 text-white font-bold text-center p-3 z-50 relative shadow-md";
-  alertDiv.innerText = "⚠️ Network unstable — trying to reconnect...";
+    const alertDiv = document.createElement("div");
+    alertDiv.className = "fixed top-0 left-0 w-full bg-red-600 text-white font-bold text-center p-3 z-50 relative shadow-md";
+    alertDiv.innerText = "⚠️ Network unstable — reconnecting...";
 
-  const timerBar = document.createElement("div");
-  timerBar.className = "absolute bottom-0 left-0 h-1 bg-yellow-300 w-full transition-all duration-1000 ease-linear";
-  alertDiv.appendChild(timerBar);
+    const timerBar = document.createElement("div");
+    timerBar.className = "absolute bottom-0 left-0 h-1 bg-yellow-300 w-full transition-all duration-3000 linear";
+    alertDiv.appendChild(timerBar);
 
-  container.appendChild(alertDiv);
+    container.appendChild(alertDiv);
 
-  // Shrink timer bar over 8 seconds
-  let width = 100;
-  const timerInterval = setInterval(() => {
-    width -= 12.5; // 8s / 1s steps = 12.5% per second
-    timerBar.style.width = width + "%";
-    if (width <= 0) clearInterval(timerInterval);
-  }, 1000);
-}
+    // Animate timer bar shrinking over 3s
+    setTimeout(() => {
+      timerBar.style.width = "0%";
+    }, 50);
 
-
-function hideNetworkAlert() {
-  const container = document.getElementById("network-alert-container");
-  container.innerHTML = "";
-  alertShown = false;
-}
-
-// Watchdog: check heartbeat every 3 seconds
-setInterval(() => {
-  const diff = Date.now() - lastServerMessage;
-  if (diff > 8000) {
-    showNetworkAlert();
-  } else {
-    hideNetworkAlert();
+    // Hide banner after 3s
+    setTimeout(() => {
+      hideNetworkAlert();
+    }, HEARTBEAT_TIMEOUT);
   }
-}, 3000);
 
+
+
+  // Hide alert banner
+  function hideNetworkAlert() {
+    const container = document.getElementById("network-alert-container");
+    container.innerHTML = "";
+    alertShown = false;
+  }
+
+  // Watchdog: check heartbeat every 1s
+  setInterval(() => {
+    const diff = Date.now() - lastServerMessage;
+    if (diff > HEARTBEAT_TIMEOUT) {
+      showNetworkAlert();
+    }
+  }, 1000);
 
 
   // 5️⃣ Local countdown timer
