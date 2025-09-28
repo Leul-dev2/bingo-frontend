@@ -58,6 +58,7 @@ const BingoGame = () => {
   const saveTimeout = useRef(null);
   let lastServerMessage = Date.now();
   const [isAlertShown, setIsAlertShown] = useState(false);
+  const [networkLost, setNetworkLost] = useState(false);
   const HEARTBEAT_TIMEOUT = 3000;
 
   const [gameDetails, setGameDetails] = useState({
@@ -220,68 +221,23 @@ const playAudioForNumber = (number) => {
   }, [playerCount, gameStarted, hasEmittedGameCount, gameId, gracePlayers]);
 
 
-    function showNetworkAlert() {
-    if (isAlertShown) return;
-    setIsAlertShown(true);
+  // Watchdog
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const diff = Date.now() - lastServerMessage;
 
-    const container = document.getElementById("network-alert-container");
+      if (diff > HEARTBEAT_TIMEOUT) {
+        setNetworkLost(true);
+        setIsAlertShown(true);
+      } else if (diff <= HEARTBEAT_TIMEOUT && networkLost) {
+        setNetworkLost(false);
+        setIsAlertShown(false);
+      }
+    }, 500); // check every 0.5s for smoother response
 
-    // Alert container
-    const alertDiv = document.createElement("div");
-    alertDiv.id = "network-alert";
-    alertDiv.className = `
-      fixed top-0 left-0 w-full 
-      bg-gradient-to-r from-red-600 via-red-500 to-red-700
-      text-white font-bold text-center p-4 
-      z-[9999] shadow-2xl
-      flex items-center justify-between
-      rounded-b-xl
-      animate-slideDown
-    `;
+    return () => clearInterval(interval);
+  }, [networkLost]);
 
-    // Alert text
-    const text = document.createElement("span");
-    text.innerText = "⚠️ Please Connect Network";
-    alertDiv.appendChild(text);
-
-    // Close button
-    const closeBtn = document.createElement("button");
-    closeBtn.innerText = "×";
-    closeBtn.className = `
-      text-white font-bold text-xl hover:text-gray-200
-      ml-4 focus:outline-none
-    `;
-    closeBtn.onclick = () => {
-      hideNetworkAlert();
-    };
-    alertDiv.appendChild(closeBtn);
-
-    container.appendChild(alertDiv);
-  }
-
-
-
-  // Hide alert banners
-    function hideNetworkAlert() {
-    const alertDiv = document.getElementById("network-alert");
-    if (alertDiv) alertDiv.remove();
-    setIsAlertShown(false);
-  }
-
-    // Heartbeat check
-    useEffect(() => {
-      const intervalId = setInterval(() => {
-        const diff = Date.now() - lastServerMessage;
-
-        if (diff > HEARTBEAT_TIMEOUT && !isAlertShown) {
-          showNetworkAlert();
-        } else if (diff <= HEARTBEAT_TIMEOUT && isAlertShown) {
-          hideNetworkAlert();
-        }
-      }, 1000);
-
-      return () => clearInterval(intervalId);
-    }, [isAlertShown]);
 
   // 5️⃣ Local countdown timer
   useEffect(() => {
@@ -293,8 +249,6 @@ const playAudioForNumber = (number) => {
     }
   }, [countdown]);
 
-
-  
 
  const handleCartelaClick = (num) => {
   const newSelection = new Set(selectedNumbers);
@@ -498,7 +452,26 @@ const playAudioForNumber = (number) => {
 
   return (
     <div className="bg-gradient-to-b from-[#1a002b] via-[#2d003f] to-black min-h-screen flex flex-col items-center p-1 pb-3 w-full max-w-screen overflow-hidden">
-       <div id="network-alert-container"></div> 
+       <div id="network-alert-container">
+      {isAlertShown && (
+        <div className="
+          fixed top-0 left-0 w-full 
+          bg-gradient-to-r from-red-600 via-red-500 to-red-700
+          text-white font-bold text-center p-4 
+          z-[9999] shadow-2xl
+          flex items-center justify-between
+          rounded-b-xl
+        ">
+          <span>⚠️ Network unstable — reconnecting...</span>
+          <button
+            onClick={() => setIsAlertShown(false)}
+            className="text-white font-bold text-xl hover:text-gray-200 ml-4 focus:outline-none"
+          >
+            ×
+          </button>
+        </div>
+      )}
+    </div>
     <div className="grid grid-cols-5 sm:grid-cols-5 gap-1 w-full text-white text-center mt-2 mb-2">
         {[
           `Players: ${gameDetails.playersCount}`, // Correct way to display players count
