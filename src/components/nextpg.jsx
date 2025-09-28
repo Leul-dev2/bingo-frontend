@@ -57,7 +57,7 @@ const BingoGame = () => {
   const [lastCalledLabel, setLastCalledLabel] = useState(null);
   const saveTimeout = useRef(null);
   let lastServerMessage = Date.now();
-  let alertShown = false;
+  const [isAlertShown, setIsAlertShown] = useState(false);
   const HEARTBEAT_TIMEOUT = 3000;
 
   const [gameDetails, setGameDetails] = useState({
@@ -207,22 +207,23 @@ const playAudioForNumber = (number) => {
 
 
   // 3️⃣ Request to start game if enough players
-useEffect(() => {
-  if (
-    playerCount >= 2 &&
-    !hasEmittedGameCount &&
-    !gameStarted
-  ) {
-    console.log("✅ Emitting gameCount to server...");
-    socket.emit("gameCount", { gameId, GameSessionId });
-    setHasEmittedGameCount(true);
-  }
-}, [playerCount, gameStarted, hasEmittedGameCount, gameId, gracePlayers]);
+  useEffect(() => {
+    if (
+      playerCount >= 2 &&
+      !hasEmittedGameCount &&
+      !gameStarted
+    ) {
+      console.log("✅ Emitting gameCount to server...");
+      socket.emit("gameCount", { gameId, GameSessionId });
+      setHasEmittedGameCount(true);
+    }
+  }, [playerCount, gameStarted, hasEmittedGameCount, gameId, gracePlayers]);
 
 
   function showNetworkAlert() {
-    if (alertShown) return;
-    alertShown = true;
+    console.log("🔥🔥🔥 alert to be shown");
+    if (isAlertShown) return;
+    setIsAlertShown(true);
 
     const container = document.getElementById("network-alert-container");
 
@@ -253,16 +254,27 @@ useEffect(() => {
   function hideNetworkAlert() {
     const container = document.getElementById("network-alert-container");
     container.innerHTML = "";
-    alertShown = false;
+    setIsAlertShown(false); 
   }
 
-  // Watchdog: check heartbeat every 1s
-  setInterval(() => {
-    const diff = Date.now() - lastServerMessage;
-    if (diff > HEARTBEAT_TIMEOUT) {
-      showNetworkAlert();
-    }
-  }, 1000);
+ // Add a useEffect for the heartbeat check
+    useEffect(() => {
+        // This function will be called every 1000ms
+        const intervalId = setInterval(() => {
+            const diff = Date.now() - lastServerMessage;
+            if (diff > HEARTBEAT_TIMEOUT) {
+                // The alert is not showing because the `alertShown` variable is
+                // a local variable inside the `showNetworkAlert` function, and its
+                // value is reset on every call. Use a state variable instead.
+                showNetworkAlert();
+            }
+        }, 1000);
+
+        // This is the cleanup function that runs when the component unmounts
+        return () => {
+            clearInterval(intervalId);
+        };
+    }, []); // The empty dependency array means this effect runs once on mount
 
 
   // 5️⃣ Local countdown timer
