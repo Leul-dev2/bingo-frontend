@@ -261,7 +261,7 @@ const playAudioForNumber = (number) => {
 
 
 
-  // Hide alert banner
+  // Hide alert banners
     function hideNetworkAlert() {
     const alertDiv = document.getElementById("network-alert");
     if (alertDiv) alertDiv.remove();
