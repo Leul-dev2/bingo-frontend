@@ -228,13 +228,31 @@ const playAudioForNumber = (number) => {
     const container = document.getElementById("network-alert-container");
 
     const alertDiv = document.createElement("div");
-    alertDiv.className = "fixed top-0 left-0 w-full bg-red-600 text-white font-bold text-center p-3 z-50 relative shadow-md";
+      alertDiv.className = `
+      fixed top-0 left-0 w-full 
+      bg-gradient-to-r from-red-600 via-red-500 to-red-700
+      text-white font-bold text-center p-4 
+      z-[9999] shadow-2xl
+      flex flex-col items-center justify-center
+      gap-1
+      rounded-b-xl
+      animate-slideDown
+      pointer-events-none
+      select-none
+    `;
+      
+   
     alertDiv.innerText = "⚠️ Network unstable — reconnecting...";
-
     const timerBar = document.createElement("div");
-    timerBar.className = "absolute bottom-0 left-0 h-1 bg-yellow-300 w-full transition-all duration-3000 linear";
+    timerBar.className = `
+        absolute bottom-0 left-0 h-1 
+        bg-yellow-400 
+        rounded-full
+        w-full 
+        transition-all duration-3000 linear
+        shadow-md
+      `;
     alertDiv.appendChild(timerBar);
-
     container.appendChild(alertDiv);
 
     // Animate timer bar shrinking over 3s
@@ -258,23 +276,22 @@ const playAudioForNumber = (number) => {
   }
 
  // Add a useEffect for the heartbeat check
-    useEffect(() => {
-        // This function will be called every 1000ms
-        const intervalId = setInterval(() => {
-            const diff = Date.now() - lastServerMessage;
-            if (diff > HEARTBEAT_TIMEOUT) {
-                // The alert is not showing because the `alertShown` variable is
-                // a local variable inside the `showNetworkAlert` function, and its
-                // value is reset on every call. Use a state variable instead.
-                showNetworkAlert();
-            }
-        }, 1000);
+useEffect(() => {
+    // This function will be called every 1000ms
+    const intervalId = setInterval(() => {
+        const diff = Date.now() - lastServerMessage;
+        
+        // Check if a network issue is detected AND an alert is not already shown
+        if (diff > HEARTBEAT_TIMEOUT && !isAlertShown) { 
+            showNetworkAlert();
+        }
+    }, 1000);
 
-        // This is the cleanup function that runs when the component unmounts
-        return () => {
-            clearInterval(intervalId);
-        };
-    }, []); // The empty dependency array means this effect runs once on mount
+    // This is the cleanup function that runs when the component unmounts
+    return () => {
+        clearInterval(intervalId);
+    };
+}, [isAlertShown]);
 
 
   // 5️⃣ Local countdown timer
