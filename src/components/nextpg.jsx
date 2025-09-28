@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import socket from "../../socket"; // ✅ Shared socket instance
+import { useNetworkStatus } from '../components/Bing-Pges/useNetworkStatus'; 
 
 // Top of file, after imports
 const BingoCell = React.memo(({ num, isFreeSpace, isSelected, onClick }) => {
@@ -56,20 +57,26 @@ const BingoGame = () => {
   const [failedBingo, setFailedBingo] = useState(null);
   const [lastCalledLabel, setLastCalledLabel] = useState(null);
   const saveTimeout = useRef(null);
-  let lastServerMessage = Date.now();
-  const [isAlertShown, setIsAlertShown] = useState(false);
-  const [networkLost, setNetworkLost] = useState(false);
-  const HEARTBEAT_TIMEOUT = 3000;
-
   const [gameDetails, setGameDetails] = useState({
     winAmount: '-',
     playersCount: '-',
     stakeAmount: '-',
   });
-
   const hasJoinedRef = useRef(false);
+  const isNetworkOnline = useNetworkStatus();
+  const [hasManuallyClosedAlert, setHasManuallyClosedAlert] = useState(false);
 
- useEffect(() => {
+   useEffect(() => {
+    if (isNetworkOnline) {
+      setHasManuallyClosedAlert(false);
+    }
+  }, [isNetworkOnline]);
+
+    const handleCloseAlert = () => {
+    setHasManuallyClosedAlert(true);
+  };
+  
+  useEffect(() => {
     // 1. Initial Connection and Join Game Logic
     if (!socket.connected) {
       socket.connect();
@@ -173,7 +180,6 @@ const BingoGame = () => {
     socket.on("winnerConfirmed", handleWinnerConfirmed);
     socket.on("winnerError", handleWinnerError);
     socket.on("bingoClaimFailed", handleBingoClaimFailed);
-    socket.on("heartbeat", () => (lastServerMessage = Date.now()));
 
     // 3. Cleanup Function
     return () => {
@@ -208,35 +214,17 @@ const playAudioForNumber = (number) => {
 
 
   // 3️⃣ Request to start game if enough players
-  useEffect(() => {
-    if (
-      playerCount >= 2 &&
-      !hasEmittedGameCount &&
-      !gameStarted
-    ) {
-      console.log("✅ Emitting gameCount to server...");
-      socket.emit("gameCount", { gameId, GameSessionId });
-      setHasEmittedGameCount(true);
-    }
-  }, [playerCount, gameStarted, hasEmittedGameCount, gameId, gracePlayers]);
-
-
-  // Watchdog
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const diff = Date.now() - lastServerMessage;
-
-      if (diff > HEARTBEAT_TIMEOUT) {
-        setNetworkLost(true);
-        setIsAlertShown(true);
-      } else if (diff <= HEARTBEAT_TIMEOUT && networkLost) {
-        setNetworkLost(false);
-        setIsAlertShown(false);
-      }
-    }, 500); // check every 0.5s for smoother response
-
-    return () => clearInterval(interval);
-  }, [networkLost]);
+useEffect(() => {
+  if (
+    playerCount >= 2 &&
+    !hasEmittedGameCount &&
+    !gameStarted
+  ) {
+    console.log("✅ Emitting gameCount to server...");
+    socket.emit("gameCount", { gameId, GameSessionId });
+    setHasEmittedGameCount(true);
+  }
+}, [playerCount, gameStarted, hasEmittedGameCount, gameId, gracePlayers]);
 
 
   // 5️⃣ Local countdown timer
@@ -249,6 +237,8 @@ const playAudioForNumber = (number) => {
     }
   }, [countdown]);
 
+
+  
 
  const handleCartelaClick = (num) => {
   const newSelection = new Set(selectedNumbers);
@@ -426,52 +416,29 @@ const playAudioForNumber = (number) => {
   }, [isAudioOn]);
 
 
-
-
-// useEffect(() => {
-//   const handleWinnerFound = ({ winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId, GameSessionId }) => {
-//     navigate("/winnerPage", {
-//       state: {
-//         winnerName,
-//         prizeAmount,
-//         board,
-//         winnerPattern,
-//         boardNumber,
-//         playerCount,
-//         telegramId,
-//         gameId,
-//         GameSessionId
-//       }
-//     });
-//   };
-
-// }, [navigate]);
-
-
   
-
   return (
     <div className="bg-gradient-to-b from-[#1a002b] via-[#2d003f] to-black min-h-screen flex flex-col items-center p-1 pb-3 w-full max-w-screen overflow-hidden">
-       <div id="network-alert-container">
-      {isAlertShown && (
-        <div className="
-          fixed top-0 left-0 w-full 
-          bg-gradient-to-r from-red-600 via-red-500 to-red-700
-          text-white font-bold text-center p-4 
-          z-[9999] shadow-2xl
-          flex items-center justify-between
-          rounded-b-xl
-        ">
-          <span>⚠️ Network unstable — reconnecting...</span>
+       {!isNetworkOnline && !hasManuallyClosedAlert && (
+        <div
+          className="fixed top-0 left-0 w-full 
+            bg-gradient-to-r from-red-600 via-red-500 to-red-700
+            text-white font-bold text-center p-4 
+            z-[9999] shadow-2xl
+            flex items-center justify-between
+            rounded-b-xl
+            animate-slideDown"
+        >
+          <span>⚠️ You are offline. Check your network connection.</span>
           <button
-            onClick={() => setIsAlertShown(false)}
+            onClick={handleCloseAlert}
             className="text-white font-bold text-xl hover:text-gray-200 ml-4 focus:outline-none"
           >
-            ×
+            &times; {/* The 'x' icon */}
           </button>
         </div>
       )}
-    </div>
+
     <div className="grid grid-cols-5 sm:grid-cols-5 gap-1 w-full text-white text-center mt-2 mb-2">
         {[
           `Players: ${gameDetails.playersCount}`, // Correct way to display players count
