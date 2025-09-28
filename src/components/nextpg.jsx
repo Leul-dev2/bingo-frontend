@@ -56,6 +56,8 @@ const BingoGame = () => {
   const [failedBingo, setFailedBingo] = useState(null);
   const [lastCalledLabel, setLastCalledLabel] = useState(null);
   const saveTimeout = useRef(null);
+  let lastServerMessage = Date.now();
+  let alertShown = false;
 
     const [gameDetails, setGameDetails] = useState({
     winAmount: '-',
@@ -169,6 +171,7 @@ const BingoGame = () => {
     socket.on("winnerConfirmed", handleWinnerConfirmed);
     socket.on("winnerError", handleWinnerError);
     socket.on("bingoClaimFailed", handleBingoClaimFailed);
+    socket.on("heartbeat", () => (lastServerMessage = Date.now()));
 
     // 3. Cleanup Function
     return () => {
@@ -214,6 +217,51 @@ useEffect(() => {
     setHasEmittedGameCount(true);
   }
 }, [playerCount, gameStarted, hasEmittedGameCount, gameId, gracePlayers]);
+
+
+// Show alert banner
+function showNetworkAlert() {
+  if (alertShown) return;
+  alertShown = true;
+
+  const container = document.getElementById("network-alert-container");
+
+  const alertDiv = document.createElement("div");
+  alertDiv.className = "fixed top-0 left-0 w-full bg-red-600 text-white font-bold text-center p-3 z-50 relative shadow-md";
+  alertDiv.innerText = "⚠️ Network unstable — trying to reconnect...";
+
+  const timerBar = document.createElement("div");
+  timerBar.className = "absolute bottom-0 left-0 h-1 bg-yellow-300 w-full transition-all duration-1000 ease-linear";
+  alertDiv.appendChild(timerBar);
+
+  container.appendChild(alertDiv);
+
+  // Shrink timer bar over 8 seconds
+  let width = 100;
+  const timerInterval = setInterval(() => {
+    width -= 12.5; // 8s / 1s steps = 12.5% per second
+    timerBar.style.width = width + "%";
+    if (width <= 0) clearInterval(timerInterval);
+  }, 1000);
+}
+
+
+function hideNetworkAlert() {
+  const container = document.getElementById("network-alert-container");
+  container.innerHTML = "";
+  alertShown = false;
+}
+
+// Watchdog: check heartbeat every 3 seconds
+setInterval(() => {
+  const diff = Date.now() - lastServerMessage;
+  if (diff > 8000) {
+    showNetworkAlert();
+  } else {
+    hideNetworkAlert();
+  }
+}, 3000);
+
 
 
   // 5️⃣ Local countdown timer
