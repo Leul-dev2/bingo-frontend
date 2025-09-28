@@ -492,6 +492,7 @@ const playAudioForNumber = (number) => {
 
   return (
     <div className="bg-gradient-to-b from-[#1a002b] via-[#2d003f] to-black min-h-screen flex flex-col items-center p-1 pb-3 w-full max-w-screen overflow-hidden">
+       <div id="network-alert-container"></div> 
     <div className="grid grid-cols-5 sm:grid-cols-5 gap-1 w-full text-white text-center mt-2 mb-2">
         {[
           `Players: ${gameDetails.playersCount}`, // Correct way to display players count
