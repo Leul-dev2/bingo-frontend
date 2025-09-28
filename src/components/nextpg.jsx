@@ -220,79 +220,68 @@ const playAudioForNumber = (number) => {
   }, [playerCount, gameStarted, hasEmittedGameCount, gameId, gracePlayers]);
 
 
-  function showNetworkAlert() {
-    console.log("🔥🔥🔥 alert to be shown");
+    function showNetworkAlert() {
     if (isAlertShown) return;
     setIsAlertShown(true);
 
     const container = document.getElementById("network-alert-container");
 
+    // Alert container
     const alertDiv = document.createElement("div");
-      alertDiv.className = `
+    alertDiv.id = "network-alert";
+    alertDiv.className = `
       fixed top-0 left-0 w-full 
       bg-gradient-to-r from-red-600 via-red-500 to-red-700
       text-white font-bold text-center p-4 
       z-[9999] shadow-2xl
-      flex flex-col items-center justify-center
-      gap-1
+      flex items-center justify-between
       rounded-b-xl
       animate-slideDown
-      pointer-events-none
-      select-none
     `;
-      
-   
-    alertDiv.innerText = "⚠️ Network unstable — reconnecting...";
-    const timerBar = document.createElement("div");
-    timerBar.className = `
-        absolute bottom-0 left-0 h-1 
-        bg-yellow-400 
-        rounded-full
-        w-full 
-        transition-all duration-3000 linear
-        shadow-md
-      `;
-    alertDiv.appendChild(timerBar);
-    container.appendChild(alertDiv);
 
-    // Animate timer bar shrinking over 3s
-    setTimeout(() => {
-      timerBar.style.width = "0%";
-    }, 50);
+    // Alert text
+    const text = document.createElement("span");
+    text.innerText = "⚠️ Please Connect Network";
+    alertDiv.appendChild(text);
 
-    // Hide banner after 3s
-    setTimeout(() => {
+    // Close button
+    const closeBtn = document.createElement("button");
+    closeBtn.innerText = "×";
+    closeBtn.className = `
+      text-white font-bold text-xl hover:text-gray-200
+      ml-4 focus:outline-none
+    `;
+    closeBtn.onclick = () => {
       hideNetworkAlert();
-    }, HEARTBEAT_TIMEOUT);
+    };
+    alertDiv.appendChild(closeBtn);
+
+    container.appendChild(alertDiv);
   }
 
 
 
   // Hide alert banner
-  function hideNetworkAlert() {
-    const container = document.getElementById("network-alert-container");
-    container.innerHTML = "";
-    setIsAlertShown(false); 
+    function hideNetworkAlert() {
+    const alertDiv = document.getElementById("network-alert");
+    if (alertDiv) alertDiv.remove();
+    setIsAlertShown(false);
   }
 
- // Add a useEffect for the heartbeat check
-useEffect(() => {
-    // This function will be called every 1000ms
-    const intervalId = setInterval(() => {
+    // Heartbeat check
+    useEffect(() => {
+      const intervalId = setInterval(() => {
         const diff = Date.now() - lastServerMessage;
-        
-        // Check if a network issue is detected AND an alert is not already shown
-        if (diff > HEARTBEAT_TIMEOUT && !isAlertShown) { 
-            showNetworkAlert();
+
+        if (diff > HEARTBEAT_TIMEOUT && !isAlertShown) {
+          showNetworkAlert();
+        } else if (diff <= HEARTBEAT_TIMEOUT && isAlertShown) {
+          hideNetworkAlert();
         }
-    }, 1000);
+      }, 1000);
 
-    // This is the cleanup function that runs when the component unmounts
-    return () => {
-        clearInterval(intervalId);
-    };
-}, [isAlertShown]);
-
+      return () => clearInterval(intervalId);
+    }, [isAlertShown]);
 
   // 5️⃣ Local countdown timer
   useEffect(() => {
