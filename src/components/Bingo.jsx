@@ -105,7 +105,7 @@ const startBtnDisabledBg = 'bg-gray-600 cursor-not-allowed';
 // 🟢 Fetch User Balance from REST
 const fetchUserData = async (id) => {
 try {
-const res = await fetch(`https://api.bingoogame.com/api/users/getUser?telegramId=${telegramId}`);
+const res = await fetch(`http://localhost:5000/api/users/getUser?telegramId=${telegramId}`);
 if (!res.ok) throw new Error("User not found");
 const data = await res.json();
 setUserBalance(data.balance);
@@ -478,7 +478,7 @@ return () => socket.off("gameEnded");
 useEffect(() => {
 const interval = setInterval(async () => {
 try {
-const res = await fetch(`https://api.bingoogame.com/api/games/${gameId}/status`);
+const res = await fetch(`http://localhost:5000/api/games/${gameId}/status`);
 const data = await res.json();
 
 if (!data.isActive) {
@@ -508,7 +508,7 @@ const startGame = async () => {
 
     try {
         // ... (Step 1: Check game status remains the same)
-        const statusRes = await fetch(`https://api.bingoogame.com/api/games/${gameId}/status`);
+        const statusRes = await fetch(`http://localhost:5000/api/games/${gameId}/status`);
         const statusData = await statusRes.json();
 
         if (statusData.exists && statusData.isActive) {
@@ -520,7 +520,7 @@ const startGame = async () => {
         }
 
         // ... (Step 2: Start game fetch call remains the same)
-        const response = await fetch("https://api.bingoogame.com/api/games/start", {
+        const response = await fetch("http://localhost:5000/api/games/start", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

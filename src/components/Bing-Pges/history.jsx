@@ -74,7 +74,7 @@ export default function History({ isBlackToggleOn }) {
 
       try {
         const res = await fetch(
-          `https://api.bingoogame.com/api/history?user=${telegramId}&bet=${selectedBet}&tab=${activeTab}`
+          `http://localhost:5000//api/history?user=${telegramId}&bet=${selectedBet}&tab=${activeTab}`
         );
 
         if (res.status === 429) {

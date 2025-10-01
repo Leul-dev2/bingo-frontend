@@ -74,7 +74,7 @@ useEffect(() => {
     setRetryAfterHistory(0);
   }
 
-  fetch(`https://api.bingoogame.com/api/wallet?telegramId=${telegramId}`)
+  fetch(`http://localhost:5000/api/wallet?telegramId=${telegramId}`)
     .then(async res => {
       if (res.status === 429) {
         const json = await res.json();

@@ -73,7 +73,7 @@ export default function Profile({ setIsBlackToggleOn, isBlackToggleOn }) {
     setRateLimitError('');
     setRetryAfter(0);
 
-    fetch(`https://api.bingoogame.com/api/profile/${id}`)
+    fetch(`http://localhost:5000/api/profile/${id}`)
       .then(async (res) => {
         if (res.status === 429) {
           const json = await res.json();
