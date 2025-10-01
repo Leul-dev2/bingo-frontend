@@ -512,8 +512,10 @@ const startGame = async () => {
         const statusData = await statusRes.json();
 
         if (statusData.exists && statusData.isActive) {
-            alert("🚫 A game is already running or being initialized. Please wait.");
+            setAlertMessage("🚫 game is Started, please Wait!");
             setIsStarting(false);
+            // Hide alert after 4 seconds
+            setTimeout(() => setAlertMessage(""), 4000);
             return;
         }
 
@@ -550,11 +552,6 @@ const startGame = async () => {
                     playerCount: 1, // Start with 1, the new page will update it
                 },
             });
-
-            // ❌ Removed the socket.off("gameId").on("gameId", ...) listener
-            // as it is no longer needed. The `Maps` call is now
-            // triggered by the API response itself, which is faster.
-
         } else {
             setAlertMessage(data.error || "Error starting the game");
             console.error("Game start error:", data.error);
