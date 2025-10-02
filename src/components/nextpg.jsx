@@ -26,7 +26,7 @@ const BingoCell = React.memo(({ num, isFreeSpace, isSelected, onClick }) => {
 const BingoGame = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { cartela, cartelaId, gameId, telegramId, GameSessionId } = location.state || {};
+  const { cartela, cartelaId, gameId, telegramId, GameSessionId, selectedBoards } = location.state || {};
 
   const bingoColors = {
     B: "bg-yellow-500",
@@ -55,7 +55,12 @@ const BingoGame = () => {
   const [audioPrimed, setAudioPrimed] = useState(false);
   const [failedBingo, setFailedBingo] = useState(null);
   const [lastCalledLabel, setLastCalledLabel] = useState(null);
+  const [showAddBoardWarning, setShowAddBoardWarning] = useState(false);
   const saveTimeout = useRef(null);
+
+  // ✅ NEW: Multi-board states
+  const [activeBoards, setActiveBoards] = useState([]);
+  const [selectedNumbersPerBoard, setSelectedNumbersPerBoard] = useState({});
 
     const [gameDetails, setGameDetails] = useState({
     winAmount: '-',
@@ -64,6 +69,24 @@ const BingoGame = () => {
   });
 
   const hasJoinedRef = useRef(false);
+
+  // ✅ NEW: Initialize boards - supports both single and multi-board
+  useEffect(() => {
+    if (selectedBoards && selectedBoards.length > 0) {
+      // Multi-board format
+      setActiveBoards(selectedBoards);
+      const initialSelections = {};
+      selectedBoards.forEach(board => {
+        initialSelections[board.cartelaId] = new Set();
+      });
+      setSelectedNumbersPerBoard(initialSelections);
+    } else if (cartelaId && cartela) {
+      // Single board format (backward compatibility)
+      setActiveBoards([{ cartelaId, cartela }]);
+      setSelectedNumbersPerBoard({ [cartelaId]: new Set() });
+      setSelectedNumbers(new Set()); // Keep original for single board
+    }
+  }, [selectedBoards, cartelaId, cartela]);
 
  useEffect(() => {
     // 1. Initial Connection and Join Game Logic
@@ -96,6 +119,7 @@ const BingoGame = () => {
       setRandomNumber([]);
       setCalledSet(new Set());
       setSelectedNumbers(new Set());
+      setSelectedNumbersPerBoard({});
       setCountdown(0);
       setGameStarted(false);
       setLastCalledLabel(null);
@@ -227,146 +251,102 @@ useEffect(() => {
   }, [countdown]);
 
 
-  
-
- const handleCartelaClick = (num) => {
-  const newSelection = new Set(selectedNumbers);
-  if (newSelection.has(num)) {
-    newSelection.delete(num);
+  // ✅ UPDATED: Handle board clicks for multi-board
+ const handleCartelaClick = (num, boardId) => {
+  // For single board compatibility
+  if (activeBoards.length === 1) {
+    const newSelection = new Set(selectedNumbers);
+    if (newSelection.has(num)) {
+      newSelection.delete(num);
+    } else {
+      newSelection.add(num);
+    }
+    setSelectedNumbers(newSelection);
+    
+    // Also update the multi-board state
+    setSelectedNumbersPerBoard(prev => ({
+      ...prev,
+      [boardId]: newSelection
+    }));
   } else {
-    newSelection.add(num);
+    // Multi-board logic
+    setSelectedNumbersPerBoard(prev => {
+      const newSelections = { ...prev };
+      const currentBoardSelections = new Set(prev[boardId] || []);
+      
+      if (currentBoardSelections.has(num)) {
+        currentBoardSelections.delete(num);
+      } else {
+        currentBoardSelections.add(num);
+      }
+      
+      newSelections[boardId] = currentBoardSelections;
+      return newSelections;
+    });
   }
-  setSelectedNumbers(newSelection);
 
   if (saveTimeout.current) clearTimeout(saveTimeout.current);
   saveTimeout.current = setTimeout(() => {
-    localStorage.setItem("selectedNumbers", JSON.stringify([...newSelection]));
-  }, 300); // save after 300ms of inactivity
+    localStorage.setItem("selectedNumbers", JSON.stringify([...selectedNumbers]));
+    localStorage.setItem("selectedNumbersPerBoard", JSON.stringify(
+      Object.fromEntries(
+        Object.entries(selectedNumbersPerBoard).map(([id, set]) => [id, [...set]])
+      )
+    ));
+  }, 300);
 };
 
-  
-  const checkForWin = (selectedSet, telegramId) => {
-    const markedNumbers = new Set(selectedSet);
-    const drawnNumbers = new Set(randomNumber); // Numbers that have been drawn
-    const selectedArray = Array.from(selectedSet); // 🔁 Convert Set to Array
+  // ✅ UPDATED: Check win for specific board
+  const checkForWin = (boardId) => {
+    let selectedSet;
+    let boardCartelaId;
+    
+    if (activeBoards.length === 1) {
+      // Single board
+      selectedSet = selectedNumbers;
+      boardCartelaId = cartelaId;
+    } else {
+      // Multi-board
+      selectedSet = selectedNumbersPerBoard[boardId] || new Set();
+      const board = activeBoards.find(b => b.cartelaId === boardId);
+      boardCartelaId = boardId;
+    }
 
-    let matchedCellsGlobal = [];
-    let lastWinnerCells = [];
-    let allWinnerCells = [];
-    let lastMatchedPattern = "";
-
-    const countLinePatterns = () => {
-      let matchedRows = 0;
-      let matchedCols = 0;
-      let matchedDiagonals = 0;
-
-      // Check rows
-      cartela.forEach((row, rowIndex) => {
-        const matchedCells = row
-          .map((num, colIndex) =>
-            num === "FREE" || drawnNumbers.has(num) && markedNumbers.has(num)
-              ? [rowIndex, colIndex]
-              : null
-          )
-          .filter((cell) => cell !== null);
-
-        // Check if the row is fully matched
-        if (matchedCells.length === row.length) {
-          matchedRows += 1;
-          matchedCells.forEach((cell) => {
-            const [r, c] = cell;
-            matchedCellsGlobal.push(cartela[r][c]);
-          });
-          lastMatchedPattern = `Row ${rowIndex + 1}`;
-          lastWinnerCells = matchedCells;
-          allWinnerCells.push(...matchedCells);
-          setLastWinnerCells(matchedCells); // Store matched cells in state
-        }
-      });
-
-      // Check columns
-      for (let col = 0; col < 5; col++) {
-        const matchedCells = [];
-        for (let row = 0; row < 5; row++) {
-          const num = cartela[row][col];
-          if (num === "FREE" || drawnNumbers.has(num) && markedNumbers.has(num)) {
-            matchedCells.push([row, col]);
-          }
-        }
-        if (matchedCells.length === 5) {
-          matchedCols += 1;
-          matchedCells.forEach((cell) => {
-            const [r, c] = cell;
-            matchedCellsGlobal.push(cartela[r][c]);
-          });
-          lastMatchedPattern = `Column ${col + 1}`;
-          lastWinnerCells = matchedCells;
-          allWinnerCells.push(...matchedCells);
-          setLastWinnerCells(matchedCells); // Store matched cells in state
-        }
-      }
-
-      // Check diagonals
-      const mainDiagonal = [0, 1, 2, 3, 4].map((i) => [i, i]);
-      const antiDiagonal = [0, 1, 2, 3, 4].map((i) => [i, 4 - i]);
-
-      // Check main diagonal
-      if (mainDiagonal.every(([row, col]) => cartela[row][col] === "FREE" || drawnNumbers.has(cartela[row][col]) && markedNumbers.has(cartela[row][col]))) {
-        matchedDiagonals += 1;
-        mainDiagonal.forEach(([r, c]) => matchedCellsGlobal.push(cartela[r][c]));
-        lastMatchedPattern = "Main Diagonal";
-        lastWinnerCells = mainDiagonal;
-        allWinnerCells.push(...mainDiagonal);
-        setLastWinnerCells(mainDiagonal); // Store matched cells in state
-      }
-
-      // Check anti-diagonal
-      if (antiDiagonal.every(([row, col]) => cartela[row][col] === "FREE" || drawnNumbers.has(cartela[row][col]) && markedNumbers.has(cartela[row][col]))) {
-        matchedDiagonals += 1;
-        antiDiagonal.forEach(([r, c]) => matchedCellsGlobal.push(cartela[r][c]));
-        lastMatchedPattern = "Anti Diagonal";
-        lastWinnerCells = antiDiagonal;
-        allWinnerCells.push(...antiDiagonal);
-        setLastWinnerCells(antiDiagonal); // Store matched cells in state
-      }
-
-     // console.log("Last matched pattern:", lastMatchedPattern);
-     // console.log("Winning cells:", lastWinnerCells);
-      return matchedRows + matchedCols + matchedDiagonals;
-    };
-
-    const winCount = countLinePatterns();
-
-    const winnerPattern = Array(25).fill(false); // Assuming a 5x5 board
-    lastWinnerCells.forEach(([row, col]) => {
-      const index = row * 5 + col;
-      winnerPattern[index] = true;
-    });
-
-    // if (winCount > 0) {
-    //   // alert(`Bingo! Winning Pattern: ${lastMatchedPattern}`);
-    //   declareWinner(winnerPattern, telegramId);
-    //   return lastMatchedPattern;
-    // } else {
-    //   alert("You are not a winner yet! Keep playing.");
-    // }
+    const selectedArray = Array.from(selectedSet);
 
     socket.emit("checkWinner", {
       telegramId,
       gameId,
       GameSessionId,
-      cartelaId, 
-      selectedNumbers: selectedArray,        // player card ID
+      cartelaId: boardCartelaId, 
+      selectedNumbers: selectedArray,
     });
 
-  console.log("Sending to backend:", {
-  telegramId,
-  gameId,
-  cartelaId,
-  selectedNumbers: selectedArray
-});
+    console.log("Sending to backend:", {
+      telegramId,
+      gameId,
+      cartelaId: boardCartelaId,
+      selectedNumbers: selectedArray
+    });
   };
 
+  // ✅ NEW: Navigate to add board
+  const navigateToAddBoard = () => {
+    if (countdown < 10) {
+      setShowAddBoardWarning(true);
+      return;
+    }
+
+    navigate("/add-board", {
+      state: {
+        telegramId,
+        gameId,
+        GameSessionId,
+        existingBoards: activeBoards,
+        countdown
+      }
+    });
+  };
 
   useEffect(() => {
   if (!socket) return;
@@ -404,72 +384,45 @@ useEffect(() => {
     localStorage.setItem("isAudioOn", isAudioOn);
   }, [isAudioOn]);
 
-
-
-
-// useEffect(() => {
-//   const handleWinnerFound = ({ winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId, GameSessionId }) => {
-//     navigate("/winnerPage", {
-//       state: {
-//         winnerName,
-//         prizeAmount,
-//         board,
-//         winnerPattern,
-//         boardNumber,
-//         playerCount,
-//         telegramId,
-//         gameId,
-//         GameSessionId
-//       }
-//     });
-//   };
-
-// }, [navigate]);
-
-
-  
-
   return (
     <div className="bg-gradient-to-b from-[#1a002b] via-[#2d003f] to-black min-h-screen flex flex-col items-center p-1 pb-3 w-full max-w-screen overflow-hidden">
     <div className="grid grid-cols-5 sm:grid-cols-5 gap-1 w-full text-white text-center mt-2 mb-2">
-        {[
-          `Players: ${gameDetails.playersCount}`, // Correct way to display players count
-          `Prize: ${gameDetails.winAmount}`, // Correct way to display win amount
-          `Call: ${callNumberLength}`, // Correct way to display called numbers
-          `Stake: ${gameDetails.stakeAmount}`, // Correct way to display stake amount
-        ].map((info, i) => (
-          <button key={i} className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-bold p-1 text-xs rounded w-full">
-            {info}
-          </button>
-        ))}
-      <button
+        {[
+          `Players: ${gameDetails.playersCount}`,
+          `Prize: ${gameDetails.winAmount}`,
+          `Call: ${callNumberLength}`,
+          `Stake: ${gameDetails.stakeAmount}`,
+        ].map((info, i) => (
+          <button key={i} className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-bold p-1 text-xs rounded w-full">
+            {info}
+          </button>
+        ))}
+      <button
           onClick={() => {
             if (!isAudioOn) {
-              // User is trying to enable audio — prime it
               const audio = new Audio(`audio/audio1.mp3`);
-              audio.volume = 0; // Silent play to satisfy browser
+              audio.volume = 0;
               audio
                 .play()
                 .then(() => {
                   audio.pause();
                   audio.currentTime = 0;
                   console.log("✅ Audio unlocked");
-                  setIsAudioOn(true); // Enable audio
+                  setIsAudioOn(true);
                 })
                 .catch((err) => {
                   console.warn("❌ Audio unlock failed:", err);
                   alert("Audio could not be enabled. Please try clicking again.");
                 });
             } else {
-              setIsAudioOn(false); // Mute audio
+              setIsAudioOn(false);
             }
           }}
           className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-bold p-1 text-xs rounded w-full"
         >
           {`${isAudioOn ? "🔊" : "🔇"}`}
       </button>
-
-    </div>
+    </div>
 
       <div className="flex flex-wrap w-full mt-1">
         <div className="w-[45%] flex justify-center">
@@ -488,8 +441,8 @@ useEffect(() => {
                 <div
                   key={randomNumberLabel}
                   className={`text-center rounded ${
-                   calledSet.has(randomNumberLabel) // Check if number has been drawn
-                      ? "bg-gradient-to-b from-yellow-400 to-orange-500 text-black" // Mark all drawn numbers
+                   calledSet.has(randomNumberLabel)
+                      ? "bg-gradient-to-b from-yellow-400 to-orange-500 text-black"
                       : "bg-gray-800 text-gray-400 font-bold"
                   }`}
                 >
@@ -510,26 +463,18 @@ useEffect(() => {
       <div className="bg-gradient-to-b from-purple-800 to-purple-900 rounded-lg text-white flex flex-row justify-around items-center w-full max-w-md mx-auto">
      <p className="font-bold text-xs">Current Number</p>
         <div className="flex justify-center items-center gap-4">
-          {/* Main Display for Last Drawn Number */}
-        <div className="w-14 h-14 flex items-center justify-center text-xl font-extrabold rounded-full shadow-[0_0_20px_#37ebf3] bg-[#37ebf3] text-purple-900">
+          <div className="w-14 h-14 flex items-center justify-center text-xl font-extrabold rounded-full shadow-[0_0_20px_#37ebf3] bg-[#37ebf3] text-purple-900">
             {lastCalledLabel ? lastCalledLabel : "-"}
         </div>
            </div>
       </div>
 
-
        {/* Called Numbers Section */}
 <div className="bg-gradient-to-b from-gray-800 to-gray-900 p-2 rounded-lg w-full max-w-md mx-auto">
   <p className="text-center font-bold text-xs sm:text-sm text-yellow-400 md:text-base mb-1">Recent Calls</p>
    <div className="flex justify-center gap-2 sm:gap-4">
-  {randomNumber.slice(-4, -1).map((num, index)  => {
-      // Define an array of colors for the backgrounds
-      const colors = [
-        "bg-red-800", // Red
-        "bg-green-800", // Green
-        "bg-blue-800", // Blue
-      ];
-
+  {randomNumber.slice(-4, -1).map((num, index) => {
+      const colors = ["bg-red-800", "bg-green-800", "bg-blue-800"];
       return (
         <div
           key={index}
@@ -542,101 +487,124 @@ useEffect(() => {
       );
     })}
   </div>
-  <div className="grid grid-cols-5 gap-1 mt-2 text-xs sm:text-sm">
-    {calledNumbers.map((num, i) => {
-      const letter = num.charAt(0);
-      return (
-        <div key={i} className={`p-2 text-center rounded text-white ${bingoColors[letter]} text-xs sm:text-sm`}>
-          {num}
-        </div>
-      );
-    })}
-  </div>
 </div>
 
-{/* Bingo Card */}
-{cartela.length > 0 && (
-  <div className="bg-gradient-to-b from-purple-800 to-purple-900 p-4 rounded-lg w-full max-w-md mx-auto h-[80%] mt-1">
+{/* ✅ UPDATED: Bingo Cards - Multi-board support */}
+<div className="w-full space-y-4">
+  {activeBoards.map((board, boardIndex) => {
+    const isSelected = (selectedNumbersPerBoard[board.cartelaId] || new Set());
     
-    {/* BINGO Header */}
-    <div className="grid grid-cols-5 gap-1 mb-2">
-      {["B", "I", "N", "G", "O"].map((letter, i) => (
-        <div
-          key={i}
-          className={`md:w-10 md:h-10 w-8 h-8 sm:w-12 sm:h-12 flex items-center justify-center font-bold text-white text-base sm:text-lg rounded-full shadow-md ${bingoColors[letter]}`}
-        >
-          {letter}
+    return (
+      <div key={board.cartelaId} className="bg-gradient-to-b from-purple-800 to-purple-900 p-4 rounded-lg w-full max-w-md mx-auto">
+        {/* Board Header */}
+        <div className="text-center text-yellow-400 text-sm mb-2 font-bold">
+          {boardIndex === 0 ? "PRIMARY BOARD" : "SECONDARY BOARD"}
         </div>
-      ))}
-    </div>
-
-    {/* Bingo Numbers Grid */}
-    <div className="grid grid-cols-5  h-[90%]">
-      {cartela.map((row, rowIndex) =>
-        row.map((num, colIndex) => {
-          const isFreeSpace = rowIndex === 2 && colIndex === 2; // Middle space (FREE)
-          const isSelected = selectedNumbers.has(num); // Check if number is marked
-
-          return (
-           <BingoCell
-              key={`${rowIndex}-${colIndex}`}
-              num={num}
-              isFreeSpace={isFreeSpace}
-              isSelected={isSelected}
-              onClick={() => handleCartelaClick(num)}
-            />
-
-          );
-        })
-      )}
-    </div>
-  </div>
- )}
-
-        </div>
-      </div>
-
-      <div className="w-full flex flex-col items-center gap-2 mt-3">
-       <button onClick={() => checkForWin(selectedNumbers, telegramId)} 
-        className="w-[95%] bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 px-4 py-2 text-white rounded-4xl text-lg font-bold shadow-lg transition-all duration-200" >
-          Bingo!
-        </button>
-        <div className="w-full flex gap-3 justify-center mt-1">
-            <button
-               className=" bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 px-14 h-8 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
-              onClick={() => {
-                // Re-emit joinGame to force a state synchronization from the backend
-                if (gameId && telegramId) {
-                  socket.emit("joinGame", { gameId, telegramId, GameSessionId });
-                  console.log("Forced refresh: Re-emitted joinGame to synchronize state.");
-                  // Optional: Reset any client-side-only UI states if necessary
-                  // setSomeTemporaryUIState(false);
-                } else {
-                  console.warn("Cannot force refresh: gameId or telegramId missing.");
-                  // Fallback to full refresh if critical data is missing (unlikely if in game)
-                  window.location.reload();
-                }
-              }}
+        
+        {/* BINGO Header */}
+        <div className="grid grid-cols-5 gap-1 mb-2">
+          {["B", "I", "N", "G", "O"].map((letter, i) => (
+            <div
+              key={i}
+              className={`w-8 h-8 flex items-center justify-center font-bold text-white text-sm rounded-full ${bingoColors[letter]}`}
             >
-              Refresh
-          </button>
-          <button
-            onClick={() => {
-             socket.emit("playerLeave", { gameId: String(gameId), GameSessionId, telegramId }, () => {
-                console.log("player leave emited🎯🎯", GameSessionId );
-                navigate("/");
-              });
-            }}
-            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 px-14 h-8 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
-          >
-            Leave
-          </button>
+              {letter}
+            </div>
+          ))}
+        </div>
 
+        {/* Bingo Numbers Grid */}
+        <div className="grid grid-cols-5 gap-1">
+          {board.cartela.map((row, rowIndex) =>
+            row.map((num, colIndex) => {
+              const isFreeSpace = rowIndex === 2 && colIndex === 2;
+              const isSelectedNum = isSelected.has(num);
+
+              return (
+                <BingoCell
+                  key={`${board.cartelaId}-${rowIndex}-${colIndex}`}
+                  num={num}
+                  isFreeSpace={isFreeSpace}
+                  isSelected={isSelectedNum}
+                  onClick={() => handleCartelaClick(num, board.cartelaId)}
+                />
+              );
+            })
+          )}
+        </div>
+
+        {/* ✅ UPDATED: Bingo Button with Board Number */}
+        <button 
+          onClick={() => checkForWin(board.cartelaId)}
+          className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 px-4 py-2 text-white rounded-4xl text-sm font-bold shadow-lg transition-all duration-200 mt-3"
+        >
+          BINGO! (Board #{board.cartelaId})
+        </button>
+      </div>
+    );
+  })}
+</div>
+
+          {/* ✅ NEW: Add Board Button */}
+          {activeBoards.length === 1 && (
+            <button
+              onClick={navigateToAddBoard}
+              className="w-[95%] bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 px-4 py-2 text-white rounded-4xl text-lg font-bold shadow-lg transition-all duration-200 mb-2"
+            >
+              + Add Another Board
+            </button>
+          )}
         </div>
       </div>
+
+      <div className="w-full flex gap-3 justify-center mt-3">
+        <button
+          className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 px-14 h-8 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
+          onClick={() => {
+            if (gameId && telegramId) {
+              socket.emit("joinGame", { gameId, telegramId, GameSessionId });
+              console.log("Forced refresh: Re-emitted joinGame to synchronize state.");
+            } else {
+              console.warn("Cannot force refresh: gameId or telegramId missing.");
+              window.location.reload();
+            }
+          }}
+        >
+          Refresh
+        </button>
+        <button
+          onClick={() => {
+            socket.emit("playerLeave", { gameId: String(gameId), GameSessionId, telegramId }, () => {
+              console.log("player leave emited🎯🎯", GameSessionId );
+              navigate("/");
+            });
+          }}
+          className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 px-14 h-8 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
+        >
+          Leave
+        </button>
+      </div>
+
+      {/* ✅ NEW: Add Board Warning Modal */}
+      {showAddBoardWarning && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white p-6 rounded-lg max-w-sm mx-4">
+            <h3 className="text-lg font-bold mb-2">Cannot Add Board</h3>
+            <p className="text-gray-600 mb-4">
+              Countdown is too low ({countdown}s). You cannot add boards when countdown is below 10 seconds.
+            </p>
+            <button
+              onClick={() => setShowAddBoardWarning(false)}
+              className="w-full bg-orange-500 text-white py-2 rounded-lg font-semibold"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
 
      {isGameEnd && (
-        <div className="fixed inset-0 flex items-center justify-center  bg-opacity-80 backdrop-blur-sm z-50 transition-opacity duration-300">
+        <div className="fixed inset-0 flex items-center justify-center bg-opacity-80 backdrop-blur-sm z-50 transition-opacity duration-300">
           <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center">
             <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">
               🎉 Game Over
@@ -657,8 +625,6 @@ useEffect(() => {
           </div>
         </div>
       )}
-
-
     </div>
   );
 };
