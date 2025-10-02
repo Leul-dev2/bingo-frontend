@@ -18,6 +18,7 @@ import Instruction from "./components/instruction/instruction";
 import WithdrawForm from "./components/payment/WithdrawalForm";
 import CheckWithdrawalPage from "./components/payment/CheckWithdrwal";
 import WinnerFailed from "./components/WinnerFailed";
+import AddBoard from "./components/AddBoard"; // ✅ Add this import
 
 // Initialize socket connection globally
 //const socket = io("https://api.bingoogame.com");
@@ -136,8 +137,9 @@ const AppContent = ({ isBlackToggleOn, setIsBlackToggleOn, socket }) => {
           />
         }
       />
+      <Route path="/add-board" element={<AddBoard />} /> {/* ✅ Add this route */}
       <Route path="/winnerPage" element={<WinnerPage />} />
-       <Route path="/winnerFailed" element={<WinnerFailed />} />
+      <Route path="/winnerFailed" element={<WinnerFailed />} />
       <Route path="/PaymentForm" element={<PaymentForm />} />
       <Route path="/payment-success" element={<PaymentSuccess />} />
       <Route path="/instruction" element={<Instruction />} />

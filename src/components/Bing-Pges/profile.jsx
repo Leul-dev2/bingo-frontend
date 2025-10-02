@@ -73,7 +73,11 @@ export default function Profile({ setIsBlackToggleOn, isBlackToggleOn }) {
     setRateLimitError('');
     setRetryAfter(0);
 
+<<<<<<< HEAD
     fetch(`https://bingo-backend-8929.onrender.com/api/profile/${id}`)
+=======
+    fetch(`https://bingo-backend-8929.onrender.com //api/profile/${id}`)
+>>>>>>> af8f307 (Your commit message)
       .then(async (res) => {
         if (res.status === 429) {
           const json = await res.json();
