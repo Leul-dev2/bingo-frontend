@@ -71,7 +71,7 @@ export default function WithdrawForm() {
       setBalanceLoading(true);
       try {
         const res = await fetch(
-          `https://bingobot-backend-bwdo.onrender.com/api/payment/balance?telegramId=${telegramId}`
+          `https://bingo-backend-8929.onrender.com/api/payment/balance?telegramId=${telegramId}`
         );
         if (!res.ok) throw new Error("Failed to fetch balance");
 
@@ -138,7 +138,7 @@ export default function WithdrawForm() {
 
     try {
       const res = await fetch(
-        "https://bingobot-backend-bwdo.onrender.com/api/payment/request-withdrawal",
+        "https://bingo-backend-8929.onrender.com/api/payment/request-withdrawal",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

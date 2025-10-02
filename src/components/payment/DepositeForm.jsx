@@ -30,7 +30,7 @@ function PaymentForm() {
     const fetchUser = async () => {
       try {
         const res = await axios.get(
-          `https://bingobot-backend-bwdo.onrender.com/api/payment/userinfo?telegramId=${telegramId}`
+          `https://bingo-backend-8929.onrender.com/api/payment/userinfo?telegramId=${telegramId}`
         );
 
         const user = res.data;
@@ -106,7 +106,7 @@ const handleSubmit = async (e) => {
 
   try {
     const res = await axios.post(
-      "https://bingobot-backend-bwdo.onrender.com/api/payment/accept-payment",
+      "https://bingo-backend-8929.onrender.com/api/payment/accept-payment",
       {
         ...updatedForm,
         tx_ref,

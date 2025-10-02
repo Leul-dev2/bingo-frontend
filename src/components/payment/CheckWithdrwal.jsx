@@ -32,7 +32,7 @@ export default function CheckWithdrawalPage() {
     setStatus("checking");
     for (let i = 0; i < 3; i++) {
       try {
-        const res = await axios.get(`https://bingobot-backend-bwdo.onrender.com/api/payment/verify/${ref}`);
+        const res = await axios.get(`https://bingo-backend-8929.onrender.com/api/payment/verify/${ref}`);
         if (res.data.status === "success") {
           setStatus("success");
           return;
@@ -49,7 +49,7 @@ export default function CheckWithdrawalPage() {
   const handleRetry = async () => {
     if (manualTries >= 3) return;
     try {
-      const res = await axios.get(`https://bingobot-backend-bwdo.onrender.com/api/payment/verify/${txRef}`);
+      const res = await axios.get(`https://bingo-backend-8929.onrender.com/api/payment/verify/${txRef}`);
       if (res.data.status === "success") {
         setStatus("success");
       } else {
@@ -76,7 +76,7 @@ export default function CheckWithdrawalPage() {
       setMaxReached(false);
       setStatus("checking");
       try {
-        const res = await axios.get(`https://bingobot-backend-bwdo.onrender.com/api/payment/verify/${ref}`);
+        const res = await axios.get(`https://bingo-backend-8929.onrender.com/api/payment/verify/${ref}`);
         if (res.data.status === "success") {
           setStatus("success");
         } else {

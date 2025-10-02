@@ -23,7 +23,7 @@ function PaymentSuccess() {
     const checkPayment = async () => {
       try {
         const res = await axios.get(
-          `https://bingobot-backend-bwdo.onrender.com/api/payment/check-payment/${tx_ref}`
+          `https://bingo-backend-8929.onrender.com/api/payment/check-payment/${tx_ref}`
         );
 
         if (res.data.status === "success") {
