@@ -105,11 +105,7 @@ const startBtnDisabledBg = 'bg-gray-600 cursor-not-allowed';
 // 🟢 Fetch User Balance from REST
 const fetchUserData = async (id) => {
 try {
-<<<<<<< HEAD
 const res = await fetch(`https://bingo-backend-8929.onrender.com/api/users/getUser?telegramId=${telegramId}`);
-=======
-const res = await fetch(`https://bingo-backend-8929.onrender.com /api/users/getUser?telegramId=${telegramId}`);
->>>>>>> af8f307 (Your commit message)
 if (!res.ok) throw new Error("User not found");
 const data = await res.json();
 setUserBalance(data.balance);
@@ -482,11 +478,7 @@ return () => socket.off("gameEnded");
 useEffect(() => {
 const interval = setInterval(async () => {
 try {
-<<<<<<< HEAD
 const res = await fetch(`https://bingo-backend-8929.onrender.com/api/games/${gameId}/status`);
-=======
-const res = await fetch(`https://bingo-backend-8929.onrender.com /api/games/${gameId}/status`);
->>>>>>> af8f307 (Your commit message)
 const data = await res.json();
 
 if (!data.isActive) {
@@ -516,11 +508,7 @@ const startGame = async () => {
 
     try {
         // ... (Step 1: Check game status remains the same)
-<<<<<<< HEAD
         const statusRes = await fetch(`https://bingo-backend-8929.onrender.com/api/games/${gameId}/status`);
-=======
-        const statusRes = await fetch(`https://bingo-backend-8929.onrender.com /api/games/${gameId}/status`);
->>>>>>> af8f307 (Your commit message)
         const statusData = await statusRes.json();
 
         if (statusData.exists && statusData.isActive) {
@@ -532,11 +520,7 @@ const startGame = async () => {
         }
 
         // ... (Step 2: Start game fetch call remains the same)
-<<<<<<< HEAD
         const response = await fetch("https://bingo-backend-8929.onrender.com/api/games/start", {
-=======
-        const response = await fetch("https://bingo-backend-8929.onrender.com /api/games/start", {
->>>>>>> af8f307 (Your commit message)
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
