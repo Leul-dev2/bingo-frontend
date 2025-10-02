@@ -1,7 +1,7 @@
 // components/AddBoard.jsx
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import bingoCards from "../assets/bingocards2.json";
+import bingoCards from "../assets/bingoCards2.json"
 import socket from "../../socket"
 
 const AddBoard = () => {
