@@ -1,6 +1,21 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import socket from "../../socket";
+
+// Constants
+const BINGO_CONFIG = {
+  LETTERS: ["B", "I", "N", "G", "O"],
+  COLORS: {
+    B: "bg-yellow-500",
+    I: "bg-green-500", 
+    N: "bg-blue-500",
+    G: "bg-red-500",
+    O: "bg-purple-500",
+  },
+  MAX_BOARDS: 2,
+  COUNTDOWN_THRESHOLD: 10,
+  FREE_SPACE_POSITION: { row: 2, col: 2 }
+};
 
 // Memoized Bingo Cell Component
 const BingoCell = React.memo(({ num, isFreeSpace, isSelected, onClick }) => (
@@ -18,15 +33,142 @@ const BingoCell = React.memo(({ num, isFreeSpace, isSelected, onClick }) => (
   </div>
 ));
 
-// Constants
-const BINGO_LETTERS = ["B", "I", "N", "G", "O"];
-const BINGO_COLORS = {
-  B: "bg-yellow-500",
-  I: "bg-green-500", 
-  N: "bg-blue-500",
-  G: "bg-red-500",
-  O: "bg-purple-500",
-};
+// Bingo Board Component
+const BingoBoard = React.memo(({ 
+  board, 
+  boardId, 
+  boardIndex, 
+  selectedNumbers, 
+  onCellClick, 
+  onBingo 
+}) => {
+  const isFreeSpace = useCallback((rowIndex, colIndex) => 
+    rowIndex === BINGO_CONFIG.FREE_SPACE_POSITION.row && 
+    colIndex === BINGO_CONFIG.FREE_SPACE_POSITION.col,
+    []
+  );
+
+  return (
+    <div className="bg-gradient-to-b from-purple-800 to-purple-900 p-4 rounded-lg w-full max-w-md mx-auto">
+      {/* Board Header */}
+      <div className="text-center text-yellow-400 text-sm mb-2 font-bold">
+        {boardIndex === 0 ? "PRIMARY BOARD" : "SECONDARY BOARD"}
+      </div>
+      
+      {/* BINGO Header */}
+      <div className="grid grid-cols-5 gap-1 mb-2">
+        {BINGO_CONFIG.LETTERS.map((letter, i) => (
+          <div
+            key={letter}
+            className={`w-8 h-8 flex items-center justify-center font-bold text-white text-sm rounded-full ${BINGO_CONFIG.COLORS[letter]}`}
+          >
+            {letter}
+          </div>
+        ))}
+      </div>
+
+      {/* Bingo Numbers Grid */}
+      <div className="grid grid-cols-5 gap-1">
+        {board.cartela.map((row, rowIndex) =>
+          row.map((num, colIndex) => {
+            const isFree = isFreeSpace(rowIndex, colIndex);
+            const isSelectedNum = selectedNumbers.has(num);
+
+            return (
+              <BingoCell
+                key={`${boardId}-${rowIndex}-${colIndex}`}
+                num={num}
+                isFreeSpace={isFree}
+                isSelected={isSelectedNum}
+                onClick={() => onCellClick(num, boardId)}
+              />
+            );
+          })
+        )}
+      </div>
+
+      {/* Bingo Button */}
+      <button 
+        onClick={() => onBingo(boardId)}
+        className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 px-4 py-2 text-white rounded-4xl text-sm font-bold shadow-lg transition-all duration-200 mt-3"
+      >
+        BINGO! (Board #{boardId})
+      </button>
+    </div>
+  );
+});
+
+// Called Numbers Grid Component
+const CalledNumbersGrid = React.memo(({ calledNumbers }) => {
+  const renderNumberGrid = useMemo(() => {
+    return [...Array(15)].map((_, rowIndex) =>
+      BINGO_CONFIG.LETTERS.map((letter, colIndex) => {
+        const number = rowIndex + 1 + colIndex * 15;
+        const randomNumberLabel = `${letter}-${number}`;
+        const isCalled = calledNumbers.has(randomNumberLabel);
+
+        return (
+          <div
+            key={randomNumberLabel}
+            className={`text-center rounded ${
+              isCalled
+                ? "bg-gradient-to-b from-yellow-400 to-orange-500 text-black"
+                : "bg-gray-800 text-gray-400 font-bold"
+            }`}
+          >
+            {number}
+          </div>
+        );
+      })
+    );
+  }, [calledNumbers]);
+
+  return (
+    <div className="w-[45%] flex justify-center">
+      <div className="grid grid-cols-5 bg-[#2a0047] p-1 gap-2 rounded-lg text-xs w-[90%]">
+        {BINGO_CONFIG.LETTERS.map((letter) => (
+          <div key={letter} className={`text-white text-center text-xs font-bold rounded-full h-4 w-6 ${BINGO_CONFIG.COLORS[letter]}`}>
+            {letter}
+          </div>
+        ))}
+        {renderNumberGrid}
+      </div>
+    </div>
+  );
+});
+
+// Game Stats Component
+const GameStats = React.memo(({ 
+  playersCount, 
+  winAmount, 
+  callNumberLength, 
+  stakeAmount, 
+  isAudioOn, 
+  onToggleAudio 
+}) => {
+  const stats = [
+    `Players: ${playersCount}`,
+    `Prize: ${winAmount}`,
+    `Call: ${callNumberLength}`,
+    `Stake: ${stakeAmount}`,
+  ];
+
+  return (
+    <div className="grid grid-cols-5 sm:grid-cols-5 gap-1 w-full text-white text-center mt-2 mb-2">
+      {stats.map((info, i) => (
+        <button key={i} className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-bold p-1 text-xs rounded w-full">
+          {info}
+        </button>
+      ))}
+      <button
+        onClick={onToggleAudio}
+        className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-bold p-1 text-xs rounded w-full"
+      >
+        {isAudioOn ? "🔊" : "🔇"}
+      </button>
+    </div>
+  );
+});
 
 // Main Bingo Game Component
 const BingoGame = () => {
@@ -82,7 +224,7 @@ const BingoGame = () => {
     }
   }, [selectedBoards, cartelaId, cartela]);
 
-  // Socket Event Handlers
+  // Enhanced Socket Event Handlers
   const socketEventHandlers = useRef({
     connect: () => {
       console.log("✅ Socket.IO connected!");
@@ -205,22 +347,43 @@ const BingoGame = () => {
     }
   }, [gameState.countdown]);
 
-  // Board Selection Handler
+  // Enhanced Board Selection Handler with Dual Board Sync
   const handleCartelaClick = useCallback((num, boardId) => {
-    if (activeBoards.length === 1) {
-      const newSelection = new Set(selectedNumbers);
-      newSelection.has(num) ? newSelection.delete(num) : newSelection.add(num);
-      setSelectedNumbers(newSelection);
-      setSelectedNumbersPerBoard(prev => ({ ...prev, [boardId]: newSelection }));
-    } else {
-      setSelectedNumbersPerBoard(prev => {
-        const newSelections = { ...prev };
+    setSelectedNumbersPerBoard(prev => {
+      const newSelections = { ...prev };
+      
+      // Handle single board selection
+      if (activeBoards.length === 1) {
+        const newSelection = new Set(prev[boardId] || []);
+        newSelection.has(num) ? newSelection.delete(num) : newSelection.add(num);
+        newSelections[boardId] = newSelection;
+        setSelectedNumbers(newSelection);
+      } else {
+        // Handle dual board selection with sync
         const currentBoardSelections = new Set(prev[boardId] || []);
         currentBoardSelections.has(num) ? currentBoardSelections.delete(num) : currentBoardSelections.add(num);
         newSelections[boardId] = currentBoardSelections;
-        return newSelections;
-      });
-    }
+
+        // If number exists in both boards, sync the selection
+        const otherBoardId = activeBoards.find(b => b.cartelaId !== boardId)?.cartelaId;
+        if (otherBoardId) {
+          const otherBoard = activeBoards.find(b => b.cartelaId === otherBoardId);
+          const numberExistsInOtherBoard = otherBoard.cartela.some(row => row.includes(num));
+          
+          if (numberExistsInOtherBoard) {
+            const otherBoardSelections = new Set(prev[otherBoardId] || []);
+            if (currentBoardSelections.has(num)) {
+              otherBoardSelections.add(num);
+            } else {
+              otherBoardSelections.delete(num);
+            }
+            newSelections[otherBoardId] = otherBoardSelections;
+          }
+        }
+      }
+
+      return newSelections;
+    });
 
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
     saveTimeout.current = setTimeout(() => {
@@ -231,7 +394,7 @@ const BingoGame = () => {
         )
       ));
     }, 300);
-  }, [activeBoards.length, selectedNumbers, selectedNumbersPerBoard]);
+  }, [activeBoards, selectedNumbers, selectedNumbersPerBoard]);
 
   // Win Check Handler
   const checkForWin = useCallback((boardId) => {
@@ -257,7 +420,12 @@ const BingoGame = () => {
 
   // Navigation Handlers
   const navigateToAddBoard = useCallback(() => {
-    if (gameState.countdown < 10) {
+    if (activeBoards.length >= BINGO_CONFIG.MAX_BOARDS) {
+      setGameState(prev => ({ ...prev, showAddBoardWarning: true }));
+      return;
+    }
+
+    if (gameState.countdown < BINGO_CONFIG.COUNTDOWN_THRESHOLD) {
       setGameState(prev => ({ ...prev, showAddBoardWarning: true }));
       return;
     }
@@ -318,59 +486,28 @@ const BingoGame = () => {
     localStorage.setItem("isAudioOn", gameState.isAudioOn);
   }, [gameState.isAudioOn]);
 
+  // Recent calls display
+  const recentCalls = useMemo(() => 
+    gameState.randomNumbers.slice(-4, -1),
+    [gameState.randomNumbers]
+  );
+
   return (
     <div className="bg-gradient-to-b from-[#1a002b] via-[#2d003f] to-black min-h-screen flex flex-col items-center p-1 pb-3 w-full max-w-screen overflow-hidden">
       {/* Header Stats */}
-      <div className="grid grid-cols-5 sm:grid-cols-5 gap-1 w-full text-white text-center mt-2 mb-2">
-        {[
-          `Players: ${gameDetails.playersCount}`,
-          `Prize: ${gameDetails.winAmount}`,
-          `Call: ${gameState.callNumberLength}`,
-          `Stake: ${gameDetails.stakeAmount}`,
-        ].map((info, i) => (
-          <button key={i} className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-bold p-1 text-xs rounded w-full">
-            {info}
-          </button>
-        ))}
-        <button
-          onClick={toggleAudio}
-          className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-bold p-1 text-xs rounded w-full"
-        >
-          {gameState.isAudioOn ? "🔊" : "🔇"}
-        </button>
-      </div>
+      <GameStats
+        playersCount={gameDetails.playersCount}
+        winAmount={gameDetails.winAmount}
+        callNumberLength={gameState.callNumberLength}
+        stakeAmount={gameDetails.stakeAmount}
+        isAudioOn={gameState.isAudioOn}
+        onToggleAudio={toggleAudio}
+      />
 
       {/* Main Content Area */}
       <div className="flex flex-wrap w-full mt-1">
         {/* Called Numbers Grid */}
-        <div className="w-[45%] flex justify-center">
-          <div className="grid grid-cols-5 bg-[#2a0047] p-1 gap-2 rounded-lg text-xs w-[90%]">
-            {BINGO_LETTERS.map((letter, i) => (
-              <div key={i} className={`text-white text-center text-xs font-bold rounded-full h-4 w-6 ${BINGO_COLORS[letter]}`}>
-                {letter}
-              </div>
-            ))}
-            {[...Array(15)].map((_, rowIndex) =>
-              BINGO_LETTERS.map((letter, colIndex) => {
-                const number = rowIndex + 1 + colIndex * 15;
-                const randomNumberLabel = `${letter}-${number}`;
-
-                return (
-                  <div
-                    key={randomNumberLabel}
-                    className={`text-center rounded ${
-                      gameState.calledNumbers.has(randomNumberLabel)
-                        ? "bg-gradient-to-b from-yellow-400 to-orange-500 text-black"
-                        : "bg-gray-800 text-gray-400 font-bold"
-                    }`}
-                  >
-                    {number}
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
+        <CalledNumbersGrid calledNumbers={gameState.calledNumbers} />
 
         {/* Game Controls and Boards */}
         <div className="w-[55%] flex flex-col items-center gap-1">
@@ -394,7 +531,7 @@ const BingoGame = () => {
           <div className="bg-gradient-to-b from-gray-800 to-gray-900 p-2 rounded-lg w-full max-w-md mx-auto">
             <p className="text-center font-bold text-xs sm:text-sm text-yellow-400 md:text-base mb-1">Recent Calls</p>
             <div className="flex justify-center gap-2 sm:gap-4">
-              {gameState.randomNumbers.slice(-4, -1).map((num, index) => {
+              {recentCalls.map((num, index) => {
                 const colors = ["bg-red-800", "bg-green-800", "bg-blue-800"];
                 return (
                   <div
@@ -410,62 +547,21 @@ const BingoGame = () => {
 
           {/* Bingo Boards */}
           <div className="w-full space-y-4">
-            {activeBoards.map((board, boardIndex) => {
-              const boardSelections = selectedNumbersPerBoard[board.cartelaId] || new Set();
-              
-              return (
-                <div key={board.cartelaId} className="bg-gradient-to-b from-purple-800 to-purple-900 p-4 rounded-lg w-full max-w-md mx-auto">
-                  {/* Board Header */}
-                  <div className="text-center text-yellow-400 text-sm mb-2 font-bold">
-                    {boardIndex === 0 ? "PRIMARY BOARD" : "SECONDARY BOARD"}
-                  </div>
-                  
-                  {/* BINGO Header */}
-                  <div className="grid grid-cols-5 gap-1 mb-2">
-                    {BINGO_LETTERS.map((letter, i) => (
-                      <div
-                        key={i}
-                        className={`w-8 h-8 flex items-center justify-center font-bold text-white text-sm rounded-full ${BINGO_COLORS[letter]}`}
-                      >
-                        {letter}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Bingo Numbers Grid */}
-                  <div className="grid grid-cols-5 gap-1">
-                    {board.cartela.map((row, rowIndex) =>
-                      row.map((num, colIndex) => {
-                        const isFreeSpace = rowIndex === 2 && colIndex === 2;
-                        const isSelectedNum = boardSelections.has(num);
-
-                        return (
-                          <BingoCell
-                            key={`${board.cartelaId}-${rowIndex}-${colIndex}`}
-                            num={num}
-                            isFreeSpace={isFreeSpace}
-                            isSelected={isSelectedNum}
-                            onClick={() => handleCartelaClick(num, board.cartelaId)}
-                          />
-                        );
-                      })
-                    )}
-                  </div>
-
-                  {/* Bingo Button */}
-                  <button 
-                    onClick={() => checkForWin(board.cartelaId)}
-                    className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 px-4 py-2 text-white rounded-4xl text-sm font-bold shadow-lg transition-all duration-200 mt-3"
-                  >
-                    BINGO! (Board #{board.cartelaId})
-                  </button>
-                </div>
-              );
-            })}
+            {activeBoards.map((board, boardIndex) => (
+              <BingoBoard
+                key={board.cartelaId}
+                board={board}
+                boardId={board.cartelaId}
+                boardIndex={boardIndex}
+                selectedNumbers={selectedNumbersPerBoard[board.cartelaId] || new Set()}
+                onCellClick={handleCartelaClick}
+                onBingo={checkForWin}
+              />
+            ))}
           </div>
 
           {/* Add Board Button */}
-          {activeBoards.length === 1 && (
+          {activeBoards.length < BINGO_CONFIG.MAX_BOARDS && (
             <button
               onClick={navigateToAddBoard}
               className="w-[95%] bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 px-4 py-2 text-white rounded-4xl text-lg font-bold shadow-lg transition-all duration-200 mb-2"
@@ -496,9 +592,14 @@ const BingoGame = () => {
       {gameState.showAddBoardWarning && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
           <div className="bg-white p-6 rounded-lg max-w-sm mx-4">
-            <h3 className="text-lg font-bold mb-2">Cannot Add Board</h3>
+            <h3 className="text-lg font-bold mb-2">
+              {activeBoards.length >= BINGO_CONFIG.MAX_BOARDS ? "Maximum Boards Reached" : "Cannot Add Board"}
+            </h3>
             <p className="text-gray-600 mb-4">
-              Countdown is too low ({gameState.countdown}s). You cannot add boards when countdown is below 10 seconds.
+              {activeBoards.length >= BINGO_CONFIG.MAX_BOARDS 
+                ? `You can only have up to ${BINGO_CONFIG.MAX_BOARDS} boards.`
+                : `Countdown is too low (${gameState.countdown}s). You cannot add boards when countdown is below ${BINGO_CONFIG.COUNTDOWN_THRESHOLD} seconds.`
+              }
             </p>
             <button
               onClick={() => setGameState(prev => ({ ...prev, showAddBoardWarning: false }))}
