@@ -1,27 +1,26 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import socket from "../../socket"; // ✅ Shared socket instance
 
-// Top of file, after imports
-const BingoCell = React.memo(({ num, isFreeSpace, isSelected, onClick }) => {
+// ✅ Enhanced and Memoized BingoCell for better performance and style
+const BingoCell = React.memo(({ num, isFreeSpace, isSelected, onClick, isCalled }) => {
+  const cellClasses = `
+    w-full aspect-square flex items-center justify-center font-extrabold text-sm md:text-lg lg:text-xl rounded-lg shadow-md transition-all duration-300 transform
+    hover:scale-105 active:scale-95 cursor-pointer
+    ${isFreeSpace ? "bg-gradient-to-b from-green-400 to-green-600 text-white" : ""}
+    ${isSelected ? "bg-gradient-to-b from-green-400 to-green-600 text-white" : "bg-white text-black"}
+    ${isCalled ? "!bg-gradient-to-b !from-yellow-400 !to-orange-500 !text-black" : ""}
+  `;
+
   return (
-    <div
-      onClick={onClick}
-      className={`md:w-10 md:h-10 w-8 h-8 flex items-center justify-center font-extrabold text-md sm:text-lg border rounded-lg shadow-md cursor-pointer transition
-        ${
-          isFreeSpace
-            ? "bg-gradient-to-b from-green-400 to-green-600 text-white"
-            : isSelected
-            ? "bg-gradient-to-b from-green-400 to-green-600 text-white"
-            : "bg-white text-black"
-        }`}
-    >
+    <div onClick={onClick} className={cellClasses}>
       {isFreeSpace ? "⭐" : num}
     </div>
   );
 });
 
-
+// Helper for called numbers board.
+const bingoLetters = ["B", "I", "N", "G", "O"];
 
 const BingoGame = () => {
   const location = useLocation();
@@ -50,7 +49,6 @@ const BingoGame = () => {
   const [gracePlayers, setGracePlayers] = useState([]);
   const [isGameEnd, setIsGameEnd] = useState(false);
   const [callNumberLength, setCallNumberLength] = useState(0);
-  // ✅ New state to manage audio on/off
   const [isAudioOn, setIsAudioOn] = useState(false);
   const [audioPrimed, setAudioPrimed] = useState(false);
   const [failedBingo, setFailedBingo] = useState(null);
@@ -58,11 +56,11 @@ const BingoGame = () => {
   const [showAddBoardWarning, setShowAddBoardWarning] = useState(false);
   const saveTimeout = useRef(null);
 
-  // ✅ NEW: Multi-board states
+  // ✅ Multi-board states
   const [activeBoards, setActiveBoards] = useState([]);
   const [selectedNumbersPerBoard, setSelectedNumbersPerBoard] = useState({});
 
-    const [gameDetails, setGameDetails] = useState({
+  const [gameDetails, setGameDetails] = useState({
     winAmount: '-',
     playersCount: '-',
     stakeAmount: '-',
@@ -70,10 +68,9 @@ const BingoGame = () => {
 
   const hasJoinedRef = useRef(false);
 
-  // ✅ NEW: Initialize boards - supports both single and multi-board
+  // ✅ UPDATED: Initialize boards - supports both single and multi-board
   useEffect(() => {
     if (selectedBoards && selectedBoards.length > 0) {
-      // Multi-board format
       setActiveBoards(selectedBoards);
       const initialSelections = {};
       selectedBoards.forEach(board => {
@@ -81,14 +78,13 @@ const BingoGame = () => {
       });
       setSelectedNumbersPerBoard(initialSelections);
     } else if (cartelaId && cartela) {
-      // Single board format (backward compatibility)
       setActiveBoards([{ cartelaId, cartela }]);
       setSelectedNumbersPerBoard({ [cartelaId]: new Set() });
-      setSelectedNumbers(new Set()); // Keep original for single board
+      setSelectedNumbers(new Set());
     }
   }, [selectedBoards, cartelaId, cartela]);
 
- useEffect(() => {
+  useEffect(() => {
     // 1. Initial Connection and Join Game Logic
     if (!socket.connected) {
       socket.connect();
@@ -101,18 +97,15 @@ const BingoGame = () => {
     // 2. All Event Listeners in a Single Place
     const handleSocketConnect = () => {
       console.log("✅ Socket.IO connected or reconnected!");
-      console.log("inside socket 🤪🚀⭐", isGameEnd);
       if (gameId && telegramId) {
-         socket.emit("joinGame", { gameId, telegramId, GameSessionId });
+        socket.emit("joinGame", { gameId, telegramId, GameSessionId });
       }
     };
     const handlePlayerCountUpdate = ({ playerCount }) => setPlayerCount(playerCount);
     const handleCountdownTick = ({ countdown }) => setCountdown(countdown);
     const handleGameStart = () => setGameStarted(true);
-    const handleGameEnd = () => {
-      console.log("gameEnd is called 🤪🚀⭐", isGameEnd);
-      setIsGameEnd(true);
-    } 
+    const handleGameEnd = () => setIsGameEnd(true);
+
     const handleGameReset = () => {
       console.log("🔄 Game reset received, allowing new gameCount emit");
       setHasEmittedGameCount(false);
@@ -124,6 +117,7 @@ const BingoGame = () => {
       setGameStarted(false);
       setLastCalledLabel(null);
     };
+
     const handleDrawnNumbersHistory = ({ gameId: receivedGameId, history }) => {
       if (receivedGameId === gameId) {
         const numbers = history.map(item => item.number);
@@ -131,10 +125,11 @@ const BingoGame = () => {
         setRandomNumber(numbers);
         setCalledSet(labels);
         if (history.length > 0) {
-            setLastCalledLabel(history[history.length - 1].label);
+          setLastCalledLabel(history[history.length - 1].label);
         }
       }
     };
+
     const handleNumberDrawn = ({ number, label, callNumberLength }) => {
       console.log("⭐⭐ numbers drawn", number);
       setRandomNumber((prev) => [...prev, number]);
@@ -142,44 +137,41 @@ const BingoGame = () => {
       setCallNumberLength(callNumberLength);
       setLastCalledLabel(label);
 
-       // ✅ Conditionally play audio based on the isAudioOn state
+      // ✅ Conditionally play audio based on the isAudioOn state
       if (isAudioOn) {
         playAudioForNumber(number);
       }
-
     };
 
-
-   const handleBingoClaimFailed = ({ message, reason, telegramId, gameId, cardId, card, lastTwoNumbers, selectedNumbers }) => {
-    navigate("/winnerFailed", { 
-        state: { 
-            message, 
-            reason, 
-            telegramId,
-            gameId,
-            cardId,
-            card, 
-            lastTwoNumbers, 
-            selectedNumbers 
-          } 
-        });
+    const handleBingoClaimFailed = ({ message, reason, telegramId, gameId, cardId, card, lastTwoNumbers, selectedNumbers }) => {
+      navigate("/winnerFailed", {
+        state: {
+          message,
+          reason,
+          telegramId,
+          gameId,
+          cardId,
+          card,
+          lastTwoNumbers,
+          selectedNumbers
+        }
+      });
     };
- 
 
     const handleGameDetails = ({ winAmount, playersCount, stakeAmount }) => {
       setGameDetails({ winAmount, playersCount, stakeAmount });
     };
+
     const handleWinnerConfirmed = ({ winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId, GameSessionId }) => {
       navigate("/winnerPage", { state: { winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId, GameSessionId } });
     };
-    const handleWinnerError = () => {
 
-  socket.emit("playerLeave", { gameId: String(gameId), GameSessionId, telegramId }, () => {
-    // This callback runs after the server receives the "playerLeave" event
-    console.log("player leave emited🎯🎯", GameSessionId);
-    navigate("/");
-    });
-  };
+    const handleWinnerError = () => {
+      socket.emit("playerLeave", { gameId: String(gameId), GameSessionId, telegramId }, () => {
+        console.log("player leave emited🎯🎯", GameSessionId);
+        navigate("/");
+      });
+    };
 
     socket.on("connect", handleSocketConnect);
     socket.on("playerCountUpdate", handlePlayerCountUpdate);
@@ -206,39 +198,34 @@ const BingoGame = () => {
       socket.off("numberDrawn", handleNumberDrawn);
       socket.off("gameDetails", handleGameDetails);
       socket.off("winnerConfirmed", handleWinnerConfirmed);
-      socket.off("winnerError", handleWinnerError); 
+      socket.off("winnerError", handleWinnerError);
       socket.off("bingoClaimFailed", handleBingoClaimFailed);
     };
   }, [gameId, telegramId, GameSessionId, navigate, isAudioOn]);
 
-  
   // ✅ New: Function to dynamically play the correct audio file
-const playAudioForNumber = (number) => {
-  if (!isAudioOn) return;
-
-  // Use the correct, consistent path with a leading slash
-  const audio = new Audio(`/audio/audio${number}.mp3`); 
-  audio.currentTime = 0;
-  console.log("audio is triggereed 🎯🎯");
-  audio.play().catch((error) => {
-    console.error(`🔊 Failed to play audio ${number}:`, error);
-  });
-};
-
+  const playAudioForNumber = (number) => {
+    if (!isAudioOn) return;
+    const audio = new Audio(`/audio/audio${number}.mp3`);
+    audio.currentTime = 0;
+    console.log("audio is triggereed 🎯🎯");
+    audio.play().catch((error) => {
+      console.error(`🔊 Failed to play audio ${number}:`, error);
+    });
+  };
 
   // 3️⃣ Request to start game if enough players
-useEffect(() => {
-  if (
-    playerCount >= 2 &&
-    !hasEmittedGameCount &&
-    !gameStarted
-  ) {
-    console.log("✅ Emitting gameCount to server...");
-    socket.emit("gameCount", { gameId, GameSessionId });
-    setHasEmittedGameCount(true);
-  }
-}, [playerCount, gameStarted, hasEmittedGameCount, gameId, gracePlayers]);
-
+  useEffect(() => {
+    if (
+      playerCount >= 2 &&
+      !hasEmittedGameCount &&
+      !gameStarted
+    ) {
+      console.log("✅ Emitting gameCount to server...");
+      socket.emit("gameCount", { gameId, GameSessionId });
+      setHasEmittedGameCount(true);
+    }
+  }, [playerCount, gameStarted, hasEmittedGameCount, gameId, gracePlayers]);
 
   // 5️⃣ Local countdown timer
   useEffect(() => {
@@ -250,26 +237,8 @@ useEffect(() => {
     }
   }, [countdown]);
 
-
   // ✅ UPDATED: Handle board clicks for multi-board
- const handleCartelaClick = (num, boardId) => {
-  // For single board compatibility
-  if (activeBoards.length === 1) {
-    const newSelection = new Set(selectedNumbers);
-    if (newSelection.has(num)) {
-      newSelection.delete(num);
-    } else {
-      newSelection.add(num);
-    }
-    setSelectedNumbers(newSelection);
-    
-    // Also update the multi-board state
-    setSelectedNumbersPerBoard(prev => ({
-      ...prev,
-      [boardId]: newSelection
-    }));
-  } else {
-    // Multi-board logic
+  const handleCartelaClick = useCallback((num, boardId) => {
     setSelectedNumbersPerBoard(prev => {
       const newSelections = { ...prev };
       const currentBoardSelections = new Set(prev[boardId] || []);
@@ -283,55 +252,40 @@ useEffect(() => {
       newSelections[boardId] = currentBoardSelections;
       return newSelections;
     });
-  }
 
-  if (saveTimeout.current) clearTimeout(saveTimeout.current);
-  saveTimeout.current = setTimeout(() => {
-    localStorage.setItem("selectedNumbers", JSON.stringify([...selectedNumbers]));
-    localStorage.setItem("selectedNumbersPerBoard", JSON.stringify(
-      Object.fromEntries(
-        Object.entries(selectedNumbersPerBoard).map(([id, set]) => [id, [...set]])
-      )
-    ));
-  }, 300);
-};
+    if (saveTimeout.current) clearTimeout(saveTimeout.current);
+    saveTimeout.current = setTimeout(() => {
+      localStorage.setItem("selectedNumbersPerBoard", JSON.stringify(
+        Object.fromEntries(
+          Object.entries(selectedNumbersPerBoard).map(([id, set]) => [id, [...set]])
+        )
+      ));
+    }, 300);
+  }, [selectedNumbersPerBoard]);
 
   // ✅ UPDATED: Check win for specific board
-  const checkForWin = (boardId) => {
-    let selectedSet;
-    let boardCartelaId;
-    
-    if (activeBoards.length === 1) {
-      // Single board
-      selectedSet = selectedNumbers;
-      boardCartelaId = cartelaId;
-    } else {
-      // Multi-board
-      selectedSet = selectedNumbersPerBoard[boardId] || new Set();
-      const board = activeBoards.find(b => b.cartelaId === boardId);
-      boardCartelaId = boardId;
-    }
-
+  const checkForWin = useCallback((boardId) => {
+    let selectedSet = selectedNumbersPerBoard[boardId] || new Set();
     const selectedArray = Array.from(selectedSet);
 
     socket.emit("checkWinner", {
       telegramId,
       gameId,
       GameSessionId,
-      cartelaId: boardCartelaId, 
+      cartelaId: boardId,
       selectedNumbers: selectedArray,
     });
 
     console.log("Sending to backend:", {
       telegramId,
       gameId,
-      cartelaId: boardCartelaId,
+      cartelaId: boardId,
       selectedNumbers: selectedArray
     });
-  };
+  }, [selectedNumbersPerBoard, telegramId, gameId, GameSessionId]);
 
   // ✅ NEW: Navigate to add board
-  const navigateToAddBoard = () => {
+  const navigateToAddBoard = useCallback(() => {
     if (countdown < 10) {
       setShowAddBoardWarning(true);
       return;
@@ -346,32 +300,9 @@ useEffect(() => {
         countdown
       }
     });
-  };
+  }, [countdown, navigate, telegramId, gameId, GameSessionId, activeBoards]);
 
-  useEffect(() => {
-  if (!socket) return;
-
-  socket.on("gameStateSync", (state) => {
-    setDrawnNumbers(state.drawnNumbers);
-    setGameActive(state.isActive);
-    setPrize(state.prizeAmount);
-    setWinnerPattern(state.winnerPattern);
-    setBoard(state.board);
-    setBoardNumber(state.boardNumber);
-  });
-
-  socket.on("youAreWinner", (winnerData) => {
-    navigate("/winner", { state: winnerData });
-  });
-
-  return () => {
-    socket.off("gameStateSync");
-    socket.off("youAreWinner");
-  };
-}, [socket]);
-
-
-   // ✅ Load saved state on mount
+  // ✅ Load saved state on mount
   useEffect(() => {
     const savedAudioState = localStorage.getItem("isAudioOn");
     if (savedAudioState !== null) {
@@ -385,22 +316,22 @@ useEffect(() => {
   }, [isAudioOn]);
 
   return (
-    <div className="bg-gradient-to-b from-[#1a002b] via-[#2d003f] to-black min-h-screen flex flex-col items-center p-1 pb-3 w-full max-w-screen overflow-hidden">
-    <div className="grid grid-cols-5 sm:grid-cols-5 gap-1 w-full text-white text-center mt-2 mb-2">
+    <div className="bg-gradient-to-b from-[#1a002b] via-[#2d003f] to-black min-h-screen flex flex-col items-center p-4 md:p-8 w-full max-w-screen overflow-hidden font-sans">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 w-full max-w-lg mx-auto text-white text-center mb-4">
         {[
           `Players: ${gameDetails.playersCount}`,
           `Prize: ${gameDetails.winAmount}`,
           `Call: ${callNumberLength}`,
           `Stake: ${gameDetails.stakeAmount}`,
         ].map((info, i) => (
-          <button key={i} className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-bold p-1 text-xs rounded w-full">
+          <button key={i} className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-bold p-2 text-xs rounded-full md:rounded-lg w-full shadow-md">
             {info}
           </button>
         ))}
-      <button
+        <button
           onClick={() => {
             if (!isAudioOn) {
-              const audio = new Audio(`audio/audio1.mp3`);
+              const audio = new Audio(`/audio/audio1.mp3`);
               audio.volume = 0;
               audio
                 .play()
@@ -418,138 +349,116 @@ useEffect(() => {
               setIsAudioOn(false);
             }
           }}
-          className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-bold p-1 text-xs rounded w-full"
+          className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold p-2 text-xs rounded-full md:rounded-lg w-full shadow-md"
         >
-          {`${isAudioOn ? "🔊" : "🔇"}`}
-      </button>
-    </div>
-
-      <div className="flex flex-wrap w-full mt-1">
-        <div className="w-[45%] flex justify-center">
-          <div className="grid grid-cols-5 bg-[#2a0047] p-1 gap-2 rounded-lg text-xs w-[90%] ">
-          {["B", "I", "N", "G", "O"].map((letter, i) => (
-            <div key={i} className={`text-white text-center text-xs font-bold rounded-full h-4 w-6 ${bingoColors[letter]}`}>
-              {letter}
-            </div>
-          ))}
-          {[...Array(15)].map((_, rowIndex) =>
-            ["B", "I", "N", "G", "O"].map((letter, colIndex) => {
-              const number = rowIndex + 1 + colIndex * 15;
-              const randomNumberLabel = `${letter}-${number}`;
-
-              return (
-                <div
-                  key={randomNumberLabel}
-                  className={`text-center rounded ${
-                   calledSet.has(randomNumberLabel)
-                      ? "bg-gradient-to-b from-yellow-400 to-orange-500 text-black"
-                      : "bg-gray-800 text-gray-400 font-bold"
-                  }`}
-                >
-                  {number}
-                </div>
-              );
-            })
-          )}
-          </div>
-        </div>
-
-        <div className="w-[55%] flex flex-col items-center gap-1">
-          <div className="bg-gray-300 p-2 rounded-lg text-center text-xs w-[90%] flex-row flex items-center h-[7%] justify-around">
-            <p>Countdown</p>
-            <p className="text-lg font-bold">{countdown > 0 ? countdown : "Wait"}</p>
-          </div>
-
-      <div className="bg-gradient-to-b from-purple-800 to-purple-900 rounded-lg text-white flex flex-row justify-around items-center w-full max-w-md mx-auto">
-     <p className="font-bold text-xs">Current Number</p>
-        <div className="flex justify-center items-center gap-4">
-          <div className="w-14 h-14 flex items-center justify-center text-xl font-extrabold rounded-full shadow-[0_0_20px_#37ebf3] bg-[#37ebf3] text-purple-900">
-            {lastCalledLabel ? lastCalledLabel : "-"}
-        </div>
-           </div>
-      </div>
-
-       {/* Called Numbers Section */}
-<div className="bg-gradient-to-b from-gray-800 to-gray-900 p-2 rounded-lg w-full max-w-md mx-auto">
-  <p className="text-center font-bold text-xs sm:text-sm text-yellow-400 md:text-base mb-1">Recent Calls</p>
-   <div className="flex justify-center gap-2 sm:gap-4">
-  {randomNumber.slice(-4, -1).map((num, index) => {
-      const colors = ["bg-red-800", "bg-green-800", "bg-blue-800"];
-      return (
-        <div
-          key={index}
-          className={`w-6 h-6 sm:w-6 sm:h-6 md:w-6 md:h-6 flex items-center justify-center 
-                      text-base text-xs md:text-sm font-extrabold rounded-full shadow-xl text-white
-                      ${colors[index]}`}
-        >
-          {num}
-        </div>
-      );
-    })}
-  </div>
-</div>
-
-{/* ✅ UPDATED: Bingo Cards - Multi-board support */}
-<div className="w-full space-y-4">
-  {activeBoards.map((board, boardIndex) => {
-    const isSelected = (selectedNumbersPerBoard[board.cartelaId] || new Set());
-    
-    return (
-      <div key={board.cartelaId} className="bg-gradient-to-b from-purple-800 to-purple-900 p-4 rounded-lg w-full max-w-md mx-auto">
-        {/* Board Header */}
-        <div className="text-center text-yellow-400 text-sm mb-2 font-bold">
-          {boardIndex === 0 ? "PRIMARY BOARD" : "SECONDARY BOARD"}
-        </div>
-        
-        {/* BINGO Header */}
-        <div className="grid grid-cols-5 gap-1 mb-2">
-          {["B", "I", "N", "G", "O"].map((letter, i) => (
-            <div
-              key={i}
-              className={`w-8 h-8 flex items-center justify-center font-bold text-white text-sm rounded-full ${bingoColors[letter]}`}
-            >
-              {letter}
-            </div>
-          ))}
-        </div>
-
-        {/* Bingo Numbers Grid */}
-        <div className="grid grid-cols-5 gap-1">
-          {board.cartela.map((row, rowIndex) =>
-            row.map((num, colIndex) => {
-              const isFreeSpace = rowIndex === 2 && colIndex === 2;
-              const isSelectedNum = isSelected.has(num);
-
-              return (
-                <BingoCell
-                  key={`${board.cartelaId}-${rowIndex}-${colIndex}`}
-                  num={num}
-                  isFreeSpace={isFreeSpace}
-                  isSelected={isSelectedNum}
-                  onClick={() => handleCartelaClick(num, board.cartelaId)}
-                />
-              );
-            })
-          )}
-        </div>
-
-        {/* ✅ UPDATED: Bingo Button with Board Number */}
-        <button 
-          onClick={() => checkForWin(board.cartelaId)}
-          className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 px-4 py-2 text-white rounded-4xl text-sm font-bold shadow-lg transition-all duration-200 mt-3"
-        >
-          BINGO! (Board #{board.cartelaId})
+          {`${isAudioOn ? "🔊 Audio On" : "🔇 Audio Off"}`}
         </button>
       </div>
-    );
-  })}
-</div>
 
-          {/* ✅ NEW: Add Board Button */}
+      <div className="flex flex-col-reverse md:flex-row md:space-x-8 w-full max-w-6xl mt-4">
+        {/* Called Numbers Board Section - Now on the left for a classic layout */}
+        <div className="md:w-1/3 flex flex-col items-center">
+          <div className="bg-gradient-to-b from-purple-800 to-purple-900 rounded-lg text-white p-4 w-full flex flex-col items-center shadow-lg mb-4">
+            <p className="font-bold text-sm mb-2 text-yellow-400">Current Number</p>
+            <div className="w-16 h-16 md:w-20 md:h-20 flex items-center justify-center text-3xl md:text-4xl font-extrabold rounded-full shadow-[0_0_20px_#37ebf3] bg-[#37ebf3] text-purple-900 animate-pulse">
+              {lastCalledLabel ? lastCalledLabel.split('-')[1] : "-"}
+            </div>
+          </div>
+          
+          <div className="bg-gray-900 p-2 rounded-lg w-full text-center shadow-lg">
+            <p className="font-bold text-xs sm:text-sm text-yellow-400 mb-1">Recent Calls</p>
+            <div className="grid grid-cols-5 gap-1 w-full text-xs">
+              {["B", "I", "N", "G", "O"].map((letter, i) => (
+                <div key={i} className={`text-white text-center font-bold h-6 flex items-center justify-center rounded-lg ${bingoColors[letter]}`}>
+                  {letter}
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-5 gap-1 mt-1 text-white">
+              {Array.from({ length: 15 }).map((_, rowIndex) =>
+                ["B", "I", "N", "G", "O"].map((letter, colIndex) => {
+                  const number = rowIndex + 1 + colIndex * 15;
+                  const randomNumberLabel = `${letter}-${number}`;
+                  const isCalled = calledSet.has(randomNumberLabel);
+                  return (
+                    <div
+                      key={randomNumberLabel}
+                      className={`w-full aspect-square flex items-center justify-center rounded-lg font-semibold
+                        ${isCalled ? "bg-yellow-500 text-black shadow-inner" : "bg-gray-800 text-gray-400"}`}
+                    >
+                      {number}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Bingo Cards Section - Now on the right */}
+        <div className="md:w-2/3 flex flex-col items-center mt-8 md:mt-0">
+          <div className="bg-gray-300 text-gray-800 p-2 rounded-lg text-center text-sm w-full font-semibold flex items-center justify-between shadow-md mb-4">
+            <span>Countdown</span>
+            <span className="text-xl font-bold text-red-600 ml-2">{countdown > 0 ? countdown : "Waiting..."}</span>
+          </div>
+          
+          <div className="w-full space-y-4">
+            {activeBoards.map((board, boardIndex) => {
+              const isSelected = selectedNumbersPerBoard[board.cartelaId] || new Set();
+              
+              return (
+                <div key={board.cartelaId} className="bg-gradient-to-b from-purple-800 to-purple-900 p-4 rounded-lg w-full shadow-xl">
+                  <div className="text-center text-yellow-400 text-sm mb-2 font-bold">
+                    {boardIndex === 0 ? "PRIMARY BOARD" : `BOARD #${boardIndex + 1}`}
+                  </div>
+                  
+                  <div className="grid grid-cols-5 gap-1 mb-2">
+                    {["B", "I", "N", "G", "O"].map((letter, i) => (
+                      <div
+                        key={i}
+                        className={`w-full aspect-square flex items-center justify-center font-bold text-white text-sm rounded-lg ${bingoColors[letter]} shadow-inner`}
+                      >
+                        {letter}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-5 gap-2">
+                    {board.cartela.map((row, rowIndex) =>
+                      row.map((num, colIndex) => {
+                        const isFreeSpace = rowIndex === 2 && colIndex === 2;
+                        const isSelectedNum = isSelected.has(num);
+                        const isCalled = calledSet.has(`${bingoLetters[colIndex]}-${num}`);
+
+                        return (
+                          <BingoCell
+                            key={`${board.cartelaId}-${rowIndex}-${colIndex}`}
+                            num={num}
+                            isFreeSpace={isFreeSpace}
+                            isSelected={isSelectedNum}
+                            isCalled={isCalled}
+                            onClick={() => handleCartelaClick(num, board.cartelaId)}
+                          />
+                        );
+                      })
+                    )}
+                  </div>
+
+                  <button 
+                    onClick={() => checkForWin(board.cartelaId)}
+                    className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 px-4 py-2 text-white rounded-full text-sm font-bold shadow-lg transition-all duration-200 mt-3"
+                  >
+                    BINGO! (Board #{board.cartelaId})
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
           {activeBoards.length === 1 && (
             <button
               onClick={navigateToAddBoard}
-              className="w-[95%] bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 px-4 py-2 text-white rounded-4xl text-lg font-bold shadow-lg transition-all duration-200 mb-2"
+              className="w-full mt-4 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 px-4 py-3 text-white rounded-full text-lg font-bold shadow-lg transition-all duration-200"
             >
               + Add Another Board
             </button>
@@ -557,9 +466,9 @@ useEffect(() => {
         </div>
       </div>
 
-      <div className="w-full flex gap-3 justify-center mt-3">
+      <div className="w-full flex gap-3 justify-center mt-6 max-w-md">
         <button
-          className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 px-14 h-8 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
+          className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 py-2 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
           onClick={() => {
             if (gameId && telegramId) {
               socket.emit("joinGame", { gameId, telegramId, GameSessionId });
@@ -575,22 +484,21 @@ useEffect(() => {
         <button
           onClick={() => {
             socket.emit("playerLeave", { gameId: String(gameId), GameSessionId, telegramId }, () => {
-              console.log("player leave emited🎯🎯", GameSessionId );
+              console.log("player leave emited🎯🎯", GameSessionId);
               navigate("/");
             });
           }}
-          className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 px-14 h-8 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
+          className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 py-2 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
         >
           Leave
         </button>
       </div>
 
-      {/* ✅ NEW: Add Board Warning Modal */}
       {showAddBoardWarning && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white p-6 rounded-lg max-w-sm mx-4">
-            <h3 className="text-lg font-bold mb-2">Cannot Add Board</h3>
-            <p className="text-gray-600 mb-4">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg max-w-sm mx-4 text-center">
+            <h3 className="text-lg font-bold mb-2 text-gray-800 dark:text-white">Cannot Add Board</h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
               Countdown is too low ({countdown}s). You cannot add boards when countdown is below 10 seconds.
             </p>
             <button
@@ -603,10 +511,10 @@ useEffect(() => {
         </div>
       )}
 
-     {isGameEnd && (
+      {isGameEnd && (
         <div className="fixed inset-0 flex items-center justify-center bg-opacity-80 backdrop-blur-sm z-50 transition-opacity duration-300">
           <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center">
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6 animate-pulse">
               🎉 Game Over
             </h2>
             <p className="text-gray-600 dark:text-gray-300 mb-6">
@@ -615,11 +523,12 @@ useEffect(() => {
             <button
               className="w-1/2 bg-gradient-to-r from-green-500 to-emerald-600 px-4 py-2 text-white rounded-lg text-lg font-semibold shadow-md"
               onClick={() => {
-              socket.emit("playerLeave", { gameId: String(gameId), GameSessionId, telegramId }, () => {
-                console.log("player leave emited🎯🎯", GameSessionId );
-                navigate("/");
-              });
-            }} >
+                socket.emit("playerLeave", { gameId: String(gameId), GameSessionId, telegramId }, () => {
+                  console.log("player leave emited🎯🎯", GameSessionId);
+                  navigate("/");
+                });
+              }}
+            >
               Leave Game
             </button>
           </div>
