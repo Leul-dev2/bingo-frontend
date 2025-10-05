@@ -2,28 +2,21 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import socket from "../../socket";
 
-// Enhanced BingoCell with better responsiveness
+// BingoCell component (same as before)
 const BingoCell = React.memo(({ num, isFreeSpace, isSelected, onClick, isCalled }) => {
   return (
     <div
       onClick={onClick}
-      className={`
-        w-6 h-6 xs:w-7 xs:h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10
-        flex items-center justify-center 
-        font-extrabold text-xs xs:text-sm sm:text-md md:text-lg
-        border-2 rounded-lg shadow-md cursor-pointer transition-all duration-200
-        transform hover:scale-105 active:scale-95
+      className={`w-6 h-6 xs:w-7 xs:h-7 sm:w-8 sm:h-8 flex items-center justify-center font-extrabold text-xs xs:text-sm border rounded cursor-pointer transition
         ${
           isFreeSpace
-            ? "bg-gradient-to-b from-yellow-300 to-yellow-500 text-gray-900 border-yellow-400"
+            ? "bg-gradient-to-b from-green-400 to-green-600 text-white"
             : isSelected
-            ? "bg-gradient-to-b from-green-400 to-green-600 text-white border-green-500"
+            ? "bg-gradient-to-b from-green-400 to-green-600 text-white"
             : isCalled
-            ? "bg-gradient-to-b from-blue-400 to-blue-500 text-white border-blue-400"
-            : "bg-white text-black border-gray-300 hover:bg-gray-50"
-        }
-        ${isSelected ? 'ring-2 ring-white ring-opacity-50' : ''}
-      `}
+            ? "bg-gradient-to-b from-blue-400 to-blue-500 text-white"
+            : "bg-white text-black"
+        }`}
     >
       {isFreeSpace ? "⭐" : num}
     </div>
@@ -37,13 +30,13 @@ const BingoGame = () => {
 
   const bingoColors = {
     B: "bg-yellow-500",
-    I: "bg-green-500",
+    I: "bg-green-500", 
     N: "bg-blue-500",
     G: "bg-red-500",
     O: "bg-purple-500",
   };
 
-  // State management
+  // State management (same as before)
   const [randomNumber, setRandomNumber] = useState([]);
   const [selectedNumbers, setSelectedNumbers] = useState(new Set());
   const [countdown, setCountdown] = useState(0);
@@ -57,7 +50,6 @@ const BingoGame = () => {
   const [lastCalledLabel, setLastCalledLabel] = useState(null);
   const [showAddBoardWarning, setShowAddBoardWarning] = useState(false);
 
-  // Multi-board states
   const [activeBoards, setActiveBoards] = useState([]);
   const [selectedNumbersPerBoard, setSelectedNumbersPerBoard] = useState({});
 
@@ -86,7 +78,7 @@ const BingoGame = () => {
     }
   }, [selectedBoards, cartelaId, cartela]);
 
-  // Socket event handling
+  // Socket event handling (same as before)
   useEffect(() => {
     if (!socket.connected) {
       socket.connect();
@@ -134,10 +126,6 @@ const BingoGame = () => {
       setCalledSet((prev) => new Set(prev).add(label));
       setCallNumberLength(callNumberLength);
       setLastCalledLabel(label);
-
-      if (isAudioOn) {
-        playAudioForNumber(number);
-      }
     };
 
     const handleBingoClaimFailed = ({ message, reason, telegramId, gameId, cardId, card, lastTwoNumbers, selectedNumbers }) => {
@@ -160,7 +148,6 @@ const BingoGame = () => {
       });
     };
 
-    // Event listeners
     socket.on("connect", handleSocketConnect);
     socket.on("playerCountUpdate", handlePlayerCountUpdate);
     socket.on("countdownTick", handleCountdownTick);
@@ -188,19 +175,9 @@ const BingoGame = () => {
       socket.off("winnerError", handleWinnerError); 
       socket.off("bingoClaimFailed", handleBingoClaimFailed);
     };
-  }, [gameId, telegramId, GameSessionId, navigate, isAudioOn]);
+  }, [gameId, telegramId, GameSessionId, navigate]);
 
-  // Audio function
-  const playAudioForNumber = (number) => {
-    if (!isAudioOn) return;
-    const audio = new Audio(`/audio/audio${number}.mp3`); 
-    audio.currentTime = 0;
-    audio.play().catch((error) => {
-      console.error(`🔊 Failed to play audio ${number}:`, error);
-    });
-  };
-
-  // Game count emission
+  // Other effects and functions remain the same...
   useEffect(() => {
     if (playerCount >= 2 && !hasEmittedGameCount && !gameStarted) {
       socket.emit("gameCount", { gameId, GameSessionId });
@@ -208,7 +185,6 @@ const BingoGame = () => {
     }
   }, [playerCount, gameStarted, hasEmittedGameCount, gameId]);
 
-  // Countdown timer
   useEffect(() => {
     if (countdown > 0) {
       const timer = setTimeout(() => {
@@ -218,95 +194,49 @@ const BingoGame = () => {
     }
   }, [countdown]);
 
-  // ✅ ENHANCED: Handle number clicks - sync across all boards
+  // Enhanced click handler - sync across all boards
   const handleNumberClick = useCallback((num, boardId) => {
-    if (activeBoards.length === 1) {
-      // Single board - original behavior
-      const newSelection = new Set(selectedNumbers);
-      if (newSelection.has(num)) {
-        newSelection.delete(num);
-      } else {
-        newSelection.add(num);
-      }
-      setSelectedNumbers(newSelection);
-      setSelectedNumbersPerBoard(prev => ({
-        ...prev,
-        [boardId]: newSelection
-      }));
-    } else {
-      // Multi-board - sync across all boards
-      setSelectedNumbersPerBoard(prev => {
-        const newSelections = { ...prev };
-        
-        // Check if number exists in any board
-        const numberExistsInAnyBoard = activeBoards.some(board => 
-          board.cartela.some(row => row.includes(num))
-        );
-
-        if (numberExistsInAnyBoard) {
-          // Toggle this number in ALL boards where it exists
-          Object.keys(newSelections).forEach(bId => {
-            const currentSelections = new Set(newSelections[bId] || []);
-            if (currentSelections.has(num)) {
-              currentSelections.delete(num);
-            } else {
-              currentSelections.add(num);
-            }
-            newSelections[bId] = currentSelections;
-          });
+    setSelectedNumbersPerBoard(prev => {
+      const newSelections = { ...prev };
+      
+      // Toggle this number in ALL boards
+      Object.keys(newSelections).forEach(bId => {
+        const currentSelections = new Set(newSelections[bId] || []);
+        if (currentSelections.has(num)) {
+          currentSelections.delete(num);
         } else {
-          // Original behavior for current board only
-          const currentBoardSelections = new Set(prev[boardId] || []);
-          if (currentBoardSelections.has(num)) {
-            currentBoardSelections.delete(num);
-          } else {
-            currentBoardSelections.add(num);
-          }
-          newSelections[boardId] = currentBoardSelections;
+          currentSelections.add(num);
         }
-
-        return newSelections;
+        newSelections[bId] = currentSelections;
       });
-    }
 
-    // Save to localStorage
-    if (saveTimeout.current) clearTimeout(saveTimeout.current);
-    saveTimeout.current = setTimeout(() => {
-      localStorage.setItem("selectedNumbers", JSON.stringify([...selectedNumbers]));
-      localStorage.setItem("selectedNumbersPerBoard", JSON.stringify(
-        Object.fromEntries(
-          Object.entries(selectedNumbersPerBoard).map(([id, set]) => [id, [...set]])
-        )
-      ));
-    }, 300);
-  }, [activeBoards, selectedNumbers]);
+      // Save to localStorage
+      if (saveTimeout.current) clearTimeout(saveTimeout.current);
+      saveTimeout.current = setTimeout(() => {
+        localStorage.setItem("selectedNumbersPerBoard", JSON.stringify(
+          Object.fromEntries(
+            Object.entries(newSelections).map(([id, set]) => [id, [...set]])
+          )
+        ));
+      }, 300);
+      
+      return newSelections;
+    });
+  }, []);
 
-  // Check win function
   const checkForWin = (boardId) => {
-    let selectedSet;
-    let boardCartelaId;
-    
-    if (activeBoards.length === 1) {
-      selectedSet = selectedNumbers;
-      boardCartelaId = cartelaId;
-    } else {
-      selectedSet = selectedNumbersPerBoard[boardId] || new Set();
-      const board = activeBoards.find(b => b.cartelaId === boardId);
-      boardCartelaId = boardId;
-    }
-
+    const selectedSet = selectedNumbersPerBoard[boardId] || new Set();
     const selectedArray = Array.from(selectedSet);
 
     socket.emit("checkWinner", {
       telegramId,
       gameId,
       GameSessionId,
-      cartelaId: boardCartelaId, 
+      cartelaId: boardId, 
       selectedNumbers: selectedArray,
     });
   };
 
-  // Navigate to add board
   const navigateToAddBoard = () => {
     if (countdown < 10) {
       setShowAddBoardWarning(true);
@@ -323,7 +253,6 @@ const BingoGame = () => {
     });
   };
 
-  // Audio priming
   const primeAudio = () => {
     if (!isAudioOn) {
       const audio = new Audio(`/audio/audio1.mp3`);
@@ -336,14 +265,12 @@ const BingoGame = () => {
         })
         .catch((err) => {
           console.warn("❌ Audio unlock failed:", err);
-          alert("Audio could not be enabled. Please try clicking again.");
         });
     } else {
       setIsAudioOn(false);
     }
   };
 
-  // Load/save audio state
   useEffect(() => {
     const savedAudioState = localStorage.getItem("isAudioOn");
     if (savedAudioState !== null) {
@@ -355,7 +282,6 @@ const BingoGame = () => {
     localStorage.setItem("isAudioOn", isAudioOn);
   }, [isAudioOn]);
 
-  // Check if number is called
   const isNumberCalled = useCallback((number) => {
     return Array.from(calledSet).some(label => {
       const num = label.split('-')[1];
@@ -363,30 +289,9 @@ const BingoGame = () => {
     });
   }, [calledSet]);
 
-  // Responsive layout classes based on board count
-  const getLayoutClasses = () => {
-    if (activeBoards.length === 1) {
-      return {
-        container: "flex flex-col lg:flex-row w-full h-full",
-        leftPanel: "lg:w-2/5 xl:w-1/3",
-        rightPanel: "lg:w-3/5 xl:w-2/3",
-        boardsContainer: "space-y-4"
-      };
-    } else {
-      return {
-        container: "flex flex-col xl:flex-row w-full h-full",
-        leftPanel: "xl:w-1/3",
-        rightPanel: "xl:w-2/3",
-        boardsContainer: "grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 max-h-full overflow-hidden"
-      };
-    }
-  };
-
-  const layoutClasses = getLayoutClasses();
-
   return (
     <div className="bg-gradient-to-b from-[#1a002b] via-[#2d003f] to-black min-h-screen flex flex-col p-2 overflow-hidden">
-      {/* Header Stats - Responsive */}
+      {/* Header Stats */}
       <div className="grid grid-cols-3 xs:grid-cols-4 sm:grid-cols-5 gap-1 xs:gap-2 mb-2">
         {[
           `Players: ${gameDetails.playersCount}`,
@@ -406,11 +311,11 @@ const BingoGame = () => {
         </button>
       </div>
 
-      {/* Main Content Area */}
-      <div className={`flex-1 ${layoutClasses.container} gap-3 md:gap-4 overflow-hidden`}>
+      {/* Main Content - TRUE SIDE BY SIDE LAYOUT */}
+      <div className="flex flex-col lg:flex-row flex-1 gap-3 overflow-hidden">
         
-        {/* Left Panel - Called Numbers */}
-        <div className={`${layoutClasses.leftPanel} flex flex-col gap-3 md:gap-4`}>
+        {/* LEFT SIDE - Called Numbers (Fixed width) */}
+        <div className="lg:w-2/5 xl:w-1/3 flex flex-col gap-3">
           {/* Called Numbers Board */}
           <div className="bg-[#2a0047] p-2 sm:p-3 rounded-lg flex-1 overflow-hidden">
             <div className="grid grid-cols-5 gap-1 mb-2">
@@ -443,10 +348,10 @@ const BingoGame = () => {
           </div>
         </div>
 
-        {/* Right Panel - Game Controls & Boards */}
-        <div className={`${layoutClasses.rightPanel} flex flex-col gap-3 md:gap-4 overflow-hidden`}>
+        {/* RIGHT SIDE - Game Controls & Boards */}
+        <div className="lg:w-3/5 xl:w-2/3 flex flex-col gap-3 overflow-hidden">
           
-          {/* Game Controls */}
+          {/* Game Controls Row */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
             {/* Countdown */}
             <div className="bg-gray-300 p-2 sm:p-3 rounded-lg text-center">
@@ -482,39 +387,65 @@ const BingoGame = () => {
             </div>
           </div>
 
-          {/* Bingo Boards */}
-          <div className={`flex-1 ${layoutClasses.boardsContainer} overflow-y-auto pb-2`}>
-            {activeBoards.map((board, boardIndex) => {
-              const boardSelections = selectedNumbersPerBoard[board.cartelaId] || new Set();
-              
-              return (
-                <div key={board.cartelaId} className="bg-gradient-to-b from-purple-800 to-purple-900 p-3 sm:p-4 rounded-lg">
-                  {/* Board Header */}
+          {/* BOARDS CONTAINER - TRUE SIDE BY SIDE */}
+          <div className={`flex-1 ${activeBoards.length === 2 ? 'flex gap-3 overflow-hidden' : ''}`}>
+            {activeBoards.length === 1 ? (
+              // Single Board - Full width
+              <div className="bg-gradient-to-b from-purple-800 to-purple-900 p-3 sm:p-4 rounded-lg h-full">
+                <div className="text-center text-yellow-400 text-sm mb-2 font-bold">PRIMARY BOARD</div>
+                <div className="grid grid-cols-5 gap-1 mb-2">
+                  {["B", "I", "N", "G", "O"].map((letter, i) => (
+                    <div key={i} className="w-6 h-6 xs:w-7 xs:h-7 flex items-center justify-center font-bold text-white text-xs sm:text-sm rounded-full" style={{ backgroundColor: bingoColors[letter].replace('bg-', '') }}>
+                      {letter}
+                    </div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-5 gap-1 mb-3">
+                  {activeBoards[0].cartela.map((row, rowIndex) =>
+                    row.map((num, colIndex) => {
+                      const isFreeSpace = rowIndex === 2 && colIndex === 2;
+                      const isSelectedNum = (selectedNumbersPerBoard[activeBoards[0].cartelaId] || new Set()).has(num);
+                      const isCalled = isNumberCalled(num);
+                      return (
+                        <BingoCell
+                          key={`${activeBoards[0].cartelaId}-${rowIndex}-${colIndex}`}
+                          num={num}
+                          isFreeSpace={isFreeSpace}
+                          isSelected={isSelectedNum}
+                          isCalled={isCalled}
+                          onClick={() => handleNumberClick(num, activeBoards[0].cartelaId)}
+                        />
+                      );
+                    })
+                  )}
+                </div>
+                <button 
+                  onClick={() => checkForWin(activeBoards[0].cartelaId)}
+                  className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 px-4 py-2 text-white rounded-full text-sm font-bold shadow-lg transition-all duration-200"
+                >
+                  BINGO!
+                </button>
+              </div>
+            ) : (
+              // Dual Boards - TRUE SIDE BY SIDE
+              activeBoards.map((board, boardIndex) => (
+                <div key={board.cartelaId} className={`bg-gradient-to-b from-purple-800 to-purple-900 p-3 sm:p-4 rounded-lg ${activeBoards.length === 2 ? 'w-1/2' : ''} h-full`}>
                   <div className="text-center text-yellow-400 text-sm mb-2 font-bold">
                     {boardIndex === 0 ? "PRIMARY BOARD" : "SECONDARY BOARD"}
                   </div>
-                  
-                  {/* BINGO Header */}
                   <div className="grid grid-cols-5 gap-1 mb-2">
                     {["B", "I", "N", "G", "O"].map((letter, i) => (
-                      <div
-                        key={i}
-                        className="w-6 h-6 xs:w-7 xs:h-7 sm:w-8 sm:h-8 flex items-center justify-center font-bold text-white text-xs sm:text-sm rounded-full"
-                        style={{ backgroundColor: bingoColors[letter].replace('bg-', '') }}
-                      >
+                      <div key={i} className="w-6 h-6 xs:w-7 xs:h-7 flex items-center justify-center font-bold text-white text-xs sm:text-sm rounded-full" style={{ backgroundColor: bingoColors[letter].replace('bg-', '') }}>
                         {letter}
                       </div>
                     ))}
                   </div>
-
-                  {/* Bingo Numbers Grid */}
                   <div className="grid grid-cols-5 gap-1 mb-3">
                     {board.cartela.map((row, rowIndex) =>
                       row.map((num, colIndex) => {
                         const isFreeSpace = rowIndex === 2 && colIndex === 2;
-                        const isSelectedNum = boardSelections.has(num);
+                        const isSelectedNum = (selectedNumbersPerBoard[board.cartelaId] || new Set()).has(num);
                         const isCalled = isNumberCalled(num);
-
                         return (
                           <BingoCell
                             key={`${board.cartelaId}-${rowIndex}-${colIndex}`}
@@ -528,17 +459,15 @@ const BingoGame = () => {
                       })
                     )}
                   </div>
-
-                  {/* Bingo Button */}
                   <button 
                     onClick={() => checkForWin(board.cartelaId)}
                     className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 px-4 py-2 text-white rounded-full text-sm font-bold shadow-lg transition-all duration-200"
                   >
-                    BINGO! {activeBoards.length > 1 && `(Board ${boardIndex + 1})`}
+                    BINGO! (Board {boardIndex + 1})
                   </button>
                 </div>
-              );
-            })}
+              ))
+            )}
           </div>
 
           {/* Add Board Button */}
@@ -560,8 +489,6 @@ const BingoGame = () => {
           onClick={() => {
             if (gameId && telegramId) {
               socket.emit("joinGame", { gameId, telegramId, GameSessionId });
-            } else {
-              window.location.reload();
             }
           }}
         >
@@ -579,7 +506,7 @@ const BingoGame = () => {
         </button>
       </div>
 
-      {/* Modals */}
+      {/* Modals (same as before) */}
       {showAddBoardWarning && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
           <div className="bg-white p-6 rounded-lg max-w-sm w-full">
