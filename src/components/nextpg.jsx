@@ -54,7 +54,9 @@ const BingoGame = () => {
   const [failedBingo, setFailedBingo] = useState(null);
   const [lastCalledLabel, setLastCalledLabel] = useState(null);
   const [showAddBoardWarning, setShowAddBoardWarning] = useState(false);
+  const [autoLeaveCountdown, setAutoLeaveCountdown] = useState(3);
   const saveTimeout = useRef(null);
+  const autoLeaveTimeout = useRef(null);
 
   // ✅ NEW: Multi-board states
   const [activeBoards, setActiveBoards] = useState([]);
@@ -85,6 +87,29 @@ const BingoGame = () => {
       setSelectedNumbers(new Set()); // Keep original for single board
     }
   }, [selectedBoards, cartelaId, cartela]);
+
+  // ✅ NEW: Auto leave countdown when game ends
+  useEffect(() => {
+    if (isGameEnd) {
+      setAutoLeaveCountdown(3);
+      const timer = setInterval(() => {
+        setAutoLeaveCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            // Auto leave after 3 seconds
+            socket.emit("playerLeave", { gameId: String(gameId), GameSessionId, telegramId }, () => {
+              console.log("Auto leaving game after game end");
+              navigate("/");
+            });
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(timer);
+    }
+  }, [isGameEnd, gameId, GameSessionId, telegramId, navigate]);
 
  useEffect(() => {
     // 1. Initial Connection and Join Game Logic
@@ -121,6 +146,8 @@ const BingoGame = () => {
       setCountdown(0);
       setGameStarted(false);
       setLastCalledLabel(null);
+      setIsGameEnd(false);
+      setAutoLeaveCountdown(3);
     };
     const handleDrawnNumbersHistory = ({ gameId: receivedGameId, history }) => {
       if (receivedGameId === gameId) {
@@ -206,6 +233,7 @@ const BingoGame = () => {
       socket.off("winnerConfirmed", handleWinnerConfirmed);
       socket.off("winnerError", handleWinnerError); 
       socket.off("bingoClaimFailed", handleBingoClaimFailed);
+      if (autoLeaveTimeout.current) clearTimeout(autoLeaveTimeout.current);
     };
   }, [gameId, telegramId, GameSessionId, navigate, isAudioOn]);
 
@@ -693,7 +721,7 @@ useEffect(() => {
         {/* Action Buttons - Refresh, Leave, Add Board */}
         <div className="w-full flex gap-3 justify-center">
           <button
-            className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 px-14 h-8 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
+            className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 px-16 h-10 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
             onClick={() => {
               if (gameId && telegramId) {
                 socket.emit("joinGame", { gameId, telegramId, GameSessionId });
@@ -713,14 +741,14 @@ useEffect(() => {
                 navigate("/");
               });
             }}
-            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 px-14 h-8 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
+            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 px-16 h-10 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
           >
             Leave
           </button>
           {activeBoards.length === 1 && (
             <button
               onClick={navigateToAddBoard}
-              className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 px-14 h-8 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
+              className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 px-16 h-10 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
             >
               Add Board
             </button>
@@ -753,7 +781,7 @@ useEffect(() => {
               🎉 Game Over
             </h2>
             <p className="text-gray-600 dark:text-gray-300 mb-6">
-              The game has ended. You may now leave the room.
+              The game has ended. Automatically leaving in {autoLeaveCountdown} seconds...
             </p>
             <button
               className="w-1/2 bg-gradient-to-r from-green-500 to-emerald-600 px-4 py-2 text-white rounded-lg text-lg font-semibold shadow-md"
@@ -763,7 +791,7 @@ useEffect(() => {
                 navigate("/");
               });
             }} >
-              Leave Game
+              Leave Now
             </button>
           </div>
         </div>
