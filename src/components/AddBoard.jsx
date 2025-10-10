@@ -134,13 +134,13 @@ const AddBoard = () => {
         throw new Error("Card not found for ID: " + number);
       }
 
-      // Check if board is already in use by current user
+      // ✅ FIXED: Check if board is already in use by current user in existing boards
       const isAlreadySelected = existingBoards.some(board => board.cartelaId === number);
       if (isAlreadySelected) {
-        throw new Error("You already have this board selected");
+        throw new Error("You already have this board in your current selection");
       }
 
-      // Check if board is taken by others in current game
+      // ✅ FIXED: Check if board is taken by others in current game
       const isTakenByOthers = takenBoards.has(number);
       if (isTakenByOthers) {
         throw new Error("This board is already taken by another player");
@@ -230,15 +230,23 @@ const AddBoard = () => {
     navigate(-1);
   };
 
+  // ✅ FIXED: Only consider a board "taken" if it's taken by OTHER players
   const isBoardTaken = (number) => {
-    const inExisting = existingBoards.some(board => board.cartelaId === number);
+    // Only boards taken by other players are considered "taken"
     const takenByOthers = takenBoards.has(number);
-    return inExisting || takenByOthers;
+    return takenByOthers;
+  };
+
+  // ✅ FIXED: Only consider a board "unavailable" if user already has it OR it's taken by others
+  const isBoardUnavailable = (number) => {
+    const userAlreadyHas = existingBoards.some(board => board.cartelaId === number);
+    const takenByOthers = takenBoards.has(number);
+    return userAlreadyHas || takenByOthers;
   };
 
   const getBoardColor = (number) => {
     if (selectedBoard?.cartelaId === number) return "bg-green-500 text-white shadow-lg scale-105";
-    if (isBoardTaken(number)) return "bg-red-500 text-white cursor-not-allowed opacity-70";
+    if (isBoardUnavailable(number)) return "bg-red-500 text-white cursor-not-allowed opacity-70";
     if (isCountdownTooLow) return "bg-gray-400 text-white cursor-not-allowed opacity-50";
     if (isLoading) return "bg-gray-300 text-gray-500 cursor-not-allowed";
     return "bg-white text-black hover:bg-gray-100 hover:shadow-md transition-all duration-200";
@@ -246,10 +254,23 @@ const AddBoard = () => {
 
   const getBoardTooltip = (number) => {
     if (selectedBoard?.cartelaId === number) return "Selected";
-    if (existingBoards.some(board => board.cartelaId === number)) return "Already in your boards";
-    if (takenBoards.has(number)) return "Taken by another player";
-    if (isCountdownTooLow) return "Countdown too low";
+    
+    // ✅ FIXED: Show different messages for user's own boards vs others' boards
+    if (existingBoards.some(board => board.cartelaId === number)) 
+      return "Already in your boards";
+    
+    if (takenBoards.has(number)) 
+      return "Taken by another player";
+    
+    if (isCountdownTooLow) 
+      return "Countdown too low";
+    
     return "Available";
+  };
+
+  // ✅ FIXED: Only disable if unavailable (user has it OR taken by others)
+  const isBoardDisabled = (number) => {
+    return isBoardUnavailable(number) || isCountdownTooLow || isLoading;
   };
 
   return (
@@ -258,6 +279,13 @@ const AddBoard = () => {
       <div className="text-center text-white mb-4">
         <h1 className="text-2xl font-bold mb-2">Add Another Board</h1>
         <p className="text-sm">Select one additional board to play with</p>
+        
+        {/* Show current boards info */}
+        {existingBoards.length > 0 && (
+          <div className="px-3 py-1 bg-blue-500/50 rounded-full mt-2 text-xs">
+            Current Boards: {existingBoards.map(b => b.cartelaId).join(', ')}
+          </div>
+        )}
         
         {/* Countdown Display */}
         {currentCountdown > 0 && (
@@ -296,7 +324,7 @@ const AddBoard = () => {
           <button
             key={num}
             onClick={() => handleBoardSelect(num)}
-            disabled={isBoardTaken(num) || isCountdownTooLow || isLoading}
+            disabled={isBoardDisabled(num)}
             className={`w-8 h-8 flex items-center justify-center rounded-md border-2 font-bold cursor-pointer transition-all duration-200 text-xs relative group ${getBoardColor(num)}`}
             title={getBoardTooltip(num)}
           >
@@ -393,7 +421,7 @@ const AddBoard = () => {
         <ul className="text-white text-xs space-y-1">
           <li>• Click any available number to select a board</li>
           <li>• Green = Selected</li>
-          <li>• Red = Taken</li>
+          <li>• Red = Taken or Already Yours</li>
           <li>• Press ESC to cancel</li>
           <li>• Press ENTER to confirm</li>
         </ul>

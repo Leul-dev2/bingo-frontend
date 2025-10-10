@@ -717,7 +717,7 @@ useEffect(() => {
         {/* Action Buttons - Refresh, Leave, Add Board */}
         <div className="w-full flex gap-3 justify-center">
           <button
-            className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 px-14 h-8 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
+            className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 px-14 h-10 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
             onClick={() => {
               if (gameId && telegramId) {
                 socket.emit("joinGame", { gameId, telegramId, GameSessionId });
@@ -737,14 +737,14 @@ useEffect(() => {
                 navigate("/");
               });
             }}
-            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 px-14 h-8 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
+            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 px-14 h-10 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
           >
             Leave
           </button>
           {activeBoards.length === 1 && (
             <button
               onClick={navigateToAddBoard}
-              className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 px-14 h-8 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
+              className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 px-10 h-10 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
             >
               Add Board
             </button>
