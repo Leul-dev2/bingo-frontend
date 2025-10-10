@@ -436,6 +436,7 @@ useEffect(() => {
     </div>
 
       <div className="flex flex-wrap w-full mt-1">
+        {/* Left Side: Called Numbers Grid (Always here) */}
         <div className="w-[45%] flex justify-center">
           <div className="grid grid-cols-5 bg-[#2a0047] p-1 gap-2 rounded-lg text-xs w-[90%] ">
           {["B", "I", "N", "G", "O"].map((letter, i) => (
@@ -465,146 +466,194 @@ useEffect(() => {
           </div>
         </div>
 
+        {/* Right Side: Dynamic Content - Single board gets everything, Multi-board gets only boards */}
         <div className="w-[55%] flex flex-col items-center gap-1">
-          <div className="bg-gray-300 p-2 rounded-lg text-center text-xs w-[90%] flex-row flex items-center h-[7%] justify-around">
-            <p>Countdown</p>
-            <p className="text-lg font-bold">{countdown > 0 ? countdown : "Wait"}</p>
-          </div>
+          {activeBoards.length === 1 ? (
+            // Single Board: Show all controls here
+            <>
+              <div className="bg-gray-300 p-2 rounded-lg text-center text-xs w-[90%] flex-row flex items-center h-[7%] justify-around">
+                <p>Countdown</p>
+                <p className="text-lg font-bold">{countdown > 0 ? countdown : "Wait"}</p>
+              </div>
 
-      <div className="bg-gradient-to-b from-purple-800 to-purple-900 rounded-lg text-white flex flex-row justify-around items-center w-full max-w-md mx-auto">
-     <p className="font-bold text-xs">Current Number</p>
-        <div className="flex justify-center items-center gap-4">
-          <div className="w-14 h-14 flex items-center justify-center text-xl font-extrabold rounded-full shadow-[0_0_20px_#37ebf3] bg-[#37ebf3] text-purple-900">
-            {lastCalledLabel ? lastCalledLabel : "-"}
-        </div>
-           </div>
-      </div>
-
-       {/* Called Numbers Section */}
-<div className="bg-gradient-to-b from-gray-800 to-gray-900 p-2 rounded-lg w-full max-w-md mx-auto">
-  <p className="text-center font-bold text-xs sm:text-sm text-yellow-400 md:text-base mb-1">Recent Calls</p>
-   <div className="flex justify-center gap-2 sm:gap-4">
-  {randomNumber.slice(-4, -1).map((num, index) => {
-      const colors = ["bg-red-800", "bg-green-800", "bg-blue-800"];
-      return (
-        <div
-          key={index}
-          className={`w-6 h-6 sm:w-6 sm:h-6 md:w-6 md:h-6 flex items-center justify-center 
-                      text-base text-xs md:text-sm font-extrabold rounded-full shadow-xl text-white
-                      ${colors[index]}`}
-        >
-          {num}
-        </div>
-      );
-    })}
-  </div>
-</div>
-
-{/* ✅ UPDATED: Bingo Cards - Different layout for single vs multi-board */}
-<div className="w-full">
-  {activeBoards.length === 1 ? (
-    // Single Board Layout - Bingo button separate from board
-    <div className="space-y-4">
-      <div className="bg-gradient-to-b from-purple-800 to-purple-900 p-4 rounded-lg w-full max-w-md mx-auto">
-        {/* BINGO Header */}
-        <div className="grid grid-cols-5 gap-1 mb-2">
-          {["B", "I", "N", "G", "O"].map((letter, i) => (
-            <div
-              key={i}
-              className={`w-8 h-8 flex items-center justify-center font-bold text-white text-sm rounded-full ${bingoColors[letter]}`}
-            >
-              {letter}
-            </div>
-          ))}
-        </div>
-
-        {/* Bingo Numbers Grid */}
-        <div className="grid grid-cols-5 gap-1">
-          {activeBoards[0].cartela.map((row, rowIndex) =>
-            row.map((num, colIndex) => {
-              const isFreeSpace = rowIndex === 2 && colIndex === 2;
-              const isSelectedNum = (selectedNumbersPerBoard[activeBoards[0].cartelaId] || new Set()).has(num);
-
-              return (
-                <BingoCell
-                  key={`${activeBoards[0].cartelaId}-${rowIndex}-${colIndex}`}
-                  num={num}
-                  isFreeSpace={isFreeSpace}
-                  isSelected={isSelectedNum}
-                  onClick={() => handleCartelaClick(num, activeBoards[0].cartelaId)}
-                />
-              );
-            })
-          )}
-        </div>
-      </div>
-      
-      {/* Separate Bingo Button for Single Board */}
-      <button 
-        onClick={() => checkForWin(activeBoards[0].cartelaId)}
-        className="w-full max-w-md bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 px-4 py-3 text-white rounded-4xl text-lg font-bold shadow-lg transition-all duration-200"
-      >
-        BINGO!
-      </button>
-    </div>
-  ) : (
-    // Multi-Board Layout - Bingo button integrated with each board
-    <div className="flex flex-row gap-4 justify-center">
-      {activeBoards.map((board, boardIndex) => {
-        const isSelected = (selectedNumbersPerBoard[board.cartelaId] || new Set());
-        
-        return (
-          <div key={board.cartelaId} className="bg-gradient-to-b from-purple-800 to-purple-900 p-4 rounded-lg w-48">
-            {/* Board Header */}
-            <div className="text-center text-yellow-400 text-sm mb-2 font-bold">
-              {boardIndex === 0 ? "PRIMARY" : "SECONDARY"}
-            </div>
-            
-            {/* BINGO Header */}
-            <div className="grid grid-cols-5 gap-1 mb-2">
-              {["B", "I", "N", "G", "O"].map((letter, i) => (
-                <div
-                  key={i}
-                  className={`w-6 h-6 flex items-center justify-center font-bold text-white text-xs rounded-full ${bingoColors[letter]}`}
-                >
-                  {letter}
+              <div className="bg-gradient-to-b from-purple-800 to-purple-900 rounded-lg text-white flex flex-row justify-around items-center w-full max-w-md mx-auto">
+                <p className="font-bold text-xs">Current Number</p>
+                <div className="flex justify-center items-center gap-4">
+                  <div className="w-14 h-14 flex items-center justify-center text-xl font-extrabold rounded-full shadow-[0_0_20px_#37ebf3] bg-[#37ebf3] text-purple-900">
+                    {lastCalledLabel ? lastCalledLabel : "-"}
+                  </div>
                 </div>
-              ))}
-            </div>
+              </div>
 
-            {/* Bingo Numbers Grid */}
-            <div className="grid grid-cols-5 gap-1">
-              {board.cartela.map((row, rowIndex) =>
-                row.map((num, colIndex) => {
-                  const isFreeSpace = rowIndex === 2 && colIndex === 2;
-                  const isSelectedNum = isSelected.has(num);
+              {/* Called Numbers Section */}
+              <div className="bg-gradient-to-b from-gray-800 to-gray-900 p-2 rounded-lg w-full max-w-md mx-auto">
+                <p className="text-center font-bold text-xs sm:text-sm text-yellow-400 md:text-base mb-1">Recent Calls</p>
+                <div className="flex justify-center gap-2 sm:gap-4">
+                  {randomNumber.slice(-4, -1).map((num, index) => {
+                    const colors = ["bg-red-800", "bg-green-800", "bg-blue-800"];
+                    return (
+                      <div
+                        key={index}
+                        className={`w-6 h-6 sm:w-6 sm:h-6 md:w-6 md:h-6 flex items-center justify-center 
+                                    text-base text-xs md:text-sm font-extrabold rounded-full shadow-xl text-white
+                                    ${colors[index]}`}
+                      >
+                        {num}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          ) : (
+            // Multi-Board: Empty - controls are inside the boards section
+            <div className="h-4"></div>
+          )}
 
-                  return (
-                    <BingoCell
-                      key={`${board.cartelaId}-${rowIndex}-${colIndex}`}
-                      num={num}
-                      isFreeSpace={isFreeSpace}
-                      isSelected={isSelectedNum}
-                      onClick={() => handleCartelaClick(num, board.cartelaId)}
-                    />
-                  );
-                })
-              )}
-            </div>
+          {/* ✅ UPDATED: Bingo Cards - Different layout for single vs multi-board */}
+          <div className="w-full">
+            {activeBoards.length === 1 ? (
+              // Single Board Layout - Bingo button separate from board
+              <div className="space-y-4">
+                <div className="bg-gradient-to-b from-purple-800 to-purple-900 p-4 rounded-lg w-full max-w-md mx-auto">
+                  {/* BINGO Header */}
+                  <div className="grid grid-cols-5 gap-1 mb-2">
+                    {["B", "I", "N", "G", "O"].map((letter, i) => (
+                      <div
+                        key={i}
+                        className={`w-8 h-8 flex items-center justify-center font-bold text-white text-sm rounded-full ${bingoColors[letter]}`}
+                      >
+                        {letter}
+                      </div>
+                    ))}
+                  </div>
 
-            {/* Bingo Button integrated with board */}
-            <button 
-              onClick={() => checkForWin(board.cartelaId)}
-              className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 px-2 py-1 text-white rounded-4xl text-xs font-bold shadow-lg transition-all duration-200 mt-2"
-            >
-              BINGO!
-            </button>
+                  {/* Bingo Numbers Grid */}
+                  <div className="grid grid-cols-5 gap-1">
+                    {activeBoards[0].cartela.map((row, rowIndex) =>
+                      row.map((num, colIndex) => {
+                        const isFreeSpace = rowIndex === 2 && colIndex === 2;
+                        const isSelectedNum = (selectedNumbersPerBoard[activeBoards[0].cartelaId] || new Set()).has(num);
+
+                        return (
+                          <BingoCell
+                            key={`${activeBoards[0].cartelaId}-${rowIndex}-${colIndex}`}
+                            num={num}
+                            isFreeSpace={isFreeSpace}
+                            isSelected={isSelectedNum}
+                            onClick={() => handleCartelaClick(num, activeBoards[0].cartelaId)}
+                          />
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+                
+                {/* Separate Bingo Button for Single Board */}
+                <button 
+                  onClick={() => checkForWin(activeBoards[0].cartelaId)}
+                  className="w-full max-w-md bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 px-4 py-3 text-white rounded-4xl text-lg font-bold shadow-lg transition-all duration-200"
+                >
+                  BINGO!
+                </button>
+              </div>
+            ) : (
+              // Multi-Board Layout - Vertical stack on right, controls on left
+              <div className="flex flex-row gap-4 w-full">
+                {/* LEFT SIDE: Countdown, Current Number, Recent Calls */}
+                <div className="w-[45%] flex flex-col items-center gap-3">
+                  <div className="bg-gray-300 p-2 rounded-lg text-center text-xs w-full flex-row flex items-center justify-around">
+                    <p>Countdown</p>
+                    <p className="text-lg font-bold">{countdown > 0 ? countdown : "Wait"}</p>
+                  </div>
+
+                  <div className="bg-gradient-to-b from-purple-800 to-purple-900 rounded-lg text-white flex flex-row justify-around items-center w-full p-2">
+                    <p className="font-bold text-xs">Current Number</p>
+                    <div className="flex justify-center items-center">
+                      <div className="w-12 h-12 flex items-center justify-center text-lg font-extrabold rounded-full shadow-[0_0_15px_#37ebf3] bg-[#37ebf3] text-purple-900">
+                        {lastCalledLabel ? lastCalledLabel : "-"}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Recent Calls */}
+                  <div className="bg-gradient-to-b from-gray-800 to-gray-900 p-2 rounded-lg w-full">
+                    <p className="text-center font-bold text-xs text-yellow-400 mb-1">Recent Calls</p>
+                    <div className="flex justify-center gap-2">
+                      {randomNumber.slice(-3).map((num, index) => {
+                        const colors = ["bg-red-800", "bg-green-800", "bg-blue-800"];
+                        return (
+                          <div
+                            key={index}
+                            className={`w-6 h-6 flex items-center justify-center text-xs font-extrabold rounded-full text-white ${colors[index]}`}
+                          >
+                            {num}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* RIGHT SIDE: Vertical stack of boards with shared BINGO header */}
+                <div className="w-[55%] flex flex-col gap-3">
+                  {/* Shared BINGO Header at Top Right */}
+                  <div className="grid grid-cols-5 gap-1 mb-2">
+                    {["B", "I", "N", "G", "O"].map((letter, i) => (
+                      <div
+                        key={i}
+                        className={`w-8 h-8 flex items-center justify-center font-bold text-white text-sm rounded-full ${bingoColors[letter]}`}
+                      >
+                        {letter}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Vertical Stack of Boards */}
+                  {activeBoards.map((board, boardIndex) => {
+                    const isSelected = (selectedNumbersPerBoard[board.cartelaId] || new Set());
+                    
+                    return (
+                      <div key={board.cartelaId} className="bg-gradient-to-b from-purple-800 to-purple-900 p-3 rounded-lg w-full">
+                        {/* Board Header */}
+                        <div className="text-center text-yellow-400 text-sm mb-2 font-bold">
+                          {boardIndex === 0 ? "PRIMARY BOARD" : "SECONDARY BOARD"}
+                        </div>
+
+                        {/* Bingo Numbers Grid */}
+                        <div className="grid grid-cols-5 gap-1">
+                          {board.cartela.map((row, rowIndex) =>
+                            row.map((num, colIndex) => {
+                              const isFreeSpace = rowIndex === 2 && colIndex === 2;
+                              const isSelectedNum = isSelected.has(num);
+
+                              return (
+                                <BingoCell
+                                  key={`${board.cartelaId}-${rowIndex}-${colIndex}`}
+                                  num={num}
+                                  isFreeSpace={isFreeSpace}
+                                  isSelected={isSelectedNum}
+                                  onClick={() => handleCartelaClick(num, board.cartelaId)}
+                                />
+                              );
+                            })
+                          )}
+                        </div>
+
+                        {/* Bingo Button integrated with board */}
+                        <button 
+                          onClick={() => checkForWin(board.cartelaId)}
+                          className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 px-2 py-1 text-white rounded-4xl text-xs font-bold shadow-lg transition-all duration-200 mt-2"
+                        >
+                          BINGO!
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
-        );
-      })}
-    </div>
-  )}
-</div>
 
           {/* ✅ NEW: Add Board Button */}
           {activeBoards.length === 1 && (
