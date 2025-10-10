@@ -4,14 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useLocation } from "react-router-dom";
 
 function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherSelectedCards, setOtherSelectedCards, emitLockRef }) {
-  // Debug logging at component start
-  console.log("🔵 Bingo Component Mounting - Props:", {
-    cartelaId,
-    otherSelectedCards,
-    isBlackToggleOn
-  });
-
-  /////saving the telegram id and gamechoice in localstorage /////////////////////////////////////////////////////
+  // URL parameters and localStorage management
   const [searchParams] = useSearchParams();
   const urlTelegramId = searchParams.get("user");
   const urlGameId = searchParams.get("game");
@@ -20,18 +13,15 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
 
   // Store only if changed
   useEffect(() => {
-    console.log("🟡 URL Params Effect - urlTelegramId:", urlTelegramId, "urlGameId:", urlGameId);
     const storedTelegramId = localStorage.getItem("telegramId");
     const storedGameId = localStorage.getItem("gameChoice");
 
     if (urlTelegramId && urlTelegramId !== storedTelegramId) {
       localStorage.setItem("telegramId", urlTelegramId);
-      console.log("✅ Stored telegramId:", urlTelegramId);
     }
 
     if (urlGameId && urlGameId !== storedGameId) {
       localStorage.setItem("gameChoice", urlGameId);
-      console.log("✅ Stored gameId:", urlGameId);
     }
   }, [urlTelegramId, urlGameId]);
 
@@ -39,10 +29,7 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
   const telegramId = urlTelegramId || localStorage.getItem("telegramId");
   const gameId = urlGameId || localStorage.getItem("gameChoice");
 
-  console.log("🟡 Using IDs - telegramId:", telegramId, "gameId:", gameId);
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  
+  // State management
   const navigate = useNavigate();
   const [cartela, setCartela] = useState([]);
   const [gameStatus, setGameStatus] = useState(false);
@@ -56,10 +43,10 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
   const [gameStarted, setGameStarted] = useState(false);
   const [countdown, setCountdown] = useState(null);
   const [isStarting, setIsStarting] = useState(false);
-  const [isSocketReady, setIsSocketReady] = useState(false);
   const hasInitialSyncRun = useRef(false);
   const lastRequestIdRef = useRef(0); 
 
+  // Theme variables
   const bgGradient = isBlackToggleOn
     ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900'
     : 'bg-gradient-to-br from-violet-300 via-purple-400 to-indigo-500'
@@ -67,9 +54,6 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
   const alertBg = isBlackToggleOn ? 'bg-red-900' : 'bg-red-100';
   const alertText = isBlackToggleOn ? 'text-red-300' : 'text-red-700';
   const alertBorder = isBlackToggleOn ? 'border-red-700' : 'border-red-500';
-
-  const cardBg = isBlackToggleOn ? 'bg-white/10' : 'bg-white';
-  const cardText = isBlackToggleOn ? 'text-indigo-300' : 'text-purple-400';
 
   const myCardBg = isBlackToggleOn ? 'bg-green-600 text-white' : 'bg-green-500 text-white';
   const otherCardBg = isBlackToggleOn ? 'bg-yellow-600 text-black' : 'bg-yellow-400 text-black';
@@ -81,46 +65,38 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
   const startBtnEnabledBg = isBlackToggleOn ? 'bg-orange-600 hover:bg-orange-700' : 'bg-orange-500 hover:bg-orange-600';
   const startBtnDisabledBg = 'bg-gray-600 cursor-not-allowed';
 
-  // 🟢 Fetch User Balance from REST
+  // Fetch User Balance from REST
   const fetchUserData = async (id) => {
-    console.log("🟡 fetchUserData called with id:", id);
     try {
       const res = await fetch(`https://bingo-backend-8929.onrender.com/api/users/getUser?telegramId=${telegramId}`);
-      console.log("🟡 User data response status:", res.status);
       if (!res.ok) throw new Error("User not found");
       const data = await res.json();
-      console.log("✅ User data fetched:", data);
       setUserBalance(data.balance);
       setUserBonusBalance(data.bonus_balance);
     } catch (err) {
-      console.error("❌ Error fetching user data:", err);
+      console.error("Error fetching user data:", err);
       setAlertMessage("Error fetching user data.");
     }
   };
 
-  // 🟢 Initial Effect to Fetch & Setup Socket
+  // Initial Effect to Fetch & Setup Socket
   useEffect(() => {
-    console.log("🟢 Initial Effect Running - telegramId:", telegramId, "gameId:", gameId);
-
     if (!telegramId || !gameId) {
-      console.error("❌ Missing telegramId or gameId for game page.");
+      console.error("Missing telegramId or gameId for game page.");
       navigate('/');
       return;
     }
 
     const handleCardSelections = (cards) => {
-      console.log("💡 Initial card selections received:", cards);
       const reformatted = {};
 
       if (lastRequestIdRef.current > 0) {
-        console.log("⚠ Skipping selections update due to pending request");
         return;
       }
       
       for (const [cardId, tId] of Object.entries(cards)) {
         if (tId === telegramId) {
           setCartelaIdInParent(parseInt(cardId));
-          console.log("🍔🍔🍔 card is set", cardId);
         } else {
           reformatted[tId] = parseInt(cardId);
         }
@@ -130,7 +106,6 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
     };
 
     const handleCardReleased = ({ telegramId: releasedTelegramId, cardId }) => {
-      console.log(`💡 Card ${cardId} released by ${releasedTelegramId}`);
       setOtherSelectedCards((prev) => {
         const newState = { ...prev };
         if (newState[releasedTelegramId] === cardId) {
@@ -141,11 +116,9 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
     };
 
     const handleInitialCardStates = (data) => {
-      console.log("💡 Frontend: Received initialCardStates (full board sync):", data);
       const { takenCards } = data;
 
       if (lastRequestIdRef.current > 0) {
-        console.log("⚠ Skipping initial restore because a newer request is pending.");
         return;
       }
 
@@ -158,7 +131,6 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
 
       // Restore User's Own Card
       const mySavedCardId = sessionStorage.getItem("mySelectedCardId");
-      console.log("🔥🔥🔥🔥 my saved card", mySavedCardId);
       if (mySavedCardId && !isNaN(Number(mySavedCardId))) {
         const numMySavedCardId = Number(mySavedCardId);
         const selectedCardData = bingoCards.find(card => card.id === numMySavedCardId);
@@ -173,7 +145,6 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
           sessionStorage.removeItem("mySelectedCardId");
           setCartela([]);
           setCartelaIdInParent(null);
-          console.warn("Saved card ID not found in bingoCards data. Clearing saved selection.");
         }
       } else {
         setCartela([]);
@@ -184,34 +155,25 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
     };
 
     const performInitialGameSync = () => {
-      console.log("🟡 Attempting initial game sync...");
       if (socket.connected && telegramId && gameId) {
-        console.log(`Frontend: Emitting 'userJoinedGame' for gameId: ${gameId}`);
         socket.emit("userJoinedGame", { telegramId, gameId });
-        console.log("✅ Sent emit [userJoinedGame]");
       }
     };
 
     // Socket event listeners
     socket.on("initialCardStates", handleInitialCardStates);
     socket.on("userconnected", (res) => { 
-      console.log("✅ User connected:", res.telegramId);
       setResponse(res.telegramId); 
     });
     socket.on("balanceUpdated", (newBalance) => { 
-      console.log("✅ Balance updated:", newBalance);
       setUserBalance(newBalance); 
     });
     socket.on("gameStatusUpdate", (status) => { 
-      console.log("✅ Game status updated:", status);
       setGameStatus(status);
     });
     socket.on("currentCardSelections", handleCardSelections);
     socket.on("cardConfirmed", (data) => {
-      console.log("✅ DEBUG: Frontend received cardConfirmed data:", data);
-
       if (data.requestId !== lastRequestIdRef.current) {
-        console.warn(`⚠ Ignoring stale confirmation. Current: ${lastRequestIdRef.current}, Received: ${data.requestId}`);
         return;
       }
 
@@ -224,7 +186,6 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
     });
 
     socket.on("cardUnavailable", ({ cardId }) => {
-      console.log("❌ Card unavailable:", cardId);
       setAlertMessage(`🚫 Card ${cardId} is already taken by another player.`);
       setCartela([]);
       setCartelaIdInParent(null);
@@ -232,7 +193,6 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
     });
 
     socket.on("cardError", ({ message }) => {
-      console.log("❌ Card error:", message);
       setAlertMessage(message || "Card selection failed.");
       setCartela([]);
       setCartelaIdInParent(null);
@@ -242,15 +202,13 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
 
     socket.on("cardReleased", handleCardReleased);
     socket.on("gameid", (data) => { 
-      console.log("✅ Player count received:", data.numberOfPlayers);
       setCount(data.numberOfPlayers); 
     });
     socket.on("error", (err) => {
-      console.error("❌ Socket error:", err);
+      console.error("Socket error:", err);
       setAlertMessage(err.message);
     });
     socket.on("cardsReset", ({ gameId: resetGameId }) => {
-      console.log("🔄 Cards reset for game:", resetGameId);
       if (resetGameId === gameId) {
         setOtherSelectedCards({});
         setCartela([]);
@@ -262,14 +220,12 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
 
     const handleConnectForSync = () => {
       if (!hasInitialSyncRun.current) {
-        console.log("✅ Socket connected, performing initial sync.");
         performInitialGameSync();
       }
     };
     
     socket.on("connect", handleConnectForSync);
     socket.on("disconnect", () => {
-      console.log("🔴 Socket disconnected");
       hasInitialSyncRun.current = false;
     });
 
@@ -277,7 +233,6 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
     fetchUserData(telegramId);
 
     return () => {
-      console.log("🟣 Cleaning up socket listeners");
       socket.off("userconnected");
       socket.off("initialCardStates", handleInitialCardStates);
       socket.off("balanceUpdated");
@@ -296,7 +251,6 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
   }, [telegramId, gameId, bingoCards, navigate, socket]); 
 
   const handleLocalCartelaIdChange = (newCartelaId) => {
-    console.log(`🔍 Bingo.jsx: handleLocalCartelaIdChange called with: ${newCartelaId}`);
     const selectedCard = bingoCards.find(card => card.id === newCartelaId);
     if (selectedCard) {
       setCartela(selectedCard.card);
@@ -311,14 +265,9 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
     }
   };
 
-  // 🟢 Select a bingo card
+  // Select a bingo card
   const handleNumberClick = (number) => {
-    console.log("🟡 Clicked button ID:", number);
-    console.log("🟡 Current cartelaId:", cartelaId);
-    console.log("🟡 emitLockRef.current:", emitLockRef.current);
-
     if (emitLockRef.current && number === cartelaId) {
-      console.log("⚠ Prevented double click on same card");
       return;
     }
     
@@ -328,7 +277,7 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
 
     const selectedCard = bingoCards.find(card => card.id === number);
     if (!selectedCard) {
-      console.error("❌ Card not found for ID:", number);
+      console.error("Card not found for ID:", number);
       handleLocalCartelaIdChange(null);
       return;
     }
@@ -336,8 +285,6 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
     lastRequestIdRef.current += 1;
     const requestId = lastRequestIdRef.current;
     emitLockRef.current = true;
-
-    console.log(`🟡 Selecting card ${number} with requestId: ${requestId}`);
 
     // Optimistic UI update
     handleLocalCartelaIdChange(number);
@@ -351,13 +298,10 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
       card: selectedCard.card,
       requestId
     });
-    
-    console.log(`✅ Card ${number} emitted to backend with requestId: ${requestId}`);
   };
 
   useEffect(() => {
     socket.on("gameStart", () => {
-      console.log("✅ Game started!");
       setGameStarted(true);
     });
 
@@ -368,7 +312,6 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
 
   useEffect(() => {
     socket.on("gameFinished", () => {
-      console.log("✅ Game finished!");
       setGameStarted(false);
     });
 
@@ -378,13 +321,11 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
   }, []);
 
   const resetGame = () => {
-    console.log("🔄 Refreshing page...");
     window.location.reload();
   };
 
   useEffect(() => {
     socket.on("gameEnded", () => {
-      console.log("✅ Game ended");
       setGameStarted(false);
       setIsStarting(false);
       setAlertMessage("");
@@ -399,10 +340,8 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
       try {
         const res = await fetch(`https://bingo-backend-8929.onrender.com/api/games/${gameId}/status`);
         const data = await res.json();
-        console.log("🟡 Game status poll:", data);
 
         if (!data.isActive) {
-          console.log("🟢 Game is inactive now.");
           setIsStarting(false);
           setGameStarted(false);
         } else {
@@ -410,36 +349,24 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
           setGameStarted(true);
         }
       } catch (error) {
-        console.error("❌ Status polling failed:", error);
+        console.error("Status polling failed:", error);
       }
     }, 3000);
 
     return () => clearInterval(interval);
   }, [gameId]);
 
-  // 🟢 UPDATED: Join Game & Emit to Socket - FIXED VERSION
+  // Join Game & Emit to Socket - PRODUCTION READY
   const startGame = async () => {
-    console.log("🚀 ========== START GAME FUNCTION CALLED ==========");
-    console.log("🟡 Step 0: Initial checks");
-    console.log("   - isStarting:", isStarting);
-    console.log("   - cartelaId:", cartelaId);
-    console.log("   - telegramId:", telegramId);
-    console.log("   - gameId:", gameId);
-    
-    if (isStarting) {
-      console.log("❌ Already starting, returning early");
-      return;
-    }
+    if (isStarting) return;
 
     // Validation checks
     if (!cartelaId) {
-      console.log("❌ No card selected!");
       setAlertMessage("❌ Please select a bingo card first!");
       return;
     }
 
     if (!telegramId || !gameId) {
-      console.log("❌ Missing IDs - telegramId:", telegramId, "gameId:", gameId);
       setAlertMessage("❌ Missing user or game information");
       return;
     }
@@ -448,22 +375,11 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
     setAlertMessage("");
 
     try {
-      console.log("🟢 Step 1: Starting game with request data:", {
-        gameId,
-        telegramId,
-        cardId: cartelaId
-      });
-
       const requestBody = {
         gameId: gameId,
         telegramId: telegramId,
         cardId: cartelaId
       };
-
-      console.log("🟢 Step 2: Making API call to /api/games/start");
-      console.log("   - URL: https://bingo-backend-8929.onrender.com/api/games/start");
-      console.log("   - Method: POST");
-      console.log("   - Body:", JSON.stringify(requestBody));
 
       const response = await fetch("https://bingo-backend-8929.onrender.com/api/games/start", {
         method: "POST",
@@ -473,26 +389,17 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
         body: JSON.stringify(requestBody),
       });
 
-      console.log("🟢 Step 3: API Response received");
-      console.log("   - Response status:", response.status);
-      console.log("   - Response ok:", response.ok);
-
       const data = await response.json();
-      console.log("🟢 Step 4: Parsed response data:", data);
 
       if (response.ok && data.success) {
-        console.log("✅ SUCCESS: Game started successfully!");
         const { GameSessionId: currentSessionId } = data;
-        console.log("   - GameSessionId:", currentSessionId);
 
-        console.log("🟢 Step 5: Emitting joinGame to socket");
         socket.emit("joinGame", {
           gameId,
           telegramId,
           GameSessionId: currentSessionId
         });
 
-        console.log("🟢 Step 6: Navigating to /game");
         navigate("/game", {
           state: {
             gameId,
@@ -504,18 +411,13 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
           },
         });
       } else if (data.message && data.message.includes("already running") && data.GameSessionId) {
-        // 🟡 SPECIAL CASE: Game is already running, join it instead
-        console.log("🟡 Game is already running - joining existing game");
-        console.log("   - GameSessionId:", data.GameSessionId);
-        
-        console.log("🟢 Step 5: Emitting joinGame to socket for existing game");
+        // Game is already running, join it instead
         socket.emit("joinGame", {
           gameId,
           telegramId,
           GameSessionId: data.GameSessionId
         });
 
-        console.log("🟢 Step 6: Navigating to /game to join existing game");
         navigate("/game", {
           state: {
             gameId,
@@ -524,43 +426,22 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
             cartelaId,
             cartela,
             playerCount: 1,
-            isJoiningExisting: true
           },
         });
       } else {
-        console.error("❌ FAILED: Game start API returned error");
-        console.error("   - Error message:", data.message || data.error);
-        console.error("   - Full response:", data);
         setAlertMessage(data.message || data.error || "Error starting the game");
       }
     } catch (error) {
-      console.error("❌ CATCH BLOCK: Game start failed with exception");
-      console.error("   - Error name:", error.name);
-      console.error("   - Error message:", error.message);
-      console.error("   - Error stack:", error.stack);
-      
+      console.error("Game start failed:", error);
       if (error.message.includes("Failed to fetch")) {
-        setAlertMessage("🌐 Network error: Cannot connect to server. Check your internet connection.");
+        setAlertMessage("🌐 Network error: Cannot connect to server.");
       } else {
         setAlertMessage(`❌ Connection error: ${error.message}`);
       }
     } finally {
-      console.log("🟢 Step 7: Finally block - resetting isStarting");
       setIsStarting(false);
     }
-    
-    console.log("🚀 ========== START GAME FUNCTION COMPLETED ==========");
   };
-
-  console.log("🔵 Bingo Component Render - Current State:", {
-    cartelaId,
-    cartelaLength: cartela.length,
-    userBalance,
-    bonusBalance,
-    gameStarted,
-    isStarting,
-    alertMessage
-  });
 
   return (
     <>
@@ -671,16 +552,6 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
               {isStarting ? "Starting..." : "Start Game"}
             </button>
           </div>
-        </div>
-        
-        {/* Debug Info Panel */}
-        <div className="mt-4 p-2 bg-black/50 rounded-lg text-xs max-w-lg w-full">
-          <div className="font-bold mb-1">Debug Info:</div>
-          <div>cartelaId: {cartelaId || "null"}</div>
-          <div>telegramId: {telegramId || "null"}</div>
-          <div>gameId: {gameId || "null"}</div>
-          <div>cartela length: {cartela.length}</div>
-          <div>isStarting: {isStarting ? "true" : "false"}</div>
         </div>
       </div>
     </>
