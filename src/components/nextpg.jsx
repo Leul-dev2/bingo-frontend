@@ -643,7 +643,7 @@ useEffect(() => {
             // Multi-Board: Vertical stack of boards - FIXED HEIGHT
             <div className="flex flex-col gap-3 h-full">
               {/* Shared BINGO Header at Top - CLOSER LETTERS */}
-              <div className="grid grid-cols-5 gap-0.5 mb-2 w-full max-w-md">
+              <div className="grid grid-cols-5 gap-0.2 mb-2 w-full max-w-md">
                 {["B", "I", "N", "G", "O"].map((letter, i) => (
                   <div
                     key={i}
@@ -744,7 +744,7 @@ useEffect(() => {
           {activeBoards.length === 1 && (
             <button
               onClick={navigateToAddBoard}
-              className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 px-10 h-10 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
+              className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 px-14 h-10 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
             >
               Add Board
             </button>
