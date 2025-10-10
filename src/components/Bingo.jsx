@@ -417,7 +417,7 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
     return () => clearInterval(interval);
   }, [gameId]);
 
-  // 🟢 Join Game & Emit to Socket - WITH DEBUG LOGGING
+  // 🟢 UPDATED: Join Game & Emit to Socket - FIXED VERSION
   const startGame = async () => {
     console.log("🚀 ========== START GAME FUNCTION CALLED ==========");
     console.log("🟡 Step 0: Initial checks");
@@ -448,22 +448,7 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
     setAlertMessage("");
 
     try {
-      console.log("🟢 Step 1: Checking game status for gameId:", gameId);
-      const statusRes = await fetch(`https://bingo-backend-8929.onrender.com/api/games/${gameId}/status`);
-      console.log("🟢 Status response status:", statusRes.status);
-      
-      const statusData = await statusRes.json();
-      console.log("🟢 Game status response data:", statusData);
-
-      if (statusData.exists && statusData.isActive) {
-        console.log("❌ Game is already active");
-        setAlertMessage("🚫 Game is already started, please wait!");
-        setIsStarting(false);
-        setTimeout(() => setAlertMessage(""), 4000);
-        return;
-      }
-
-      console.log("🟢 Step 2: Starting game with request data:", {
+      console.log("🟢 Step 1: Starting game with request data:", {
         gameId,
         telegramId,
         cardId: cartelaId
@@ -475,7 +460,7 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
         cardId: cartelaId
       };
 
-      console.log("🟢 Step 3: Making API call to /api/games/start");
+      console.log("🟢 Step 2: Making API call to /api/games/start");
       console.log("   - URL: https://bingo-backend-8929.onrender.com/api/games/start");
       console.log("   - Method: POST");
       console.log("   - Body:", JSON.stringify(requestBody));
@@ -488,26 +473,26 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
         body: JSON.stringify(requestBody),
       });
 
-      console.log("🟢 Step 4: API Response received");
+      console.log("🟢 Step 3: API Response received");
       console.log("   - Response status:", response.status);
       console.log("   - Response ok:", response.ok);
 
       const data = await response.json();
-      console.log("🟢 Step 5: Parsed response data:", data);
+      console.log("🟢 Step 4: Parsed response data:", data);
 
       if (response.ok && data.success) {
         console.log("✅ SUCCESS: Game started successfully!");
         const { GameSessionId: currentSessionId } = data;
         console.log("   - GameSessionId:", currentSessionId);
 
-        console.log("🟢 Step 6: Emitting joinGame to socket");
+        console.log("🟢 Step 5: Emitting joinGame to socket");
         socket.emit("joinGame", {
           gameId,
           telegramId,
           GameSessionId: currentSessionId
         });
 
-        console.log("🟢 Step 7: Navigating to /game");
+        console.log("🟢 Step 6: Navigating to /game");
         navigate("/game", {
           state: {
             gameId,
@@ -518,11 +503,35 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
             playerCount: 1,
           },
         });
+      } else if (data.message && data.message.includes("already running") && data.GameSessionId) {
+        // 🟡 SPECIAL CASE: Game is already running, join it instead
+        console.log("🟡 Game is already running - joining existing game");
+        console.log("   - GameSessionId:", data.GameSessionId);
+        
+        console.log("🟢 Step 5: Emitting joinGame to socket for existing game");
+        socket.emit("joinGame", {
+          gameId,
+          telegramId,
+          GameSessionId: data.GameSessionId
+        });
+
+        console.log("🟢 Step 6: Navigating to /game to join existing game");
+        navigate("/game", {
+          state: {
+            gameId,
+            telegramId,
+            GameSessionId: data.GameSessionId,
+            cartelaId,
+            cartela,
+            playerCount: 1,
+            isJoiningExisting: true
+          },
+        });
       } else {
         console.error("❌ FAILED: Game start API returned error");
-        console.error("   - Error message:", data.error);
+        console.error("   - Error message:", data.message || data.error);
         console.error("   - Full response:", data);
-        setAlertMessage(data.error || "Error starting the game - check console for details");
+        setAlertMessage(data.message || data.error || "Error starting the game");
       }
     } catch (error) {
       console.error("❌ CATCH BLOCK: Game start failed with exception");
@@ -536,7 +545,7 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
         setAlertMessage(`❌ Connection error: ${error.message}`);
       }
     } finally {
-      console.log("🟢 Step 8: Finally block - resetting isStarting");
+      console.log("🟢 Step 7: Finally block - resetting isStarting");
       setIsStarting(false);
     }
     
