@@ -134,13 +134,13 @@ const AddBoard = () => {
         throw new Error("Card not found for ID: " + number);
       }
 
-      // ✅ FIXED: Check if board is already in use by current user in existing boards
-      const isAlreadySelected = existingBoards.some(board => board.cartelaId === number);
-      if (isAlreadySelected) {
-        throw new Error("You already have this board in your current selection");
-      }
+      // ✅ REMOVED: No need to check against existingBoards since they're from different card pools
+      // const isAlreadySelected = existingBoards.some(board => board.cartelaId === number);
+      // if (isAlreadySelected) {
+      //   throw new Error("You already have this board in your current selection");
+      // }
 
-      // ✅ FIXED: Check if board is taken by others in current game
+      // ✅ ONLY check if board is taken by others in current game
       const isTakenByOthers = takenBoards.has(number);
       if (isTakenByOthers) {
         throw new Error("This board is already taken by another player");
@@ -232,16 +232,14 @@ const AddBoard = () => {
 
   // ✅ FIXED: Only consider a board "taken" if it's taken by OTHER players
   const isBoardTaken = (number) => {
-    // Only boards taken by other players are considered "taken"
     const takenByOthers = takenBoards.has(number);
     return takenByOthers;
   };
 
-  // ✅ FIXED: Only consider a board "unavailable" if user already has it OR it's taken by others
+  // ✅ FIXED: Only consider a board "unavailable" if it's taken by others
   const isBoardUnavailable = (number) => {
-    const userAlreadyHas = existingBoards.some(board => board.cartelaId === number);
     const takenByOthers = takenBoards.has(number);
-    return userAlreadyHas || takenByOthers;
+    return takenByOthers;
   };
 
   const getBoardColor = (number) => {
@@ -255,10 +253,6 @@ const AddBoard = () => {
   const getBoardTooltip = (number) => {
     if (selectedBoard?.cartelaId === number) return "Selected";
     
-    // ✅ FIXED: Show different messages for user's own boards vs others' boards
-    if (existingBoards.some(board => board.cartelaId === number)) 
-      return "Already in your boards";
-    
     if (takenBoards.has(number)) 
       return "Taken by another player";
     
@@ -268,7 +262,7 @@ const AddBoard = () => {
     return "Available";
   };
 
-  // ✅ FIXED: Only disable if unavailable (user has it OR taken by others)
+  // ✅ FIXED: Only disable if taken by others
   const isBoardDisabled = (number) => {
     return isBoardUnavailable(number) || isCountdownTooLow || isLoading;
   };
@@ -283,7 +277,7 @@ const AddBoard = () => {
         {/* Show current boards info */}
         {existingBoards.length > 0 && (
           <div className="px-3 py-1 bg-blue-500/50 rounded-full mt-2 text-xs">
-            Current Boards: {existingBoards.map(b => b.cartelaId).join(', ')}
+            Current Primary Boards: {existingBoards.map(b => b.cartelaId).join(', ')}
           </div>
         )}
         
@@ -421,7 +415,7 @@ const AddBoard = () => {
         <ul className="text-white text-xs space-y-1">
           <li>• Click any available number to select a board</li>
           <li>• Green = Selected</li>
-          <li>• Red = Taken or Already Yours</li>
+          <li>• Red = Taken by another player</li>
           <li>• Press ESC to cancel</li>
           <li>• Press ENTER to confirm</li>
         </ul>
