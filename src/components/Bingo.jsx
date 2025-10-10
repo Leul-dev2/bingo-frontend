@@ -1,695 +1,681 @@
-import bingoCards from "../assets/bingoCards.json"; // Import the JSON file
+import bingoCards from "../assets/bingoCards.json";
 import { useEffect, useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useLocation } from "react-router-dom";
 
-
-// Initialize socket connection
-//const socket = io("https://bingobot-backend-bwdo.onrender.com");
-
 function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherSelectedCards, setOtherSelectedCards, emitLockRef }) {
-///////saving teh tegram id and gamechoice in localstaoge /////////////////////////////////////////////////////
-const [searchParams] = useSearchParams();
-const urlTelegramId = searchParams.get("user");
-const urlGameId = searchParams.get("game");
-const location = useLocation();
-//const emitLockRef = useRef(false); // prevents double emit
-const prevPathRef = useRef(null);
+  // Debug logging at component start
+  console.log("🔵 Bingo Component Mounting - Props:", {
+    cartelaId,
+    otherSelectedCards,
+    isBlackToggleOn
+  });
 
+  /////saving the telegram id and gamechoice in localstorage /////////////////////////////////////////////////////
+  const [searchParams] = useSearchParams();
+  const urlTelegramId = searchParams.get("user");
+  const urlGameId = searchParams.get("game");
+  const location = useLocation();
+  const prevPathRef = useRef(null);
 
-// Store only if changed
-useEffect(() => {
-const storedTelegramId = localStorage.getItem("telegramId");
-const storedGameId = localStorage.getItem("gameChoice");
+  // Store only if changed
+  useEffect(() => {
+    console.log("🟡 URL Params Effect - urlTelegramId:", urlTelegramId, "urlGameId:", urlGameId);
+    const storedTelegramId = localStorage.getItem("telegramId");
+    const storedGameId = localStorage.getItem("gameChoice");
 
-if (urlTelegramId && urlTelegramId !== storedTelegramId) {
-localStorage.setItem("telegramId", urlTelegramId);
-}
-
-if (urlGameId && urlGameId !== storedGameId) {
-localStorage.setItem("gameChoice", urlGameId);
-}
-}, [urlTelegramId, urlGameId]);
-
-// Use URL value if available, otherwise fallback to localStorage
-const telegramId = urlTelegramId || localStorage.getItem("telegramId");
-const gameId = urlGameId || localStorage.getItem("gameChoice");
-
-
-
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Existing effect to load saved card on mount
-// useEffect(() => {
-// const savedId = sessionStorage.getItem("mySelectedCardId");
-// if (savedId) {
-// const selectedCard = bingoCards.find(card => card.id === Number(savedId));
-// if (selectedCard) {
-// setCartelaId(Number(savedId));
-// setCartela(selectedCard.card);
-// }
-// }
-// }, []);
-
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-const navigate = useNavigate();
-//const [cartelaId, setCartelaId] = useState(null);
-const [cartela, setCartela] = useState([]);
-const [gameStatus, setGameStatus] = useState(false);
-const [userBalance, setUserBalance] = useState(null);
-const [bonusBalance, setUserBonusBalance] = useState(null);
-const [alertMessage, setAlertMessage] = useState("");
-const numbers = Array.from({ length: 100 }, (_, i) => i + 1);
-const [response, setResponse] = useState("");
-//const [otherSelectedCards, setOtherSelectedCards] = useState({});
-const [count, setCount] = useState(0);
-const [playerCount, setPlayerCount] = useState(0);
-const [gameStarted, setGameStarted] = useState(false);
-const [countdown, setCountdown] = useState(null);
-const [isStarting, setIsStarting] = useState(false);
-const [isSocketReady, setIsSocketReady] = useState(false);
-const hasInitialSyncRun = useRef(false);
-const lastRequestIdRef = useRef(0); 
-
-
-const bgGradient = isBlackToggleOn
-? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900'
-: 'bg-gradient-to-br from-violet-300 via-purple-400 to-indigo-500'
-
-
-
-
-
-const alertBg = isBlackToggleOn ? 'bg-red-900' : 'bg-red-100';
-const alertText = isBlackToggleOn ? 'text-red-300' : 'text-red-700';
-const alertBorder = isBlackToggleOn ? 'border-red-700' : 'border-red-500';
-
-const cardBg = isBlackToggleOn ? 'bg-white/10' : 'bg-white';
-const cardText = isBlackToggleOn ? 'text-indigo-300' : 'text-purple-400';
-
-const myCardBg = isBlackToggleOn ? 'bg-green-600 text-white' : 'bg-green-500 text-white';
-const otherCardBg = isBlackToggleOn ? 'bg-yellow-600 text-black' : 'bg-yellow-400 text-black';
-const defaultCardBg = isBlackToggleOn ? 'bg-gray-700 text-white' : 'bg-purple-100 text-black';
-
-const cellBg = isBlackToggleOn ? 'bg-gray-800 text-white' : 'bg-purple-100 text-black';
-
-const refreshBtnBg = isBlackToggleOn ? 'bg-blue-700' : 'bg-blue-500';
-const startBtnEnabledBg = isBlackToggleOn ? 'bg-orange-600 hover:bg-orange-700' : 'bg-orange-500 hover:bg-orange-600';
-const startBtnDisabledBg = 'bg-gray-600 cursor-not-allowed';
-
-
-
-
-// 🟢 Fetch User Balance from REST
-const fetchUserData = async (id) => {
-try {
-const res = await fetch(`https://bingo-backend-8929.onrender.com/api/users/getUser?telegramId=${telegramId}`);
-if (!res.ok) throw new Error("User not found");
-const data = await res.json();
-setUserBalance(data.balance);
-setUserBonusBalance(data.bonus_balance);
-} catch (err) {
-console.error(err);
-setAlertMessage("Error fetching user data.");
-}
-};
-
-// 🟢 Initial Effect to Fetch & Setup Socket
-useEffect(() => {
-console.log("🟢 initial Effect")
-if (!telegramId || !gameId) {
-console.error("Missing telegramId or gameId for game page.");
-navigate('/');
-return;
-}
-
-//localStorage.setItem("telegramId", telegramId
-
-const handleCardSelections = (cards) => {
-  console.log("💡 Initial card selections received:", cards);
-  const reformatted = {};
-
-   if (lastRequestIdRef.current > 0) {
-    console.log("⚠ Skipping selections update due to pending request");
-    return;
-  }
-  
-  for (const [cardId, tId] of Object.entries(cards)) {
-    if (tId === telegramId) {
-      setCartelaIdInParent(parseInt(cardId)); // 👈 Restore your own card selection
-      console.log("🍔🍔🍔 card is set", cardId);
-    } else {
-      reformatted[tId] = parseInt(cardId);     // 👈 Store other players' selections
+    if (urlTelegramId && urlTelegramId !== storedTelegramId) {
+      localStorage.setItem("telegramId", urlTelegramId);
+      console.log("✅ Stored telegramId:", urlTelegramId);
     }
-  }
 
-  setOtherSelectedCards(reformatted); // 👈 Only others
-};
+    if (urlGameId && urlGameId !== storedGameId) {
+      localStorage.setItem("gameChoice", urlGameId);
+      console.log("✅ Stored gameId:", urlGameId);
+    }
+  }, [urlTelegramId, urlGameId]);
 
+  // Use URL value if available, otherwise fallback to localStorage
+  const telegramId = urlTelegramId || localStorage.getItem("telegramId");
+  const gameId = urlGameId || localStorage.getItem("gameChoice");
 
-const handleCardReleased = ({ telegramId: releasedTelegramId, cardId }) => {
-console.log(`💡 Card ${cardId} released by ${releasedTelegramId}`);
-setOtherSelectedCards((prev) => {
-const newState = { ...prev };
-// Ensure we delete only if the released card matches the one currently held by that user
-if (newState[releasedTelegramId] === cardId) {
-delete newState[releasedTelegramId];
-}
-return newState;
-});
-};
+  console.log("🟡 Using IDs - telegramId:", telegramId, "gameId:", gameId);
 
-const handleInitialCardStates = (data) => {
-    console.log("💡 Frontend: Received initialCardStates (full board sync):", data);
-    const { takenCards } = data; // Backend sends: { "cardId": { cardId: N, takenBy: 'TID', isTaken: true } }
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  
+  const navigate = useNavigate();
+  const [cartela, setCartela] = useState([]);
+  const [gameStatus, setGameStatus] = useState(false);
+  const [userBalance, setUserBalance] = useState(null);
+  const [bonusBalance, setUserBonusBalance] = useState(null);
+  const [alertMessage, setAlertMessage] = useState("");
+  const numbers = Array.from({ length: 100 }, (_, i) => i + 1);
+  const [response, setResponse] = useState("");
+  const [count, setCount] = useState(0);
+  const [playerCount, setPlayerCount] = useState(0);
+  const [gameStarted, setGameStarted] = useState(false);
+  const [countdown, setCountdown] = useState(null);
+  const [isStarting, setIsStarting] = useState(false);
+  const [isSocketReady, setIsSocketReady] = useState(false);
+  const hasInitialSyncRun = useRef(false);
+  const lastRequestIdRef = useRef(0); 
 
-    if (lastRequestIdRef.current > 0) {
-      console.log("⚠ Skipping initial restore because a newer request is pending.");
+  const bgGradient = isBlackToggleOn
+    ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900'
+    : 'bg-gradient-to-br from-violet-300 via-purple-400 to-indigo-500'
+
+  const alertBg = isBlackToggleOn ? 'bg-red-900' : 'bg-red-100';
+  const alertText = isBlackToggleOn ? 'text-red-300' : 'text-red-700';
+  const alertBorder = isBlackToggleOn ? 'border-red-700' : 'border-red-500';
+
+  const cardBg = isBlackToggleOn ? 'bg-white/10' : 'bg-white';
+  const cardText = isBlackToggleOn ? 'text-indigo-300' : 'text-purple-400';
+
+  const myCardBg = isBlackToggleOn ? 'bg-green-600 text-white' : 'bg-green-500 text-white';
+  const otherCardBg = isBlackToggleOn ? 'bg-yellow-600 text-black' : 'bg-yellow-400 text-black';
+  const defaultCardBg = isBlackToggleOn ? 'bg-gray-700 text-white' : 'bg-purple-100 text-black';
+
+  const cellBg = isBlackToggleOn ? 'bg-gray-800 text-white' : 'bg-purple-100 text-black';
+
+  const refreshBtnBg = isBlackToggleOn ? 'bg-blue-700' : 'bg-blue-500';
+  const startBtnEnabledBg = isBlackToggleOn ? 'bg-orange-600 hover:bg-orange-700' : 'bg-orange-500 hover:bg-orange-600';
+  const startBtnDisabledBg = 'bg-gray-600 cursor-not-allowed';
+
+  // 🟢 Fetch User Balance from REST
+  const fetchUserData = async (id) => {
+    console.log("🟡 fetchUserData called with id:", id);
+    try {
+      const res = await fetch(`https://bingo-backend-8929.onrender.com/api/users/getUser?telegramId=${telegramId}`);
+      console.log("🟡 User data response status:", res.status);
+      if (!res.ok) throw new Error("User not found");
+      const data = await res.json();
+      console.log("✅ User data fetched:", data);
+      setUserBalance(data.balance);
+      setUserBonusBalance(data.bonus_balance);
+    } catch (err) {
+      console.error("❌ Error fetching user data:", err);
+      setAlertMessage("Error fetching user data.");
+    }
+  };
+
+  // 🟢 Initial Effect to Fetch & Setup Socket
+  useEffect(() => {
+    console.log("🟢 Initial Effect Running - telegramId:", telegramId, "gameId:", gameId);
+
+    if (!telegramId || !gameId) {
+      console.error("❌ Missing telegramId or gameId for game page.");
+      navigate('/');
       return;
     }
 
+    const handleCardSelections = (cards) => {
+      console.log("💡 Initial card selections received:", cards);
+      const reformatted = {};
 
-    const newOtherSelectedCardsMap = {};
-    for (const cardId in takenCards) {
-        const takenByTelegramId = takenCards[cardId].takenBy;
-        newOtherSelectedCardsMap[takenByTelegramId] = Number(cardId); // Store as { telegramId: cardId }
-    }
-    setOtherSelectedCards(newOtherSelectedCardsMap); // Set the full map, overriding previous state
-
-    // --- Restore User's Own Card (Crucial for consistent display) ---
-    const mySavedCardId = sessionStorage.getItem("mySelectedCardId");
-    console.log("🔥🔥🔥🔥 my saved card", mySavedCardId);
-    if (mySavedCardId && !isNaN(Number(mySavedCardId))) {
-        const numMySavedCardId = Number(mySavedCardId);
-       const selectedCardData = bingoCards.find(card => card.id === numMySavedCardId);
-        if (selectedCardData) {
-            setCartela(selectedCardData.card);
-            setCartelaIdInParent(numMySavedCardId); // Ensure parent (App.jsx) state is also updated
-            // Also ensure your own card is reflected in `otherSelectedCards`
-            // if it wasn't already included by the backend's `initialCardStates` (it should be, but as a safeguard)
-            setOtherSelectedCards(prev => ({
-                ...prev,
-                [telegramId]: numMySavedCardId
-            }));
+      if (lastRequestIdRef.current > 0) {
+        console.log("⚠ Skipping selections update due to pending request");
+        return;
+      }
+      
+      for (const [cardId, tId] of Object.entries(cards)) {
+        if (tId === telegramId) {
+          setCartelaIdInParent(parseInt(cardId));
+          console.log("🍔🍔🍔 card is set", cardId);
         } else {
-             // If saved card ID doesn't exist in bingoCards, clear it
-            sessionStorage.removeItem("mySelectedCardId");
-            setCartela([]);
-            setCartelaIdInParent(null);
-            console.warn("Saved card ID not found in bingoCards data. Clearing saved selection.");
+          reformatted[tId] = parseInt(cardId);
         }
-    } else {
-        // If no saved card, ensure UI and parent state are clear
+      }
+
+      setOtherSelectedCards(reformatted);
+    };
+
+    const handleCardReleased = ({ telegramId: releasedTelegramId, cardId }) => {
+      console.log(`💡 Card ${cardId} released by ${releasedTelegramId}`);
+      setOtherSelectedCards((prev) => {
+        const newState = { ...prev };
+        if (newState[releasedTelegramId] === cardId) {
+          delete newState[releasedTelegramId];
+        }
+        return newState;
+      });
+    };
+
+    const handleInitialCardStates = (data) => {
+      console.log("💡 Frontend: Received initialCardStates (full board sync):", data);
+      const { takenCards } = data;
+
+      if (lastRequestIdRef.current > 0) {
+        console.log("⚠ Skipping initial restore because a newer request is pending.");
+        return;
+      }
+
+      const newOtherSelectedCardsMap = {};
+      for (const cardId in takenCards) {
+        const takenByTelegramId = takenCards[cardId].takenBy;
+        newOtherSelectedCardsMap[takenByTelegramId] = Number(cardId);
+      }
+      setOtherSelectedCards(newOtherSelectedCardsMap);
+
+      // Restore User's Own Card
+      const mySavedCardId = sessionStorage.getItem("mySelectedCardId");
+      console.log("🔥🔥🔥🔥 my saved card", mySavedCardId);
+      if (mySavedCardId && !isNaN(Number(mySavedCardId))) {
+        const numMySavedCardId = Number(mySavedCardId);
+        const selectedCardData = bingoCards.find(card => card.id === numMySavedCardId);
+        if (selectedCardData) {
+          setCartela(selectedCardData.card);
+          setCartelaIdInParent(numMySavedCardId);
+          setOtherSelectedCards(prev => ({
+            ...prev,
+            [telegramId]: numMySavedCardId
+          }));
+        } else {
+          sessionStorage.removeItem("mySelectedCardId");
+          setCartela([]);
+          setCartelaIdInParent(null);
+          console.warn("Saved card ID not found in bingoCards data. Clearing saved selection.");
+        }
+      } else {
         setCartela([]);
         setCartelaIdInParent(null);
-    }
-    // --- End Restore User's Own Card ---
+      }
 
-    hasInitialSyncRun.current = true; // Mark sync as done for this specific mount
-};
+      hasInitialSyncRun.current = true;
+    };
 
-// This function encapsulates the initial sync logic.
-const performInitialGameSync = () => {
-  
-// console.log("Attempting initial game sync...");
-if (socket.connected && telegramId && gameId) {
-// Ensure this only runs once per unique telegramId/gameId session
-const currentSyncKey = `${telegramId}-${gameId}`;
-if (hasInitialSyncRun.current === currentSyncKey) {
-// console.log("Initial sync already performed for this session.");
-return; // Avoid duplicate emissions
-}
+    const performInitialGameSync = () => {
+      console.log("🟡 Attempting initial game sync...");
+      if (socket.connected && telegramId && gameId) {
+        console.log(`Frontend: Emitting 'userJoinedGame' for gameId: ${gameId}`);
+        socket.emit("userJoinedGame", { telegramId, gameId });
+        console.log("✅ Sent emit [userJoinedGame]");
+      }
+    };
 
-// console.log("Emitting userJoinedGame and re-emitting saved card...");
- console.log(`Frontend: Emitting 'userJoinedGame' for gameId: ${gameId}`);
-socket.emit("userJoinedGame", { telegramId, gameId });
- console.log("sending emit [userJoinedGame]");
-console.log("sending emit")
+    // Socket event listeners
+    socket.on("initialCardStates", handleInitialCardStates);
+    socket.on("userconnected", (res) => { 
+      console.log("✅ User connected:", res.telegramId);
+      setResponse(res.telegramId); 
+    });
+    socket.on("balanceUpdated", (newBalance) => { 
+      console.log("✅ Balance updated:", newBalance);
+      setUserBalance(newBalance); 
+    });
+    socket.on("gameStatusUpdate", (status) => { 
+      console.log("✅ Game status updated:", status);
+      setGameStatus(status);
+    });
+    socket.on("currentCardSelections", handleCardSelections);
+    socket.on("cardConfirmed", (data) => {
+      console.log("✅ DEBUG: Frontend received cardConfirmed data:", data);
 
+      if (data.requestId !== lastRequestIdRef.current) {
+        console.warn(`⚠ Ignoring stale confirmation. Current: ${lastRequestIdRef.current}, Received: ${data.requestId}`);
+        return;
+      }
 
-//const mySavedCardId = sessionStorage.getItem("mySelectedCardId");
-// const mySavedCard = bingoCards.find(card => card.id === Number(mySavedCardId));
-//if () {
-// socket.emit("cardSelected", {
-// telegramId,
-// gameId,
-// cardId: Number(mySavedCardId),
-// card: mySavedCard.card,
-// });
-}
-// Emit joinUser if it's still necessary and separate from userJoinedGame
-//socket.emit("joinUser", { telegramId }); // Consider if this is redundant with userJoinedGame
+      const confirmedCardId = Number(data.cardId);
+      setCartelaIdInParent(confirmedCardId);
+      setCartela(data.card);
+      sessionStorage.setItem("mySelectedCardId", data.cardId);
+      setGameStatus("Ready to Start");
+      lastRequestIdRef.current = 0;
+    });
 
-//hasInitialSyncRun.current = currentSyncKey; // Mark sync as done for this session
-// } else {
-// // console.log("Socket not connected or missing data, deferring initial sync.");
-// }
-};
+    socket.on("cardUnavailable", ({ cardId }) => {
+      console.log("❌ Card unavailable:", cardId);
+      setAlertMessage(`🚫 Card ${cardId} is already taken by another player.`);
+      setCartela([]);
+      setCartelaIdInParent(null);
+      sessionStorage.removeItem("mySelectedCardId");
+    });
 
+    socket.on("cardError", ({ message }) => {
+      console.log("❌ Card error:", message);
+      setAlertMessage(message || "Card selection failed.");
+      setCartela([]);
+      setCartelaIdInParent(null);
+      sessionStorage.removeItem("mySelectedCardId");
+      lastRequestIdRef.current = 0;
+    });
 
-socket.on("initialCardStates", handleInitialCardStates);
-socket.on("userconnected", (res) => { setResponse(res.telegramId); });
-//socket.on("roundEnded", handleReset);
-socket.on("balanceUpdated", (newBalance) => { setUserBalance(newBalance); });
-socket.on("gameStatusUpdate", (status) => { 
-  setGameStatus(status);
-    console.log("the game status",status);
- });
-socket.on("currentCardSelections", handleCardSelections);
-socket.on("cardConfirmed", (data) => {
-  console.log("DEBUG: Frontend received cardConfirmed data:", data);
+    socket.on("cardReleased", handleCardReleased);
+    socket.on("gameid", (data) => { 
+      console.log("✅ Player count received:", data.numberOfPlayers);
+      setCount(data.numberOfPlayers); 
+    });
+    socket.on("error", (err) => {
+      console.error("❌ Socket error:", err);
+      setAlertMessage(err.message);
+    });
+    socket.on("cardsReset", ({ gameId: resetGameId }) => {
+      console.log("🔄 Cards reset for game:", resetGameId);
+      if (resetGameId === gameId) {
+        setOtherSelectedCards({});
+        setCartela([]);
+        setCartelaIdInParent(null);
+        sessionStorage.removeItem("mySelectedCardId");
+        hasInitialSyncRun.current = false;
+      }
+    });
 
-  // Ignore stale confirmations
-  if (data.requestId !== lastRequestIdRef.current) {
-    console.warn(`Ignoring stale confirmation. Current: ${lastRequestIdRef.current}, Received: ${data.requestId}`);
-    return;
-  }
-
-  const confirmedCardId = Number(data.cardId);
-  setCartelaIdInParent(confirmedCardId);
-  setCartela(data.card);
-  sessionStorage.setItem("mySelectedCardId", data.cardId);
-  setGameStatus("Ready to Start");
-
-   // ✅ Safe to allow new requests now
-  lastRequestIdRef.current = 0;
-});
-
-socket.on("cardUnavailable", ({ cardId }) => {
-setAlertMessage(`🚫 Card ${cardId} is already taken by another player.`);
-setCartela([]);
-setCartelaIdInParent(null);
-sessionStorage.removeItem("mySelectedCardId");
-});
-
-socket.on("cardError", ({ message }) => {
-    // Show an error message to the user
-    setAlertMessage(message || "Card selection failed.");
-    
-    // Explicitly set the player as cardless
-    setCartela([]); // Clear the visual card data
-    setCartelaIdInParent(null); // Clear the parent state's card ID
-    sessionStorage.removeItem("mySelectedCardId"); // Remove the card from local storage
-
-    // Release the request lock
-    lastRequestIdRef.current = 0;
-});
-// socket.on("otherCardSelected", ({ telegramId: otherId, cardId }) => {
-// setOtherSelectedCards((prev) => ({
-// ...prev,
-// [otherId]: cardId,
-// }));
-// });
-socket.on("cardReleased", handleCardReleased); // New listener for card release
-socket.on("gameid", (data) => { setCount(data.numberOfPlayers); 
-  console.log("number of players recived", data.numberOfPlayers);
-});
-socket.on("error", (err) => {
-console.error(err);
-setAlertMessage(err.message);
-});
-socket.on("cardsReset", ({ gameId: resetGameId }) => {
-if (resetGameId === gameId) {
-setOtherSelectedCards({});
-setCartela([]);
-setCartelaIdInParent(null);
-sessionStorage.removeItem("mySelectedCardId");
-// console.log("🔄 Cards have been reset for this game.");
-hasInitialSyncRun.current = false; // Allow re-sync on next mount if desired
-}
-});
-
-// --- Initial Sync Logic ---
-// Option A: If socket is already connected when component mounts
-performInitialGameSync();
-const handleConnectForSync = () => {
-    // Only perform sync if it hasn't been done for this mount yet
-    if (!hasInitialSyncRun.current) {
-        console.log("Component: Socket re-connected/connected, performing initial sync.");
+    const handleConnectForSync = () => {
+      if (!hasInitialSyncRun.current) {
+        console.log("✅ Socket connected, performing initial sync.");
         performInitialGameSync();
-    }
-};
-socket.on("connect", handleConnectForSync);
+      }
+    };
+    
+    socket.on("connect", handleConnectForSync);
+    socket.on("disconnect", () => {
+      console.log("🔴 Socket disconnected");
+      hasInitialSyncRun.current = false;
+    });
 
-socket.on("disconnect", () => {
-// console.log("🔴 Socket disconnected — resetting sync flag.");
-hasInitialSyncRun.current = false;
-});
+    performInitialGameSync();
+    fetchUserData(telegramId);
 
+    return () => {
+      console.log("🟣 Cleaning up socket listeners");
+      socket.off("userconnected");
+      socket.off("initialCardStates", handleInitialCardStates);
+      socket.off("balanceUpdated");
+      socket.off("gameStatusUpdate");
+      socket.off("currentCardSelections", handleCardSelections);
+      socket.off("cardConfirmed");
+      socket.off("cardUnavailable");
+      socket.off("cardError");
+      socket.off("cardReleased", handleCardReleased);
+      socket.off("gameid");
+      socket.off("error");
+      socket.off("cardsReset");
+      socket.off("connect", handleConnectForSync);
+      hasInitialSyncRun.current = false;
+    };
+  }, [telegramId, gameId, bingoCards, navigate, socket]); 
 
-
-fetchUserData(telegramId); // Initial fetch of user data
-
-// --- Cleanup Function ---
-return () => {
-// Remove all specific listeners attached by this component
-socket.off("userconnected");
-//socket.off("roundEnded", handleReset);
-socket.off("initialCardStates", handleInitialCardStates);
-socket.off("balanceUpdated");
-socket.off("gameStatusUpdate");
-socket.off("currentCardSelections", handleCardSelections);
-socket.off("cardConfirmed");
-socket.off("cardUnavailable");
-socket.off("cardError");
-// socket.off("otherCardSelected");
-socket.off("cardReleased", handleCardReleased);
-socket.off("gameid");
-socket.off("error");
-socket.off("cardsReset");
-socket.off("connect", handleConnectForSync); // Clean up this specific listener
-// Reset the sync flag when the component unmounts
-hasInitialSyncRun.current = false;
-};
-}, [telegramId, gameId, bingoCards, navigate, socket]); 
-
-
-
-
-
-const handleLocalCartelaIdChange = (newCartelaId) => {
-  console.log(`🔍 Bingo.jsx: handleLocalCartelaIdChange called with: ${newCartelaId}`); // <--- ADD THIS LINE
-    // Update local cartela for rendering
+  const handleLocalCartelaIdChange = (newCartelaId) => {
+    console.log(`🔍 Bingo.jsx: handleLocalCartelaIdChange called with: ${newCartelaId}`);
     const selectedCard = bingoCards.find(card => card.id === newCartelaId);
     if (selectedCard) {
       setCartela(selectedCard.card);
-      // Inform the parent (App.jsx) about the new cartelaId
       if (setCartelaIdInParent) {
         setCartelaIdInParent(newCartelaId);
       }
     } else {
-      setCartela([]); // Clear card if not found
+      setCartela([]);
       if (setCartelaIdInParent) {
-        setCartelaIdInParent(null); // Inform parent to clear
+        setCartelaIdInParent(null);
       }
     }
   };
 
+  // 🟢 Select a bingo card
+  const handleNumberClick = (number) => {
+    console.log("🟡 Clicked button ID:", number);
+    console.log("🟡 Current cartelaId:", cartelaId);
+    console.log("🟡 emitLockRef.current:", emitLockRef.current);
 
+    if (emitLockRef.current && number === cartelaId) {
+      console.log("⚠ Prevented double click on same card");
+      return;
+    }
+    
+    if (emitLockRef.current && number !== cartelaId) {
+      emitLockRef.current = false;
+    }
 
-// 🟢 Select a bingo card
-const handleNumberClick = (number) => {
-  console.log("Clicked button ID:", number);
+    const selectedCard = bingoCards.find(card => card.id === number);
+    if (!selectedCard) {
+      console.error("❌ Card not found for ID:", number);
+      handleLocalCartelaIdChange(null);
+      return;
+    }
 
-  if (emitLockRef.current && number === cartelaId) return; // prevent double click on same card
-  if (emitLockRef.current && number !== cartelaId) {
-    emitLockRef.current = false; // Allow changing the card
-  }
+    lastRequestIdRef.current += 1;
+    const requestId = lastRequestIdRef.current;
+    emitLockRef.current = true;
 
-  const selectedCard = bingoCards.find(card => card.id === number);
-  if (!selectedCard) {
-    handleLocalCartelaIdChange(null); 
-    console.error("Card not found for ID:", number);
-    return;
-  }
+    console.log(`🟡 Selecting card ${number} with requestId: ${requestId}`);
 
-  // Increment requestId
-  lastRequestIdRef.current += 1;
-  const requestId = lastRequestIdRef.current;
+    // Optimistic UI update
+    handleLocalCartelaIdChange(number);
+    setCartela(selectedCard.card);
+    setGameStatus("Ready to Start");
 
-  emitLockRef.current = true; // Lock click
+    socket.emit("cardSelected", {
+      telegramId,
+      gameId,
+      cardId: number,
+      card: selectedCard.card,
+      requestId
+    });
+    
+    console.log(`✅ Card ${number} emitted to backend with requestId: ${requestId}`);
+  };
 
-  // Optimistic UI update
-  handleLocalCartelaIdChange(number);
-  setCartela(selectedCard.card);
-  setGameStatus("Ready to Start");
+  useEffect(() => {
+    socket.on("gameStart", () => {
+      console.log("✅ Game started!");
+      setGameStarted(true);
+    });
 
-  // Send request to backend with requestId
-  socket.emit("cardSelected", {
-    telegramId,
-    gameId,
-    cardId: number,
-    card: selectedCard.card,
-    requestId
-  });
-  console.log(`Card emitted to backend with requestId: ${requestId}`);
-};
+    return () => {
+      socket.off("gameStart");
+    };
+  }, []);
 
+  useEffect(() => {
+    socket.on("gameFinished", () => {
+      console.log("✅ Game finished!");
+      setGameStarted(false);
+    });
 
+    return () => {
+      socket.off("gameFinished");
+    };
+  }, []);
 
-useEffect(() => {
+  const resetGame = () => {
+    console.log("🔄 Refreshing page...");
+    window.location.reload();
+  };
 
-// Game start handler
-socket.on("gameStart", () => {
-setGameStarted(true);
-});
+  useEffect(() => {
+    socket.on("gameEnded", () => {
+      console.log("✅ Game ended");
+      setGameStarted(false);
+      setIsStarting(false);
+      setAlertMessage("");
+      sessionStorage.removeItem("mySelectedCardId");
+    });
 
-return () => {
-socket.off("gameStart");
-};
-}, []);
+    return () => socket.off("gameEnded");
+  }, []);
 
-useEffect(() => {
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`https://bingo-backend-8929.onrender.com/api/games/${gameId}/status`);
+        const data = await res.json();
+        console.log("🟡 Game status poll:", data);
 
-// Game start handler
-socket.on("gameFinished", () => {
-setGameStarted(false);
-});
+        if (!data.isActive) {
+          console.log("🟢 Game is inactive now.");
+          setIsStarting(false);
+          setGameStarted(false);
+        } else {
+          setIsStarting(true);
+          setGameStarted(true);
+        }
+      } catch (error) {
+        console.error("❌ Status polling failed:", error);
+      }
+    }, 3000);
 
-return () => {
-socket.off("gameFinished");
-};
-}, []);
+    return () => clearInterval(interval);
+  }, [gameId]);
 
+  // 🟢 Join Game & Emit to Socket - WITH DEBUG LOGGING
+  const startGame = async () => {
+    console.log("🚀 ========== START GAME FUNCTION CALLED ==========");
+    console.log("🟡 Step 0: Initial checks");
+    console.log("   - isStarting:", isStarting);
+    console.log("   - cartelaId:", cartelaId);
+    console.log("   - telegramId:", telegramId);
+    console.log("   - gameId:", gameId);
+    
+    if (isStarting) {
+      console.log("❌ Already starting, returning early");
+      return;
+    }
 
-const resetGame = () => {
- window.location.reload();
- console.log("page refreshed")
-};
+    // Validation checks
+    if (!cartelaId) {
+      console.log("❌ No card selected!");
+      setAlertMessage("❌ Please select a bingo card first!");
+      return;
+    }
 
+    if (!telegramId || !gameId) {
+      console.log("❌ Missing IDs - telegramId:", telegramId, "gameId:", gameId);
+      setAlertMessage("❌ Missing user or game information");
+      return;
+    }
 
-
-
-// Real-time update
-useEffect(() => {
-socket.on("gameEnded", () => {
-console.log("gameended ⬅️⬅️⬅️")
-setGameStarted(false);
-setIsStarting(false);
-setAlertMessage("");
-sessionStorage.removeItem("mySelectedCardId")
-});
-
-return () => socket.off("gameEnded");
-}, []);
-
-useEffect(() => {
-const interval = setInterval(async () => {
-try {
-const res = await fetch(`https://bingo-backend-8929.onrender.com/api/games/${gameId}/status`);
-const data = await res.json();
-
-if (!data.isActive) {
-console.log("🟢 Game is inactive now.");
-setIsStarting(false);
-setGameStarted(false);  // ✅ Ensure gameStarted is false if game is not active
-} else {
-setIsStarting(true);
-setGameStarted(true);   // ✅ If active, keep this in sync
-}
-} catch (error) {
-console.error("Status polling failed:", error);
-}
-}, 3000);
-
-return () => clearInterval(interval);
-}, [gameId]);
-
-
-
-
-// 🟢 Join Game & Emit to Socket
-const startGame = async () => {
-    if (isStarting) return;
-
-    setIsStarting(true); // Block double-clicking
+    setIsStarting(true);
+    setAlertMessage("");
 
     try {
-        // ... (Step 1: Check game status remains the same)
-        const statusRes = await fetch(`https://bingo-backend-8929.onrender.com/api/games/${gameId}/status`);
-        const statusData = await statusRes.json();
+      console.log("🟢 Step 1: Checking game status for gameId:", gameId);
+      const statusRes = await fetch(`https://bingo-backend-8929.onrender.com/api/games/${gameId}/status`);
+      console.log("🟢 Status response status:", statusRes.status);
+      
+      const statusData = await statusRes.json();
+      console.log("🟢 Game status response data:", statusData);
 
-        if (statusData.exists && statusData.isActive) {
-            setAlertMessage("🚫 game is Started, please Wait!");
-            setIsStarting(false);
-            // Hide alert after 4 seconds
-            setTimeout(() => setAlertMessage(""), 4000);
-            return;
-        }
+      if (statusData.exists && statusData.isActive) {
+        console.log("❌ Game is already active");
+        setAlertMessage("🚫 Game is already started, please wait!");
+        setIsStarting(false);
+        setTimeout(() => setAlertMessage(""), 4000);
+        return;
+      }
 
-        // ... (Step 2: Start game fetch call remains the same)
-        const response = await fetch("https://bingo-backend-8929.onrender.com/api/games/start", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ gameId, telegramId, cardId: cartelaId }),
+      console.log("🟢 Step 2: Starting game with request data:", {
+        gameId,
+        telegramId,
+        cardId: cartelaId
+      });
+
+      const requestBody = {
+        gameId: gameId,
+        telegramId: telegramId,
+        cardId: cartelaId
+      };
+
+      console.log("🟢 Step 3: Making API call to /api/games/start");
+      console.log("   - URL: https://bingo-backend-8929.onrender.com/api/games/start");
+      console.log("   - Method: POST");
+      console.log("   - Body:", JSON.stringify(requestBody));
+
+      const response = await fetch("https://bingo-backend-8929.onrender.com/api/games/start", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      console.log("🟢 Step 4: API Response received");
+      console.log("   - Response status:", response.status);
+      console.log("   - Response ok:", response.ok);
+
+      const data = await response.json();
+      console.log("🟢 Step 5: Parsed response data:", data);
+
+      if (response.ok && data.success) {
+        console.log("✅ SUCCESS: Game started successfully!");
+        const { GameSessionId: currentSessionId } = data;
+        console.log("   - GameSessionId:", currentSessionId);
+
+        console.log("🟢 Step 6: Emitting joinGame to socket");
+        socket.emit("joinGame", {
+          gameId,
+          telegramId,
+          GameSessionId: currentSessionId
         });
 
-        const data = await response.json();
-
-        if (response.ok && data.success) {
-            const { GameSessionId: currentSessionId } = data;
-
-            // ⭐ Step 3: Game is ready, join the socket room.
-            socket.emit("joinGame", {
-                gameId,
-                telegramId,
-                GameSessionId: currentSessionId
-            });
-
-            // ✅ Step 4: Immediately navigate to the game page.
-            // The API response is the source of truth, so this is safe.
-            navigate("/game", {
-                state: {
-                    gameId,
-                    telegramId,
-                    GameSessionId: currentSessionId,
-                    cartelaId,
-                    cartela,
-                    playerCount: 1, // Start with 1, the new page will update it
-                },
-            });
-        } else {
-            setAlertMessage(data.error || "Error starting the game");
-            console.error("Game start error:", data.error);
-        }
+        console.log("🟢 Step 7: Navigating to /game");
+        navigate("/game", {
+          state: {
+            gameId,
+            telegramId,
+            GameSessionId: currentSessionId,
+            cartelaId,
+            cartela,
+            playerCount: 1,
+          },
+        });
+      } else {
+        console.error("❌ FAILED: Game start API returned error");
+        console.error("   - Error message:", data.error);
+        console.error("   - Full response:", data);
+        setAlertMessage(data.error || "Error starting the game - check console for details");
+      }
     } catch (error) {
-        setAlertMessage("Error connecting to the backend");
-        console.error("Connection error:", error);
+      console.error("❌ CATCH BLOCK: Game start failed with exception");
+      console.error("   - Error name:", error.name);
+      console.error("   - Error message:", error.message);
+      console.error("   - Error stack:", error.stack);
+      
+      if (error.message.includes("Failed to fetch")) {
+        setAlertMessage("🌐 Network error: Cannot connect to server. Check your internet connection.");
+      } else {
+        setAlertMessage(`❌ Connection error: ${error.message}`);
+      }
     } finally {
-        setIsStarting(false);
+      console.log("🟢 Step 8: Finally block - resetting isStarting");
+      setIsStarting(false);
     }
-};
+    
+    console.log("🚀 ========== START GAME FUNCTION COMPLETED ==========");
+  };
 
+  console.log("🔵 Bingo Component Render - Current State:", {
+    cartelaId,
+    cartelaLength: cartela.length,
+    userBalance,
+    bonusBalance,
+    gameStarted,
+    isStarting,
+    alertMessage
+  });
 
-return (
-<>
-<div className={`flex flex-col items-center p-3 pb-20 min-h-screen ${bgGradient} text-white w-full overflow-hidden`}>
-{alertMessage && (
-<div className="fixed top-0 left-0 w-full flex justify-center z-50">
-<div className={`flex items-center max-w-sm w-full p-3 m-2 ${alertBg} ${alertBorder} border-l-4 ${alertText} rounded-md shadow-lg`}>
-<svg className={`w-5 h-5 mr-2 ${alertText}`} fill="currentColor" viewBox="0 0 20 20">
-<path fillRule="evenodd" d="M18 10c0 4.418-3.582 8-8 8s-8-3.582-8-8 3.582-8 8-8 8 3.582 8 8zM9 7a1 1 0 012 0v3a1 1 0 01-2 0V7zm1 6a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" />
-</svg>
-<span className="flex-1 text-sm">{alertMessage}</span>
-<button className="text-gray-500 hover:text-gray-700" onClick={() => setAlertMessage("")}>
-✕
-</button>
-</div>
-</div>
-)}
+  return (
+    <>
+      <div className={`flex flex-col items-center p-3 pb-20 min-h-screen ${bgGradient} text-white w-full overflow-hidden`}>
+        {alertMessage && (
+          <div className="fixed top-0 left-0 w-full flex justify-center z-50">
+            <div className={`flex items-center max-w-sm w-full p-3 m-2 ${alertBg} ${alertBorder} border-l-4 ${alertText} rounded-md shadow-lg`}>
+              <svg className={`w-5 h-5 mr-2 ${alertText}`} fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10c0 4.418-3.582 8-8 8s-8-3.582-8-8 3.582-8 8-8 8 3.582 8 8zM9 7a1 1 0 012 0v3a1 1 0 01-2 0V7zm1 6a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" />
+              </svg>
+              <span className="flex-1 text-sm">{alertMessage}</span>
+              <button className="text-gray-500 hover:text-gray-700" onClick={() => setAlertMessage("")}>
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
 
+        <div className="grid grid-cols-4 sm:grid-cols-4 gap-2 w-full max-w-xl text-white text-center mb-2">
+          {/* Balance Card */}
+          <div className="flex flex-col justify-center bg-[#3D74B6] max-h-[24vh] rounded-2xl shadow-lg transition-transform transform hover:scale-105">
+            <p className="text-sm sm:text-base font-semibold tracking-wide opacity-90">
+              Balance
+            </p>
+            <span className="text-md sm:text-md font-extrabold block">
+              {userBalance !== null ? `${userBalance} ብር` : "Loading..."}
+            </span>
+          </div>
 
-<div className="grid grid-cols-4 sm:grid-cols-4 gap-2 w-full max-w-xl text-white text-center mb-2">
-  {/* Balance Card */}
-  <div className="flex flex-col justify-center bg-[#3D74B6] max-h-[24vh] rounded-2xl shadow-lg transition-transform transform hover:scale-105">
-    <p className="text-sm sm:text-base font-semibold tracking-wide opacity-90">
-      Balance
-    </p>
-    <span className="text-md sm:text-md font-extrabold block">
-      {userBalance !== null ? `${userBalance} ብር` : "Loading..."}
-    </span>
-  </div>
+          {/* Bonus Balance Card */}
+          <div className="flex flex-col justify-center bg-[#51B33B] max-h-[24vh] rounded-2xl shadow-lg transition-transform transform hover:scale-105">
+            <p className="text-sm sm:text-base font-semibold tracking-wide opacity-90">
+              Bonus
+            </p>
+            <span className="text-md sm:text-md font-extrabold block">
+              {bonusBalance !== null ? `${bonusBalance} ብር` : "Loading..."}
+            </span>
+          </div>
 
-  {/* Bonus Balance Card */}
-  <div className="flex flex-col justify-center bg-[#51B33B] max-h-[24vh] rounded-2xl shadow-lg transition-transform transform hover:scale-105">
-    <p className="text-sm sm:text-base font-semibold tracking-wide opacity-90">
-      Bonus
-    </p>
-    <span className="text-md sm:text-md font-extrabold block">
-      {bonusBalance !== null ? `${bonusBalance} ብር` : "Loading..."}
-    </span>
-  </div>
+          {/* Game Count Card */}
+          <div className="flex flex-col justify-center items-center bg-gradient-to-br from-blue-500 via-cyan-500 to-sky-400 max-h-[24vh] shadow-lg rounded-2xl transition-transform transform hover:scale-105">
+            {gameStarted ? (
+              <button className="flex flex-col justify-center items-center text-white font-extrabold text-lg sm:text-xl transition-transform transform hover:scale-105">
+                <span className="animate-bounce">Wait 🛑</span>
+              </button>
+            ) : (
+              <button className="flex flex-col justify-center items-center text-white font-extrabold text-lg sm:text-xl transition-transform transform hover:scale-105">
+                <span>PLAY</span>
+                <span className="animate-bounce">▶️</span>
+              </button>
+            )}
+          </div>
 
-  {/* Game Count Card */}
-  <div className="flex flex-col justify-center items-center bg-gradient-to-br from-blue-500 via-cyan-500 to-sky-400 max-h-[24vh] shadow-lg rounded-2xl transition-transform transform hover:scale-105">
-    {gameStarted ? (
-      <button className="flex flex-col justify-center items-center text-white font-extrabold text-lg sm:text-xl transition-transform transform hover:scale-105">
-        <span className="animate-bounce">Wait 🛑</span>
-      </button>
-    ) : (
-      <button className="flex flex-col justify-center items-center text-white font-extrabold text-lg sm:text-xl transition-transform transform hover:scale-105">
-        <span>PLAY</span>
-        <span className="animate-bounce">▶️</span>
-      </button>
-    )}
-  </div>
+          {/* Game Choice Card */}
+          <div className="flex flex-col justify-center bg-[#FFD93D] max-h-[24vh] rounded-2xl shadow-lg transition-transform transform hover:scale-105">
+            <p className="text-sm sm:text-base font-semibold tracking-wide opacity-90">
+              ባለ
+            </p>
+            <span className="text-lg sm:text-xl font-extrabold block">
+              {gameId}
+            </span>
+          </div>
+        </div>
 
-  {/* Game Choice Card */}
-  <div className="flex flex-col justify-center bg-[#FFD93D] max-h-[24vh] rounded-2xl shadow-lg transition-transform transform hover:scale-105">
-    <p className="text-sm sm:text-base font-semibold tracking-wide opacity-90">
-      ባለ
-    </p>
-    <span className="text-lg sm:text-xl font-extrabold block">
-      {gameId}
-    </span>
-  </div>
-</div>
+        <div className="grid grid-cols-10 gap-1 py-1 px-2 max-w-lg w-full text-xs">
+          {numbers.map((num) => {
+            const isMyCard = cartelaId === num;
+            const isOtherCard = Object.entries(otherSelectedCards).some(
+              ([id, card]) => Number(card) === num && id !== telegramId
+            );
 
+            return (
+              <button
+                key={num}
+                onClick={() => handleNumberClick(num)}
+                disabled={isOtherCard}
+                className={`w-8 h-8 flex items-center justify-center rounded-md border border-gray-300 font-bold cursor-pointer transition-all duration-200 text-xs
+                           ${isMyCard ? myCardBg : isOtherCard ? otherCardBg : defaultCardBg}`}
+              >
+                {num}
+              </button>
+            );
+          })}
+        </div>
 
+        <div className="flex gap-3 items-center mt-2">
+          {cartela.length > 0 && (
+            <div className="grid grid-cols-5 gap-1 p-1 bg-transparent text-white">
+              {cartela.flat().map((num, index) => (
+                <div key={index} className={`w-6 h-6 flex items-center justify-center border border-white rounded-lg text-xs font-bold ${cellBg}`}>
+                  {num}
+                </div>
+              ))}
+            </div>
+          )}
 
-<div className="grid grid-cols-10 gap-1 py-1 px-2 max-w-lg w-full text-xs">
-{numbers.map((num) => {
- // console.log(cartelaId);
-const isMyCard = cartelaId === num;
-const isOtherCard = Object.entries(otherSelectedCards).some(
-([id, card]) => Number(card) === num && id !== telegramId
-);
-
-return (
-<button
-key={num}
-onClick={() => handleNumberClick(num)}
-disabled={isOtherCard} // 🚫 Disable until socket is ready or card is taken
-className={`w-8 h-8 flex items-center justify-center rounded-md border border-gray-300 font-bold cursor-pointer transition-all duration-200 text-xs
-           ${isMyCard ? myCardBg : isOtherCard ? otherCardBg : defaultCardBg}`}
->
-{num}
-</button>
-);
-})}
-</div>
-
-
-<div className="flex gap-3 items-center mt-2">
-{cartela.length > 0 && (
-<div className="grid grid-cols-5 gap-1 p-1 bg-transparent text-white">
-{cartela.flat().map((num, index) => (
-<div key={index} className={`w-6 h-6 flex items-center justify-center border border-white rounded-lg text-xs font-bold ${cellBg}`}>
- {num}
-</div>
-))}
-</div>
-)}
-
-<div className="flex gap-2 mt-2">
-<button onClick={resetGame} className={`${refreshBtnBg} text-white px-3 py-1 rounded-lg shadow-md text-sm`}>
-  Refresh
-</button>
-<button
-onClick={startGame}
-disabled={!cartelaId || isStarting}
-className={`${
-       !cartelaId || isStarting ? startBtnDisabledBg : startBtnEnabledBg
-     } text-white px-3 py-1 rounded-lg shadow-md text-sm`}
->
-{isStarting ? "Starting..." : "Start Game"}
-</button>
-
-
-</div>
-</div>
-</div>
-
-
-
-
-</>
-
-);
-};
+          <div className="flex gap-2 mt-2">
+            <button onClick={resetGame} className={`${refreshBtnBg} text-white px-3 py-1 rounded-lg shadow-md text-sm`}>
+              Refresh
+            </button>
+            <button
+              onClick={startGame}
+              disabled={!cartelaId || isStarting}
+              className={`${
+                !cartelaId || isStarting ? startBtnDisabledBg : startBtnEnabledBg
+              } text-white px-3 py-1 rounded-lg shadow-md text-sm`}
+            >
+              {isStarting ? "Starting..." : "Start Game"}
+            </button>
+          </div>
+        </div>
+        
+        {/* Debug Info Panel */}
+        <div className="mt-4 p-2 bg-black/50 rounded-lg text-xs max-w-lg w-full">
+          <div className="font-bold mb-1">Debug Info:</div>
+          <div>cartelaId: {cartelaId || "null"}</div>
+          <div>telegramId: {telegramId || "null"}</div>
+          <div>gameId: {gameId || "null"}</div>
+          <div>cartela length: {cartela.length}</div>
+          <div>isStarting: {isStarting ? "true" : "false"}</div>
+        </div>
+      </div>
+    </>
+  );
+}
 
 export default Bingo;
