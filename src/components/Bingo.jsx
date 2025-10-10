@@ -348,7 +348,7 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
     return () => clearInterval(interval);
   }, [gameId]);
 
-  // Join Game & Emit to Socket - FIXED VERSION
+  // 🟢 Join Game & Emit to Socket - UPDATED: No joining running games
   const startGame = async () => {
     if (isStarting) return;
 
@@ -384,24 +384,9 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
             playerCount: 1,
           },
         });
-      } else if (data.message && data.message.includes("already running") && data.GameSessionId) {
-        // Game is already running, join it instead
-        socket.emit("joinGame", {
-          gameId,
-          telegramId,
-          GameSessionId: data.GameSessionId
-        });
-
-        navigate("/game", {
-          state: {
-            gameId,
-            telegramId,
-            GameSessionId: data.GameSessionId,
-            cartelaId,
-            cartela,
-            playerCount: 1,
-          },
-        });
+      } else if (data.message && data.message.includes("already running")) {
+        // Game is already running - show error message
+        setAlertMessage("🚫 Game has already started! Please wait for the next game.");
       } else {
         setAlertMessage(data.message || data.error || "Error starting the game");
         console.error("Game start error:", data.error);
