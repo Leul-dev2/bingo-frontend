@@ -74,7 +74,7 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
       setUserBalance(data.balance);
       setUserBonusBalance(data.bonus_balance);
     } catch (err) {
-      console.error("Error fetching user data:", err);
+      console.error(err);
       setAlertMessage("Error fetching user data.");
     }
   };
@@ -162,17 +162,14 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
 
     // Socket event listeners
     socket.on("initialCardStates", handleInitialCardStates);
-    socket.on("userconnected", (res) => { 
-      setResponse(res.telegramId); 
-    });
-    socket.on("balanceUpdated", (newBalance) => { 
-      setUserBalance(newBalance); 
-    });
+    socket.on("userconnected", (res) => { setResponse(res.telegramId); });
+    socket.on("balanceUpdated", (newBalance) => { setUserBalance(newBalance); });
     socket.on("gameStatusUpdate", (status) => { 
       setGameStatus(status);
     });
     socket.on("currentCardSelections", handleCardSelections);
     socket.on("cardConfirmed", (data) => {
+      // Ignore stale confirmations
       if (data.requestId !== lastRequestIdRef.current) {
         return;
       }
@@ -201,11 +198,9 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
     });
 
     socket.on("cardReleased", handleCardReleased);
-    socket.on("gameid", (data) => { 
-      setCount(data.numberOfPlayers); 
-    });
+    socket.on("gameid", (data) => { setCount(data.numberOfPlayers); });
     socket.on("error", (err) => {
-      console.error("Socket error:", err);
+      console.error(err);
       setAlertMessage(err.message);
     });
     socket.on("cardsReset", ({ gameId: resetGameId }) => {
@@ -267,10 +262,7 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
 
   // Select a bingo card
   const handleNumberClick = (number) => {
-    if (emitLockRef.current && number === cartelaId) {
-      return;
-    }
-    
+    if (emitLockRef.current && number === cartelaId) return;
     if (emitLockRef.current && number !== cartelaId) {
       emitLockRef.current = false;
     }
@@ -356,37 +348,19 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
     return () => clearInterval(interval);
   }, [gameId]);
 
-  // Join Game & Emit to Socket - PRODUCTION READY
+  // Join Game & Emit to Socket - FIXED VERSION
   const startGame = async () => {
     if (isStarting) return;
 
-    // Validation checks
-    if (!cartelaId) {
-      setAlertMessage("❌ Please select a bingo card first!");
-      return;
-    }
-
-    if (!telegramId || !gameId) {
-      setAlertMessage("❌ Missing user or game information");
-      return;
-    }
-
     setIsStarting(true);
-    setAlertMessage("");
 
     try {
-      const requestBody = {
-        gameId: gameId,
-        telegramId: telegramId,
-        cardId: cartelaId
-      };
-
       const response = await fetch("https://bingo-backend-8929.onrender.com/api/games/start", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify({ gameId, telegramId, cardId: cartelaId }),
       });
 
       const data = await response.json();
@@ -430,14 +404,11 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
         });
       } else {
         setAlertMessage(data.message || data.error || "Error starting the game");
+        console.error("Game start error:", data.error);
       }
     } catch (error) {
-      console.error("Game start failed:", error);
-      if (error.message.includes("Failed to fetch")) {
-        setAlertMessage("🌐 Network error: Cannot connect to server.");
-      } else {
-        setAlertMessage(`❌ Connection error: ${error.message}`);
-      }
+      setAlertMessage("Error connecting to the backend");
+      console.error("Connection error:", error);
     } finally {
       setIsStarting(false);
     }
