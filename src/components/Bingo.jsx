@@ -95,9 +95,8 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
       }
       
       for (const [cardId, tId] of Object.entries(cards)) {
-        if (tId === telegramId) {
-          setCartelaIdInParent(parseInt(cardId));
-        } else {
+        // ✅ FIXED: Only add cards from OTHER players to otherSelectedCards
+        if (tId !== telegramId) {
           reformatted[tId] = parseInt(cardId);
         }
       }
@@ -125,7 +124,10 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
       const newOtherSelectedCardsMap = {};
       for (const cardId in takenCards) {
         const takenByTelegramId = takenCards[cardId].takenBy;
-        newOtherSelectedCardsMap[takenByTelegramId] = Number(cardId);
+        // ✅ FIXED: Only add cards from OTHER players
+        if (takenByTelegramId !== telegramId) {
+          newOtherSelectedCardsMap[takenByTelegramId] = Number(cardId);
+        }
       }
       setOtherSelectedCards(newOtherSelectedCardsMap);
 
@@ -137,10 +139,7 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
         if (selectedCardData) {
           setCartela(selectedCardData.card);
           setCartelaIdInParent(numMySavedCardId);
-          setOtherSelectedCards(prev => ({
-            ...prev,
-            [telegramId]: numMySavedCardId
-          }));
+          // ✅ FIXED: Removed adding own card to otherSelectedCards
         } else {
           sessionStorage.removeItem("mySelectedCardId");
           setCartela([]);
@@ -466,7 +465,7 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
           {numbers.map((num) => {
             const isMyCard = cartelaId === num;
             const isOtherCard = Object.entries(otherSelectedCards).some(
-              ([id, card]) => Number(card) === num && id !== telegramId
+              ([id, card]) => Number(card) === num
             );
 
             return (
