@@ -438,78 +438,199 @@ useEffect(() => {
       <div className="flex flex-wrap w-full mt-1">
         {/* Column 1: Controls and Number Grid */}
         <div className="w-[45%] flex flex-col items-center gap-2">
-          {/* Countdown and Current Number - Side by side */}
-          <div className="flex flex-row gap-2 w-full justify-center">
-            {/* Countdown */}
-            <div className="bg-gray-300 p-2 rounded-lg text-center text-xs w-1/2 flex items-center justify-around">
-              <p>Countdown</p>
-              <p className="text-lg font-bold">{countdown > 0 ? countdown : "Wait"}</p>
-            </div>
+          {activeBoards.length === 1 ? (
+            // Single Board: Show Number Grid only
+            <div className="grid grid-cols-5 bg-[#2a0047] p-1 gap-2 rounded-lg text-xs w-[90%]">
+              {["B", "I", "N", "G", "O"].map((letter, i) => (
+                <div key={i} className={`text-white text-center text-xs font-bold rounded-full h-4 w-6 ${bingoColors[letter]}`}>
+                  {letter}
+                </div>
+              ))}
+              {[...Array(15)].map((_, rowIndex) =>
+                ["B", "I", "N", "G", "O"].map((letter, colIndex) => {
+                  const number = rowIndex + 1 + colIndex * 15;
+                  const randomNumberLabel = `${letter}-${number}`;
 
-            {/* Current Number */}
-            <div className="bg-gradient-to-b from-purple-800 to-purple-900 rounded-lg text-white flex flex-col items-center justify-center w-1/2 p-2">
-              <p className="font-bold text-xs">Current Number</p>
-              <div className="w-10 h-10 flex items-center justify-center text-md font-extrabold rounded-full shadow-[0_0_10px_#37ebf3] bg-[#37ebf3] text-purple-900 mt-1">
-                {lastCalledLabel ? lastCalledLabel : "-"}
-              </div>
+                  return (
+                    <div
+                      key={randomNumberLabel}
+                      className={`text-center rounded ${
+                       calledSet.has(randomNumberLabel)
+                          ? "bg-gradient-to-b from-yellow-400 to-orange-500 text-black"
+                          : "bg-gray-800 text-gray-400 font-bold"
+                      }`}
+                    >
+                      {number}
+                    </div>
+                  );
+                })
+              )}
             </div>
-          </div>
+          ) : (
+            // Multi-Board: Show Controls and Number Grid
+            <>
+              {/* Countdown and Current Number - Side by side */}
+              <div className="flex flex-row gap-2 w-full justify-center">
+                {/* Countdown */}
+                <div className="bg-gray-300 p-2 rounded-lg text-center text-xs w-1/2 flex items-center justify-around">
+                  <p>Countdown</p>
+                  <p className="text-lg font-bold">{countdown > 0 ? countdown : "Wait"}</p>
+                </div>
 
-          {/* Recent Calls */}
-          <div className="bg-gradient-to-b from-gray-800 to-gray-900 p-2 rounded-lg w-full">
-            <p className="text-center font-bold text-xs text-yellow-400 mb-1">Recent Calls</p>
-            <div className="flex justify-center gap-2">
-              {randomNumber.slice(-3).map((num, index) => {
-                const colors = ["bg-red-800", "bg-green-800", "bg-blue-800"];
-                return (
-                  <div
-                    key={index}
-                    className={`w-6 h-6 flex items-center justify-center text-xs font-extrabold rounded-full text-white ${colors[index]}`}
-                  >
-                    {num}
+                {/* Current Number */}
+                <div className="bg-gradient-to-b from-purple-800 to-purple-900 rounded-lg text-white flex flex-col items-center justify-center w-1/2 p-2">
+                  <p className="font-bold text-xs">Current Number</p>
+                  <div className="w-10 h-10 flex items-center justify-center text-md font-extrabold rounded-full shadow-[0_0_10px_#37ebf3] bg-[#37ebf3] text-purple-900 mt-1">
+                    {lastCalledLabel ? lastCalledLabel : "-"}
                   </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Number Grid */}
-          <div className="grid grid-cols-5 bg-[#2a0047] p-1 gap-2 rounded-lg text-xs w-full">
-            {["B", "I", "N", "G", "O"].map((letter, i) => (
-              <div key={i} className={`text-white text-center text-xs font-bold rounded-full h-4 w-6 ${bingoColors[letter]}`}>
-                {letter}
+                </div>
               </div>
-            ))}
-            {[...Array(15)].map((_, rowIndex) =>
-              ["B", "I", "N", "G", "O"].map((letter, colIndex) => {
-                const number = rowIndex + 1 + colIndex * 15;
-                const randomNumberLabel = `${letter}-${number}`;
 
-                return (
-                  <div
-                    key={randomNumberLabel}
-                    className={`text-center rounded ${
-                     calledSet.has(randomNumberLabel)
-                        ? "bg-gradient-to-b from-yellow-400 to-orange-500 text-black"
-                        : "bg-gray-800 text-gray-400 font-bold"
-                    }`}
-                  >
-                    {number}
+              {/* Recent Calls */}
+              <div className="bg-gradient-to-b from-gray-800 to-gray-900 p-2 rounded-lg w-full">
+                <p className="text-center font-bold text-xs text-yellow-400 mb-1">Recent Calls</p>
+                <div className="flex justify-center gap-2">
+                  {randomNumber.slice(-3).map((num, index) => {
+                    const colors = ["bg-red-800", "bg-green-800", "bg-blue-800"];
+                    return (
+                      <div
+                        key={index}
+                        className={`w-6 h-6 flex items-center justify-center text-xs font-extrabold rounded-full text-white ${colors[index]}`}
+                      >
+                        {num}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Number Grid */}
+              <div className="grid grid-cols-5 bg-[#2a0047] p-1 gap-2 rounded-lg text-xs w-full">
+                {["B", "I", "N", "G", "O"].map((letter, i) => (
+                  <div key={i} className={`text-white text-center text-xs font-bold rounded-full h-4 w-6 ${bingoColors[letter]}`}>
+                    {letter}
                   </div>
-                );
-              })
-            )}
-          </div>
+                ))}
+                {[...Array(15)].map((_, rowIndex) =>
+                  ["B", "I", "N", "G", "O"].map((letter, colIndex) => {
+                    const number = rowIndex + 1 + colIndex * 15;
+                    const randomNumberLabel = `${letter}-${number}`;
+
+                    return (
+                      <div
+                        key={randomNumberLabel}
+                        className={`text-center rounded ${
+                         calledSet.has(randomNumberLabel)
+                            ? "bg-gradient-to-b from-yellow-400 to-orange-500 text-black"
+                            : "bg-gray-800 text-gray-400 font-bold"
+                        }`}
+                      >
+                        {number}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Column 2: Boards */}
-        <div className="w-[55%] flex flex-col items-center gap-2">
+        <div className="w-[55%] flex flex-col items-center gap-1">
           {activeBoards.length === 1 ? (
-            // Single Board Layout
+            // Single Board: Show all controls here
             <>
-              <div className="bg-gradient-to-b from-purple-800 to-purple-900 p-4 rounded-lg w-full max-w-md">
-                {/* BINGO Header */}
-                <div className="grid grid-cols-5 gap-1 mb-2">
+              <div className="bg-gray-300 p-2 rounded-lg text-center text-xs w-[90%] flex-row flex items-center h-[7%] justify-around">
+                <p>Countdown</p>
+                <p className="text-lg font-bold">{countdown > 0 ? countdown : "Wait"}</p>
+              </div>
+
+              <div className="bg-gradient-to-b from-purple-800 to-purple-900 rounded-lg text-white flex flex-row justify-around items-center w-full max-w-md mx-auto">
+                <p className="font-bold text-xs">Current Number</p>
+                <div className="flex justify-center items-center gap-4">
+                  <div className="w-14 h-14 flex items-center justify-center text-xl font-extrabold rounded-full shadow-[0_0_20px_#37ebf3] bg-[#37ebf3] text-purple-900">
+                    {lastCalledLabel ? lastCalledLabel : "-"}
+                  </div>
+                </div>
+              </div>
+
+              {/* Called Numbers Section */}
+              <div className="bg-gradient-to-b from-gray-800 to-gray-900 p-2 rounded-lg w-full max-w-md mx-auto">
+                <p className="text-center font-bold text-xs sm:text-sm text-yellow-400 md:text-base mb-1">Recent Calls</p>
+                <div className="flex justify-center gap-2 sm:gap-4">
+                  {randomNumber.slice(-4, -1).map((num, index) => {
+                    const colors = ["bg-red-800", "bg-green-800", "bg-blue-800"];
+                    return (
+                      <div
+                        key={index}
+                        className={`w-6 h-6 sm:w-6 sm:h-6 md:w-6 md:h-6 flex items-center justify-center 
+                                    text-base text-xs md:text-sm font-extrabold rounded-full shadow-xl text-white
+                                    ${colors[index]}`}
+                      >
+                        {num}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          ) : (
+            // Multi-Board: Empty - controls are in left column
+            <div className="h-4"></div>
+          )}
+
+          {/* ✅ UPDATED: Bingo Cards - Different layout for single vs multi-board */}
+          <div className="w-full">
+            {activeBoards.length === 1 ? (
+              // Single Board Layout - Bingo button separate from board
+              <div className="space-y-4">
+                <div className="bg-gradient-to-b from-purple-800 to-purple-900 p-4 rounded-lg w-full max-w-md mx-auto">
+                  {/* BINGO Header */}
+                  <div className="grid grid-cols-5 gap-1 mb-2">
+                    {["B", "I", "N", "G", "O"].map((letter, i) => (
+                      <div
+                        key={i}
+                        className={`w-8 h-8 flex items-center justify-center font-bold text-white text-sm rounded-full ${bingoColors[letter]}`}
+                      >
+                        {letter}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Bingo Numbers Grid */}
+                  <div className="grid grid-cols-5 gap-1">
+                    {activeBoards[0].cartela.map((row, rowIndex) =>
+                      row.map((num, colIndex) => {
+                        const isFreeSpace = rowIndex === 2 && colIndex === 2;
+                        const isSelectedNum = (selectedNumbersPerBoard[activeBoards[0].cartelaId] || new Set()).has(num);
+
+                        return (
+                          <BingoCell
+                            key={`${activeBoards[0].cartelaId}-${rowIndex}-${colIndex}`}
+                            num={num}
+                            isFreeSpace={isFreeSpace}
+                            isSelected={isSelectedNum}
+                            onClick={() => handleCartelaClick(num, activeBoards[0].cartelaId)}
+                          />
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+                
+                {/* Separate Bingo Button for Single Board */}
+                <button 
+                  onClick={() => checkForWin(activeBoards[0].cartelaId)}
+                  className="w-full max-w-md bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 px-4 py-3 text-white rounded-4xl text-lg font-bold shadow-lg transition-all duration-200"
+                >
+                  BINGO!
+                </button>
+              </div>
+            ) : (
+              // Multi-Board Layout - Vertical stack on right
+              <div className="flex flex-col gap-3 w-full">
+                {/* Shared BINGO Header at Top */}
+                <div className="grid grid-cols-5 gap-1 mb-2 w-full max-w-md">
                   {["B", "I", "N", "G", "O"].map((letter, i) => (
                     <div
                       key={i}
@@ -520,52 +641,7 @@ useEffect(() => {
                   ))}
                 </div>
 
-                {/* Bingo Numbers Grid */}
-                <div className="grid grid-cols-5 gap-1">
-                  {activeBoards[0].cartela.map((row, rowIndex) =>
-                    row.map((num, colIndex) => {
-                      const isFreeSpace = rowIndex === 2 && colIndex === 2;
-                      const isSelectedNum = (selectedNumbersPerBoard[activeBoards[0].cartelaId] || new Set()).has(num);
-
-                      return (
-                        <BingoCell
-                          key={`${activeBoards[0].cartelaId}-${rowIndex}-${colIndex}`}
-                          num={num}
-                          isFreeSpace={isFreeSpace}
-                          isSelected={isSelectedNum}
-                          onClick={() => handleCartelaClick(num, activeBoards[0].cartelaId)}
-                        />
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-              
-              {/* Separate Bingo Button for Single Board */}
-              <button 
-                onClick={() => checkForWin(activeBoards[0].cartelaId)}
-                className="w-full max-w-md bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 px-4 py-3 text-white rounded-4xl text-lg font-bold shadow-lg transition-all duration-200"
-              >
-                BINGO!
-              </button>
-            </>
-          ) : (
-            // Multi-Board Layout
-            <>
-              {/* Shared BINGO Header at Top */}
-              <div className="grid grid-cols-5 gap-1 mb-2 w-full max-w-md">
-                {["B", "I", "N", "G", "O"].map((letter, i) => (
-                  <div
-                    key={i}
-                    className={`w-8 h-8 flex items-center justify-center font-bold text-white text-sm rounded-full ${bingoColors[letter]}`}
-                  >
-                    {letter}
-                  </div>
-                ))}
-              </div>
-
-              {/* Vertical Stack of Boards */}
-              <div className="flex flex-col gap-3 w-full">
+                {/* Vertical Stack of Boards */}
                 {activeBoards.map((board, boardIndex) => {
                   const isSelected = (selectedNumbersPerBoard[board.cartelaId] || new Set());
                   
@@ -607,14 +683,14 @@ useEffect(() => {
                   );
                 })}
               </div>
-            </>
-          )}
+            )}
+          </div>
 
-          {/* Add Board Button for single board */}
+          {/* ✅ NEW: Add Board Button */}
           {activeBoards.length === 1 && (
             <button
               onClick={navigateToAddBoard}
-              className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 px-4 py-2 text-white rounded-4xl text-lg font-bold shadow-lg transition-all duration-200"
+              className="w-[95%] bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 px-4 py-2 text-white rounded-4xl text-lg font-bold shadow-lg transition-all duration-200 mb-2"
             >
               + Add Another Board
             </button>
