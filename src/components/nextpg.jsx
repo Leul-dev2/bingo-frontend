@@ -21,8 +21,6 @@ const BingoCell = React.memo(({ num, isFreeSpace, isSelected, onClick }) => {
   );
 });
 
-
-
 const BingoGame = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -502,18 +500,12 @@ useEffect(() => {
   </div>
 </div>
 
-{/* ✅ UPDATED: Bingo Cards - Multi-board support */}
-<div className="w-full space-y-4">
-  {activeBoards.map((board, boardIndex) => {
-    const isSelected = (selectedNumbersPerBoard[board.cartelaId] || new Set());
-    
-    return (
-      <div key={board.cartelaId} className="bg-gradient-to-b from-purple-800 to-purple-900 p-4 rounded-lg w-full max-w-md mx-auto">
-        {/* Board Header */}
-        <div className="text-center text-yellow-400 text-sm mb-2 font-bold">
-          {boardIndex === 0 ? "PRIMARY BOARD" : "SECONDARY BOARD"}
-        </div>
-        
+{/* ✅ UPDATED: Bingo Cards - Different layout for single vs multi-board */}
+<div className="w-full">
+  {activeBoards.length === 1 ? (
+    // Single Board Layout - Bingo button separate from board
+    <div className="space-y-4">
+      <div className="bg-gradient-to-b from-purple-800 to-purple-900 p-4 rounded-lg w-full max-w-md mx-auto">
         {/* BINGO Header */}
         <div className="grid grid-cols-5 gap-1 mb-2">
           {["B", "I", "N", "G", "O"].map((letter, i) => (
@@ -528,34 +520,90 @@ useEffect(() => {
 
         {/* Bingo Numbers Grid */}
         <div className="grid grid-cols-5 gap-1">
-          {board.cartela.map((row, rowIndex) =>
+          {activeBoards[0].cartela.map((row, rowIndex) =>
             row.map((num, colIndex) => {
               const isFreeSpace = rowIndex === 2 && colIndex === 2;
-              const isSelectedNum = isSelected.has(num);
+              const isSelectedNum = (selectedNumbersPerBoard[activeBoards[0].cartelaId] || new Set()).has(num);
 
               return (
                 <BingoCell
-                  key={`${board.cartelaId}-${rowIndex}-${colIndex}`}
+                  key={`${activeBoards[0].cartelaId}-${rowIndex}-${colIndex}`}
                   num={num}
                   isFreeSpace={isFreeSpace}
                   isSelected={isSelectedNum}
-                  onClick={() => handleCartelaClick(num, board.cartelaId)}
+                  onClick={() => handleCartelaClick(num, activeBoards[0].cartelaId)}
                 />
               );
             })
           )}
         </div>
-
-        {/* ✅ UPDATED: Bingo Button with Board Number */}
-        <button 
-          onClick={() => checkForWin(board.cartelaId)}
-          className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 px-4 py-2 text-white rounded-4xl text-sm font-bold shadow-lg transition-all duration-200 mt-3"
-        >
-          BINGO! (Board #{board.cartelaId})
-        </button>
       </div>
-    );
-  })}
+      
+      {/* Separate Bingo Button for Single Board */}
+      <button 
+        onClick={() => checkForWin(activeBoards[0].cartelaId)}
+        className="w-full max-w-md bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 px-4 py-3 text-white rounded-4xl text-lg font-bold shadow-lg transition-all duration-200"
+      >
+        BINGO!
+      </button>
+    </div>
+  ) : (
+    // Multi-Board Layout - Bingo button integrated with each board
+    <div className="flex flex-row gap-4 justify-center">
+      {activeBoards.map((board, boardIndex) => {
+        const isSelected = (selectedNumbersPerBoard[board.cartelaId] || new Set());
+        
+        return (
+          <div key={board.cartelaId} className="bg-gradient-to-b from-purple-800 to-purple-900 p-4 rounded-lg w-48">
+            {/* Board Header */}
+            <div className="text-center text-yellow-400 text-sm mb-2 font-bold">
+              {boardIndex === 0 ? "PRIMARY" : "SECONDARY"}
+            </div>
+            
+            {/* BINGO Header */}
+            <div className="grid grid-cols-5 gap-1 mb-2">
+              {["B", "I", "N", "G", "O"].map((letter, i) => (
+                <div
+                  key={i}
+                  className={`w-6 h-6 flex items-center justify-center font-bold text-white text-xs rounded-full ${bingoColors[letter]}`}
+                >
+                  {letter}
+                </div>
+              ))}
+            </div>
+
+            {/* Bingo Numbers Grid */}
+            <div className="grid grid-cols-5 gap-1">
+              {board.cartela.map((row, rowIndex) =>
+                row.map((num, colIndex) => {
+                  const isFreeSpace = rowIndex === 2 && colIndex === 2;
+                  const isSelectedNum = isSelected.has(num);
+
+                  return (
+                    <BingoCell
+                      key={`${board.cartelaId}-${rowIndex}-${colIndex}`}
+                      num={num}
+                      isFreeSpace={isFreeSpace}
+                      isSelected={isSelectedNum}
+                      onClick={() => handleCartelaClick(num, board.cartelaId)}
+                    />
+                  );
+                })
+              )}
+            </div>
+
+            {/* Bingo Button integrated with board */}
+            <button 
+              onClick={() => checkForWin(board.cartelaId)}
+              className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 px-2 py-1 text-white rounded-4xl text-xs font-bold shadow-lg transition-all duration-200 mt-2"
+            >
+              BINGO!
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  )}
 </div>
 
           {/* ✅ NEW: Add Board Button */}
