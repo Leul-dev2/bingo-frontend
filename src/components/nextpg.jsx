@@ -435,7 +435,7 @@ useEffect(() => {
       </button>
     </div>
 
-      <div className="flex flex-wrap w-full mt-1">
+      <div className={`flex w-full mt-1 ${activeBoards.length > 1 ? 'gap-3' : ''}`}>
         {/* Column 1: Controls and Number Grid */}
         <div className="w-[45%] flex flex-col items-center gap-2">
           {activeBoards.length === 1 ? (
@@ -471,16 +471,14 @@ useEffect(() => {
             <>
               {/* Countdown and Current Number - Side by side */}
               <div className="flex flex-row gap-2 w-full justify-center">
-                {/* Countdown */}
-                <div className="bg-gray-300 p-2 rounded-lg text-center text-xs w-1/2 flex items-center justify-around">
-                  <p>Countdown</p>
-                  <p className="text-lg font-bold">{countdown > 0 ? countdown : "Wait"}</p>
+                {/* Countdown - Only number */}
+                <div className="bg-gray-300 p-2 rounded-lg text-center w-1/2 flex items-center justify-center">
+                  <p className="text-xl font-bold">{countdown > 0 ? countdown : "Wait"}</p>
                 </div>
 
-                {/* Current Number */}
-                <div className="bg-gradient-to-b from-purple-800 to-purple-900 rounded-lg text-white flex flex-col items-center justify-center w-1/2 p-2">
-                  <p className="font-bold text-xs">Current Number</p>
-                  <div className="w-10 h-10 flex items-center justify-center text-md font-extrabold rounded-full shadow-[0_0_10px_#37ebf3] bg-[#37ebf3] text-purple-900 mt-1">
+                {/* Current Number - Only number */}
+                <div className="bg-gradient-to-b from-purple-800 to-purple-900 rounded-lg text-white flex items-center justify-center w-1/2 p-2">
+                  <div className="w-12 h-12 flex items-center justify-center text-xl font-extrabold rounded-full shadow-[0_0_15px_#37ebf3] bg-[#37ebf3] text-purple-900">
                     {lastCalledLabel ? lastCalledLabel : "-"}
                   </div>
                 </div>
@@ -617,14 +615,6 @@ useEffect(() => {
                     )}
                   </div>
                 </div>
-                
-                {/* Separate Bingo Button for Single Board */}
-                <button 
-                  onClick={() => checkForWin(activeBoards[0].cartelaId)}
-                  className="w-full max-w-md bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 px-4 py-3 text-white rounded-4xl text-lg font-bold shadow-lg transition-all duration-200"
-                >
-                  BINGO!
-                </button>
               </div>
             ) : (
               // Multi-Board Layout - Vertical stack on right
@@ -685,45 +675,57 @@ useEffect(() => {
               </div>
             )}
           </div>
-
-          {/* ✅ NEW: Add Board Button */}
-          {activeBoards.length === 1 && (
-            <button
-              onClick={navigateToAddBoard}
-              className="w-[95%] bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 px-4 py-2 text-white rounded-4xl text-lg font-bold shadow-lg transition-all duration-200 mb-2"
-            >
-              + Add Another Board
-            </button>
-          )}
         </div>
       </div>
 
-      <div className="w-full flex gap-3 justify-center mt-3">
-        <button
-          className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 px-14 h-8 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
-          onClick={() => {
-            if (gameId && telegramId) {
-              socket.emit("joinGame", { gameId, telegramId, GameSessionId });
-              console.log("Forced refresh: Re-emitted joinGame to synchronize state.");
-            } else {
-              console.warn("Cannot force refresh: gameId or telegramId missing.");
-              window.location.reload();
-            }
-          }}
-        >
-          Refresh
-        </button>
-        <button
-          onClick={() => {
-            socket.emit("playerLeave", { gameId: String(gameId), GameSessionId, telegramId }, () => {
-              console.log("player leave emited🎯🎯", GameSessionId );
-              navigate("/");
-            });
-          }}
-          className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 px-14 h-8 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
-        >
-          Leave
-        </button>
+      {/* ✅ UPDATED: Bottom buttons section - BINGO button for single board + action buttons */}
+      <div className="w-full flex flex-col items-center gap-3 mt-3">
+        {/* Single Board BINGO Button at bottom */}
+        {activeBoards.length === 1 && (
+          <button 
+            onClick={() => checkForWin(activeBoards[0].cartelaId)}
+            className="w-full max-w-md bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 px-4 py-3 text-white rounded-4xl text-lg font-bold shadow-lg transition-all duration-200"
+          >
+            BINGO!
+          </button>
+        )}
+
+        {/* Action Buttons - Refresh, Leave, Add Board */}
+        <div className="w-full flex gap-3 justify-center">
+          <button
+            className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 px-14 h-8 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
+            onClick={() => {
+              if (gameId && telegramId) {
+                socket.emit("joinGame", { gameId, telegramId, GameSessionId });
+                console.log("Forced refresh: Re-emitted joinGame to synchronize state.");
+              } else {
+                console.warn("Cannot force refresh: gameId or telegramId missing.");
+                window.location.reload();
+              }
+            }}
+          >
+            Refresh
+          </button>
+          <button
+            onClick={() => {
+              socket.emit("playerLeave", { gameId: String(gameId), GameSessionId, telegramId }, () => {
+                console.log("player leave emited🎯🎯", GameSessionId );
+                navigate("/");
+              });
+            }}
+            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 px-14 h-8 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
+          >
+            Leave
+          </button>
+          {activeBoards.length === 1 && (
+            <button
+              onClick={navigateToAddBoard}
+              className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 px-14 h-8 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
+            >
+              Add Board
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ✅ NEW: Add Board Warning Modal */}
