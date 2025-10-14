@@ -72,7 +72,7 @@ export default function Profile({ setIsBlackToggleOn, isBlackToggleOn }) {
     setLoading(true);
     setRateLimitError('');
     setRetryAfter(0);
-    fetch(`https://bingo-backend-8929.onrender.com/api/profile/${id}`)
+    fetch(`https://adminedashbordbackend.onrender.com/api/profile/${id}`)
       .then(async (res) => {
         if (res.status === 429) {
           const json = await res.json();

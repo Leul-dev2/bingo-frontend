@@ -74,7 +74,7 @@ export default function History({ isBlackToggleOn }) {
 
       try {
         const res = await fetch(
-          `https://bingo-backend-8929.onrender.com/api/history?user=${telegramId}&bet=${selectedBet}&tab=${activeTab}`
+          `https://adminedashbordbackend.onrender.com/api/history?user=${telegramId}&bet=${selectedBet}&tab=${activeTab}`
         );
 
         if (res.status === 429) {
