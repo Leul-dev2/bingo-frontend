@@ -20,11 +20,63 @@ const AddBoard = () => {
   const [currentCountdown, setCurrentCountdown] = useState(initialCountdown || 0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [socketConnected, setSocketConnected] = useState(socket.connected);
   const numbers = Array.from({ length: 100 }, (_, i) => i + 1);
   
   const countdownRef = useRef(null);
 
-  // Listen for real-time board selections in current game
+  // ✅ NEW: Socket state recovery on mount
+  useEffect(() => {
+    if (telegramId && gameId && GameSessionId) {
+      console.log('🔄 AddBoard: Recovering socket state');
+      socket.emit("recoverSocketState", {
+        telegramId,
+        gameId,
+        GameSessionId,
+        fromPage: 'addBoard'
+      });
+    }
+  }, [telegramId, gameId, GameSessionId]);
+
+  // ✅ NEW: Socket connection status monitoring
+  useEffect(() => {
+    const handleConnect = () => {
+      console.log('✅ AddBoard: Socket connected');
+      setSocketConnected(true);
+      setError(null);
+    };
+
+    const handleDisconnect = () => {
+      console.log('🔴 AddBoard: Socket disconnected');
+      setSocketConnected(false);
+    };
+
+    const handleReconnect = () => {
+      console.log('🔄 AddBoard: Socket reconnected, recovering state');
+      setSocketConnected(true);
+      // Recover socket state after reconnection
+      if (telegramId && gameId && GameSessionId) {
+        socket.emit("recoverSocketState", {
+          telegramId,
+          gameId,
+          GameSessionId,
+          fromPage: 'addBoard'
+        });
+      }
+    };
+
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+    socket.on('reconnect', handleReconnect);
+
+    return () => {
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
+      socket.off('reconnect', handleReconnect);
+    };
+  }, [telegramId, gameId, GameSessionId]);
+
+  // ✅ UPDATED: Socket event listeners with better error handling
   useEffect(() => {
     const handleBoardTaken = ({ cardId, telegramId: takenBy }) => {
       if (takenBy !== telegramId) {
@@ -47,23 +99,45 @@ const AddBoard = () => {
 
     const handleSocketConnect = () => {
       console.log("✅ Socket reconnected in AddBoard");
+      setSocketConnected(true);
       setError(null);
+    };
+
+    // ✅ NEW: Socket state preservation confirmation
+    const handleSocketStatePreserved = () => {
+      console.log('✅ Socket state preserved for navigation');
+    };
+
+    // ✅ NEW: Socket state recovery confirmation
+    const handleSocketStateRecovered = () => {
+      console.log('✅ Socket state recovered successfully');
+    };
+
+    const handleSocketStateRecoveryFailed = ({ message }) => {
+      console.warn('⚠️ Socket state recovery failed:', message);
+      setError("Connection issue. Please try refreshing.");
     };
 
     socket.on("otherCardSelected", handleBoardTaken);
     socket.on("cardReleased", handleBoardReleased);
     socket.on("connect_error", handleSocketError);
     socket.on("connect", handleSocketConnect);
+    socket.on("socketStatePreserved", handleSocketStatePreserved);
+    socket.on("socketStateRecovered", handleSocketStateRecovered);
+    socket.on("socketStateRecoveryFailed", handleSocketStateRecoveryFailed);
 
     return () => {
       socket.off("otherCardSelected", handleBoardTaken);
       socket.off("cardReleased", handleBoardReleased);
       socket.off("connect_error", handleSocketError);
       socket.off("connect", handleSocketConnect);
+      socket.off("socketStatePreserved", handleSocketStatePreserved);
+      socket.off("socketStateRecovered", handleSocketStateRecovered);
+      socket.off("socketStateRecoveryFailed", handleSocketStateRecoveryFailed);
     };
   }, [telegramId]);
 
-  // Countdown timer
+  // ✅ UPDATED: Countdown timer with socket state preservation
   useEffect(() => {
     if (initialCountdown && initialCountdown > 0) {
       setCurrentCountdown(initialCountdown);
@@ -79,15 +153,25 @@ const AddBoard = () => {
                 gameId 
               });
             }
+            
+            // ✅ FIX: Preserve socket state before navigation
+            socket.emit("preserveSocketState", {
+              telegramId,
+              gameId,
+              GameSessionId,
+              currentPhase: 'addBoard'
+            });
+
             navigate("/game", {
               state: {
                 gameId,
                 telegramId,
                 GameSessionId,
                 selectedBoards: existingBoards,
-                countdown: 0
-              },
-              replace: true
+                countdown: 0,
+                fromAddBoard: true // Flag for state recovery in BingoGame
+              }
+              // ❌ REMOVED: replace: true to maintain navigation history
             });
             return 0;
           }
@@ -103,25 +187,29 @@ const AddBoard = () => {
     };
   }, [initialCountdown, navigate, gameId, telegramId, GameSessionId, existingBoards, selectedBoard]);
 
-  // Keyboard navigation
+  // ✅ UPDATED: Keyboard navigation with socket state check
   useEffect(() => {
     const handleKeyPress = (e) => {
       if (e.key === 'Escape') {
         goBack();
       }
-      if (e.key === 'Enter' && selectedBoard && !isCountdownTooLow) {
+      if (e.key === 'Enter' && selectedBoard && !isCountdownTooLow && socketConnected) {
         confirmSelection();
       }
     };
 
     document.addEventListener('keydown', handleKeyPress);
     return () => document.removeEventListener('keydown', handleKeyPress);
-  }, [selectedBoard]);
+  }, [selectedBoard, socketConnected]);
 
   const isCountdownTooLow = currentCountdown && currentCountdown <= 5;
 
+  // ✅ UPDATED: Board selection with socket state preservation
   const handleBoardSelect = async (number) => {
-    if (isCountdownTooLow || isLoading) {
+    if (isCountdownTooLow || isLoading || !socketConnected) {
+      if (!socketConnected) {
+        setError("Connection lost. Please wait for reconnection.");
+      }
       return;
     }
 
@@ -133,12 +221,6 @@ const AddBoard = () => {
       if (!selectedCard) {
         throw new Error("Card not found for ID: " + number);
       }
-
-      // ✅ REMOVED: No need to check against existingBoards since they're from different card pools
-      // const isAlreadySelected = existingBoards.some(board => board.cartelaId === number);
-      // if (isAlreadySelected) {
-      //   throw new Error("You already have this board in your current selection");
-      // }
 
       // ✅ ONLY check if board is taken by others in current game
       const isTakenByOthers = takenBoards.has(number);
@@ -153,6 +235,14 @@ const AddBoard = () => {
           gameId 
         });
       }
+
+      // ✅ ADDED: Preserve socket state before selection
+      socket.emit("preserveSocketState", {
+        telegramId,
+        gameId,
+        GameSessionId,
+        currentPhase: 'addBoard'
+      });
 
       // Notify other players about this selection
       socket.emit("cardSelected", { 
@@ -175,14 +265,26 @@ const AddBoard = () => {
     }
   };
 
+  // ✅ UPDATED: Confirm selection with enhanced socket state management
   const confirmSelection = async () => {
-    if (!selectedBoard || isCountdownTooLow) {
+    if (!selectedBoard || isCountdownTooLow || !socketConnected) {
+      if (!socketConnected) {
+        setError("Connection lost. Please wait for reconnection.");
+      }
       return;
     }
 
     try {
       setIsLoading(true);
       setError(null);
+
+      // ✅ ADDED: Preserve socket state before confirmation
+      socket.emit("preserveSocketState", {
+        telegramId,
+        gameId,
+        GameSessionId,
+        currentPhase: 'addBoard'
+      });
 
       // Notify server that we're keeping this board
       socket.emit("cardConfirmed", { 
@@ -196,15 +298,18 @@ const AddBoard = () => {
         clearInterval(countdownRef.current);
       }
 
+      // ✅ FIX: Use state to pass navigation info instead of replace
       navigate("/game", {
         state: {
           gameId,
           telegramId,
           GameSessionId,
           selectedBoards: [...existingBoards, selectedBoard],
-          countdown: currentCountdown
-        },
-        replace: true
+          countdown: currentCountdown,
+          fromAddBoard: true, // Flag to trigger state recovery in BingoGame
+          preserveSocket: true // Important flag
+        }
+        // ❌ REMOVED: replace: true to maintain navigation history
       });
       
     } catch (err) {
@@ -214,6 +319,7 @@ const AddBoard = () => {
     }
   };
 
+  // ✅ UPDATED: Go back with socket state preservation
   const goBack = () => {
     // Release the selected board if going back
     if (selectedBoard) {
@@ -224,10 +330,25 @@ const AddBoard = () => {
       });
     }
 
+    // ✅ ADDED: Preserve socket state before navigation
+    socket.emit("preserveSocketState", {
+      telegramId,
+      gameId,
+      GameSessionId,
+      currentPhase: 'addBoard'
+    });
+
     if (countdownRef.current) {
       clearInterval(countdownRef.current);
     }
-    navigate(-1);
+    
+    // ✅ FIX: Use state to pass navigation info
+    navigate(-1, {
+      state: {
+        preserveSocket: true,
+        fromAddBoard: true
+      }
+    });
   };
 
   // ✅ FIXED: Only consider a board "taken" if it's taken by OTHER players
@@ -242,7 +363,9 @@ const AddBoard = () => {
     return takenByOthers;
   };
 
+  // ✅ UPDATED: Get board color with connection status
   const getBoardColor = (number) => {
+    if (!socketConnected) return "bg-gray-400 text-white cursor-not-allowed opacity-50";
     if (selectedBoard?.cartelaId === number) return "bg-green-500 text-white shadow-lg scale-105";
     if (isBoardUnavailable(number)) return "bg-red-500 text-white cursor-not-allowed opacity-70";
     if (isCountdownTooLow) return "bg-gray-400 text-white cursor-not-allowed opacity-50";
@@ -250,7 +373,9 @@ const AddBoard = () => {
     return "bg-white text-black hover:bg-gray-100 hover:shadow-md transition-all duration-200";
   };
 
+  // ✅ UPDATED: Get board tooltip with connection status
   const getBoardTooltip = (number) => {
+    if (!socketConnected) return "Connection lost - reconnecting...";
     if (selectedBoard?.cartelaId === number) return "Selected";
     
     if (takenBoards.has(number)) 
@@ -262,9 +387,9 @@ const AddBoard = () => {
     return "Available";
   };
 
-  // ✅ FIXED: Only disable if taken by others
+  // ✅ UPDATED: Only disable if taken by others or connection lost
   const isBoardDisabled = (number) => {
-    return isBoardUnavailable(number) || isCountdownTooLow || isLoading;
+    return !socketConnected || isBoardUnavailable(number) || isCountdownTooLow || isLoading;
   };
 
   return (
@@ -273,6 +398,13 @@ const AddBoard = () => {
       <div className="text-center text-white mb-4">
         <h1 className="text-2xl font-bold mb-2">Add Another Board</h1>
         <p className="text-sm">Select one additional board to play with</p>
+        
+        {/* ✅ NEW: Connection status indicator */}
+        <div className={`px-3 py-1 rounded-full mt-2 text-xs font-bold ${
+          socketConnected ? 'bg-green-500' : 'bg-red-500 animate-pulse'
+        }`}>
+          {socketConnected ? '🟢 Connected' : '🔴 Connecting...'}
+        </div>
         
         {/* Show current boards info */}
         {existingBoards.length > 0 && (
@@ -342,9 +474,9 @@ const AddBoard = () => {
         </button>
         <button
           onClick={confirmSelection}
-          disabled={!selectedBoard || isCountdownTooLow || isLoading}
+          disabled={!selectedBoard || isCountdownTooLow || isLoading || !socketConnected}
           className={`flex-1 py-3 rounded-lg font-semibold transition disabled:cursor-not-allowed ${
-            !selectedBoard || isCountdownTooLow || isLoading
+            !selectedBoard || isCountdownTooLow || isLoading || !socketConnected
               ? "bg-gray-500 text-gray-300" 
               : "bg-green-500 hover:bg-green-600 text-white shadow-lg"
           }`}
@@ -354,6 +486,8 @@ const AddBoard = () => {
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
               Loading...
             </div>
+          ) : !socketConnected ? (
+            "Connecting..."
           ) : selectedBoard ? (
             `Add Board #${selectedBoard.cartelaId}`
           ) : (
@@ -416,6 +550,7 @@ const AddBoard = () => {
           <li>• Click any available number to select a board</li>
           <li>• Green = Selected</li>
           <li>• Red = Taken by another player</li>
+          <li>• Gray = Connection issue</li>
           <li>• Press ESC to cancel</li>
           <li>• Press ENTER to confirm</li>
         </ul>

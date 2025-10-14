@@ -36,6 +36,7 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
   const [userBalance, setUserBalance] = useState(null);
   const [bonusBalance, setUserBonusBalance] = useState(null);
   const [alertMessage, setAlertMessage] = useState("");
+  const [socketConnected, setSocketConnected] = useState(socket.connected);
   const numbers = Array.from({ length: 100 }, (_, i) => i + 1);
   const [response, setResponse] = useState("");
   const [count, setCount] = useState(0);
@@ -79,7 +80,39 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
     }
   };
 
-  // Initial Effect to Fetch & Setup Socket
+  // ✅ NEW: Socket connection status monitoring
+  useEffect(() => {
+    const handleConnect = () => {
+      console.log('✅ Bingo: Socket connected');
+      setSocketConnected(true);
+    };
+
+    const handleDisconnect = () => {
+      console.log('🔴 Bingo: Socket disconnected');
+      setSocketConnected(false);
+    };
+
+    const handleReconnect = () => {
+      console.log('🔄 Bingo: Socket reconnected');
+      setSocketConnected(true);
+      // Re-sync game state after reconnection
+      if (telegramId && gameId && !hasInitialSyncRun.current) {
+        performInitialGameSync();
+      }
+    };
+
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+    socket.on('reconnect', handleReconnect);
+
+    return () => {
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
+      socket.off('reconnect', handleReconnect);
+    };
+  }, [telegramId, gameId]);
+
+  // ✅ UPDATED: Initial Effect to Fetch & Setup Socket with better connection handling
   useEffect(() => {
     if (!telegramId || !gameId) {
       console.error("Missing telegramId or gameId for game page.");
@@ -155,7 +188,10 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
 
     const performInitialGameSync = () => {
       if (socket.connected && telegramId && gameId) {
+        console.log('🔄 Performing initial game sync');
         socket.emit("userJoinedGame", { telegramId, gameId });
+      } else {
+        console.log('⏳ Waiting for socket connection before initial sync');
       }
     };
 
@@ -213,17 +249,35 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
     });
 
     const handleConnectForSync = () => {
-      if (!hasInitialSyncRun.current) {
+      console.log('✅ Socket connected, performing initial sync');
+      if (!hasInitialSyncRun.current && telegramId && gameId) {
         performInitialGameSync();
       }
     };
     
     socket.on("connect", handleConnectForSync);
-    socket.on("disconnect", () => {
-      hasInitialSyncRun.current = false;
-    });
 
-    performInitialGameSync();
+    // ✅ NEW: Handle socket state recovery events
+    const handleSocketStateRecovered = () => {
+      console.log('✅ Bingo: Socket state recovered successfully');
+    };
+
+    const handleSocketStateRecoveryFailed = ({ message }) => {
+      console.warn('⚠️ Bingo: Socket state recovery failed:', message);
+      setAlertMessage("Connection issue. Please refresh the page.");
+    };
+
+    socket.on("socketStateRecovered", handleSocketStateRecovered);
+    socket.on("socketStateRecoveryFailed", handleSocketStateRecoveryFailed);
+
+    // Initialize connection and data
+    if (socket.connected) {
+      performInitialGameSync();
+    } else {
+      console.log('⏳ Socket not connected, waiting for connection...');
+      socket.connect();
+    }
+
     fetchUserData(telegramId);
 
     return () => {
@@ -240,6 +294,8 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
       socket.off("error");
       socket.off("cardsReset");
       socket.off("connect", handleConnectForSync);
+      socket.off("socketStateRecovered", handleSocketStateRecovered);
+      socket.off("socketStateRecoveryFailed", handleSocketStateRecoveryFailed);
       hasInitialSyncRun.current = false;
     };
   }, [telegramId, gameId, bingoCards, navigate, socket]); 
@@ -259,8 +315,13 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
     }
   };
 
-  // Select a bingo card
+  // ✅ UPDATED: Select a bingo card with socket state preservation
   const handleNumberClick = (number) => {
+    if (!socketConnected) {
+      setAlertMessage("Connection lost. Please wait for reconnection.");
+      return;
+    }
+
     if (emitLockRef.current && number === cartelaId) return;
     if (emitLockRef.current && number !== cartelaId) {
       emitLockRef.current = false;
@@ -276,6 +337,13 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
     lastRequestIdRef.current += 1;
     const requestId = lastRequestIdRef.current;
     emitLockRef.current = true;
+
+    // ✅ ADDED: Preserve socket state before selection
+    socket.emit("preserveSocketState", {
+      telegramId,
+      gameId,
+      currentPhase: 'lobby'
+    });
 
     // Optimistic UI update
     handleLocalCartelaIdChange(number);
@@ -312,6 +380,12 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
   }, []);
 
   const resetGame = () => {
+    // ✅ ADDED: Preserve socket state before refresh
+    socket.emit("preserveSocketState", {
+      telegramId,
+      gameId,
+      currentPhase: 'lobby'
+    });
     window.location.reload();
   };
 
@@ -347,9 +421,14 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
     return () => clearInterval(interval);
   }, [gameId]);
 
-  // 🟢 Join Game & Emit to Socket - UPDATED: No joining running games
+  // ✅ UPDATED: Start Game with socket state preservation
   const startGame = async () => {
     if (isStarting) return;
+
+    if (!socketConnected) {
+      setAlertMessage("Connection lost. Please wait for reconnection.");
+      return;
+    }
 
     setIsStarting(true);
 
@@ -367,6 +446,14 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
       if (response.ok && data.success) {
         const { GameSessionId: currentSessionId } = data;
 
+        // ✅ ADDED: Preserve socket state before navigation
+        socket.emit("preserveSocketState", {
+          telegramId,
+          gameId,
+          GameSessionId: currentSessionId,
+          currentPhase: 'lobby'
+        });
+
         socket.emit("joinGame", {
           gameId,
           telegramId,
@@ -381,6 +468,7 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
             cartelaId,
             cartela,
             playerCount: 1,
+            preserveSocket: true // Important flag for state recovery
           },
         });
       } else if (data.message && data.message.includes("already running")) {
@@ -401,6 +489,13 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
   return (
     <>
       <div className={`flex flex-col items-center p-3 pb-20 min-h-screen ${bgGradient} text-white w-full overflow-hidden`}>
+        {/* ✅ NEW: Connection status indicator */}
+        <div className={`fixed top-2 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-lg z-50 text-sm font-bold ${
+          socketConnected ? 'bg-green-500 text-white' : 'bg-red-500 text-white animate-pulse'
+        }`}>
+          {socketConnected ? '🟢 Connected' : '🔴 Reconnecting...'}
+        </div>
+
         {alertMessage && (
           <div className="fixed top-0 left-0 w-full flex justify-center z-50">
             <div className={`flex items-center max-w-sm w-full p-3 m-2 ${alertBg} ${alertBorder} border-l-4 ${alertText} rounded-md shadow-lg`}>
@@ -472,9 +567,11 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
               <button
                 key={num}
                 onClick={() => handleNumberClick(num)}
-                disabled={isOtherCard}
+                disabled={isOtherCard || !socketConnected}
                 className={`w-8 h-8 flex items-center justify-center rounded-md border border-gray-300 font-bold cursor-pointer transition-all duration-200 text-xs
-                           ${isMyCard ? myCardBg : isOtherCard ? otherCardBg : defaultCardBg}`}
+                           ${isMyCard ? myCardBg : isOtherCard ? otherCardBg : defaultCardBg} 
+                           ${!socketConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
+                title={!socketConnected ? "Connection lost - reconnecting..." : ""}
               >
                 {num}
               </button>
@@ -494,20 +591,32 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
           )}
 
           <div className="flex gap-2 mt-2">
-            <button onClick={resetGame} className={`${refreshBtnBg} text-white px-3 py-1 rounded-lg shadow-md text-sm`}>
+            <button 
+              onClick={resetGame} 
+              disabled={!socketConnected}
+              className={`${refreshBtnBg} text-white px-3 py-1 rounded-lg shadow-md text-sm ${!socketConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
               Refresh
             </button>
             <button
               onClick={startGame}
-              disabled={!cartelaId || isStarting}
+              disabled={!cartelaId || isStarting || !socketConnected}
               className={`${
-                !cartelaId || isStarting ? startBtnDisabledBg : startBtnEnabledBg
-              } text-white px-3 py-1 rounded-lg shadow-md text-sm`}
+                !cartelaId || isStarting || !socketConnected ? startBtnDisabledBg : startBtnEnabledBg
+              } text-white px-3 py-1 rounded-lg shadow-md text-sm ${!socketConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              {isStarting ? "Starting..." : "Start Game"}
+              {!socketConnected ? "Connecting..." : isStarting ? "Starting..." : "Start Game"}
             </button>
           </div>
         </div>
+
+        {/* ✅ NEW: Connection status info */}
+        {!socketConnected && (
+          <div className="mt-4 p-3 bg-yellow-500/20 border border-yellow-500 rounded-lg text-yellow-300 text-sm text-center">
+            <p>🔄 Reconnecting to server...</p>
+            <p className="text-xs mt-1">Please wait while we restore your connection</p>
+          </div>
+        )}
       </div>
     </>
   );

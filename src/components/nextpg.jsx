@@ -55,6 +55,7 @@ const BingoGame = () => {
   const [lastCalledLabel, setLastCalledLabel] = useState(null);
   const [showAddBoardWarning, setShowAddBoardWarning] = useState(false);
   const [autoLeaveCountdown, setAutoLeaveCountdown] = useState(3);
+  const [socketConnected, setSocketConnected] = useState(socket.connected);
   const saveTimeout = useRef(null);
   const autoLeaveTimeout = useRef(null);
 
@@ -62,7 +63,7 @@ const BingoGame = () => {
   const [activeBoards, setActiveBoards] = useState([]);
   const [selectedNumbersPerBoard, setSelectedNumbersPerBoard] = useState({});
 
-    const [gameDetails, setGameDetails] = useState({
+  const [gameDetails, setGameDetails] = useState({
     winAmount: '-',
     playersCount: '-',
     stakeAmount: '-',
@@ -88,6 +89,30 @@ const BingoGame = () => {
     }
   }, [selectedBoards, cartelaId, cartela]);
 
+  // ✅ NEW: Socket state recovery when returning from AddBoard
+  useEffect(() => {
+    // Check if we're returning from AddBoard
+    if (location.state?.fromAddBoard && telegramId && gameId && GameSessionId) {
+      console.log('🔄 BingoGame: Returning from AddBoard - recovering socket state');
+      
+      // Recover socket state
+      socket.emit("recoverSocketState", {
+        telegramId,
+        gameId,
+        GameSessionId,
+        fromPage: 'bingoGame'
+      });
+
+      // Re-join game and request current state
+      socket.emit("joinGame", { gameId, telegramId, GameSessionId });
+      
+      // Clear the flag to prevent infinite loops
+      navigate(location.pathname, { 
+        state: { ...location.state, fromAddBoard: false }
+      });
+    }
+  }, [location.state, gameId, telegramId, GameSessionId, navigate]);
+
   // ✅ NEW: Auto leave countdown when game ends
   useEffect(() => {
     if (isGameEnd) {
@@ -111,24 +136,65 @@ const BingoGame = () => {
     }
   }, [isGameEnd, gameId, GameSessionId, telegramId, navigate]);
 
- useEffect(() => {
+  // ✅ UPDATED: Socket connection and event listeners with state recovery
+  useEffect(() => {
+    let isMounted = true;
+
     // 1. Initial Connection and Join Game Logic
     if (!socket.connected) {
       socket.connect();
     }
+    
     if (!hasJoinedRef.current && gameId && telegramId) {
       socket.emit("joinGame", { gameId, telegramId, GameSessionId });
       hasJoinedRef.current = true;
     }
 
-    // 2. All Event Listeners in a Single Place
+    // ✅ NEW: Socket connection status monitoring
     const handleSocketConnect = () => {
       console.log("✅ Socket.IO connected or reconnected!");
-      console.log("inside socket 🤪🚀⭐", isGameEnd);
-      if (gameId && telegramId) {
-         socket.emit("joinGame", { gameId, telegramId, GameSessionId });
+      setSocketConnected(true);
+      if (isMounted && gameId && telegramId) {
+        // Recover state after reconnection
+        socket.emit("recoverSocketState", {
+          telegramId,
+          gameId,
+          GameSessionId,
+          fromPage: 'bingoGame'
+        });
+        socket.emit("joinGame", { gameId, telegramId, GameSessionId });
       }
     };
+
+    const handleSocketDisconnect = () => {
+      console.log("🔴 Socket.IO disconnected");
+      setSocketConnected(false);
+    };
+
+    const handleSocketReconnect = () => {
+      console.log("🔄 Socket.IO reconnected, recovering state");
+      setSocketConnected(true);
+      if (isMounted && gameId && telegramId) {
+        socket.emit("recoverSocketState", {
+          telegramId,
+          gameId,
+          GameSessionId,
+          fromPage: 'bingoGame'
+        });
+        socket.emit("joinGame", { gameId, telegramId, GameSessionId });
+      }
+    };
+
+    // ✅ NEW: Socket state recovery events
+    const handleSocketStateRecovered = () => {
+      console.log('✅ BingoGame: Socket state recovered successfully');
+    };
+
+    const handleSocketStateRecoveryFailed = ({ message }) => {
+      console.warn('⚠️ BingoGame: Socket state recovery failed:', message);
+    };
+
+    // 2. All Game Event Listeners
     const handlePlayerCountUpdate = ({ playerCount }) => setPlayerCount(playerCount);
     const handleCountdownTick = ({ countdown }) => setCountdown(countdown);
     const handleGameStart = () => setGameStarted(true);
@@ -171,42 +237,45 @@ const BingoGame = () => {
       if (isAudioOn) {
         playAudioForNumber(number);
       }
-
     };
 
-
-   const handleBingoClaimFailed = ({ message, reason, telegramId, gameId, cardId, card, lastTwoNumbers, selectedNumbers }) => {
-    navigate("/winnerFailed", { 
+    const handleBingoClaimFailed = ({ message, reason, telegramId, gameId, cardId, card, lastTwoNumbers, selectedNumbers }) => {
+      navigate("/winnerFailed", { 
         state: { 
-            message, 
-            reason, 
-            telegramId,
-            gameId,
-            cardId,
-            card, 
-            lastTwoNumbers, 
-            selectedNumbers 
-          } 
-        });
+          message, 
+          reason, 
+          telegramId,
+          gameId,
+          cardId,
+          card, 
+          lastTwoNumbers, 
+          selectedNumbers 
+        } 
+      });
     };
- 
 
     const handleGameDetails = ({ winAmount, playersCount, stakeAmount }) => {
       setGameDetails({ winAmount, playersCount, stakeAmount });
     };
+    
     const handleWinnerConfirmed = ({ winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId, GameSessionId }) => {
       navigate("/winnerPage", { state: { winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId, GameSessionId } });
     };
+    
     const handleWinnerError = () => {
+      socket.emit("playerLeave", { gameId: String(gameId), GameSessionId, telegramId }, () => {
+        console.log("player leave emited🎯🎯", GameSessionId);
+        navigate("/");
+      });
+    };
 
-  socket.emit("playerLeave", { gameId: String(gameId), GameSessionId, telegramId }, () => {
-    // This callback runs after the server receives the "playerLeave" event
-    console.log("player leave emited🎯🎯", GameSessionId);
-    navigate("/");
-    });
-  };
-
+    // Set up all event listeners
     socket.on("connect", handleSocketConnect);
+    socket.on("disconnect", handleSocketDisconnect);
+    socket.on("reconnect", handleSocketReconnect);
+    socket.on("socketStateRecovered", handleSocketStateRecovered);
+    socket.on("socketStateRecoveryFailed", handleSocketStateRecoveryFailed);
+    
     socket.on("playerCountUpdate", handlePlayerCountUpdate);
     socket.on("countdownTick", handleCountdownTick);
     socket.on("gameStart", handleGameStart);
@@ -221,7 +290,15 @@ const BingoGame = () => {
 
     // 3. Cleanup Function
     return () => {
+      isMounted = false;
+      
+      // Remove all event listeners
       socket.off("connect", handleSocketConnect);
+      socket.off("disconnect", handleSocketDisconnect);
+      socket.off("reconnect", handleSocketReconnect);
+      socket.off("socketStateRecovered", handleSocketStateRecovered);
+      socket.off("socketStateRecoveryFailed", handleSocketStateRecoveryFailed);
+      
       socket.off("playerCountUpdate", handlePlayerCountUpdate);
       socket.off("countdownTick", handleCountdownTick);
       socket.off("gameStart", handleGameStart);
@@ -233,38 +310,56 @@ const BingoGame = () => {
       socket.off("winnerConfirmed", handleWinnerConfirmed);
       socket.off("winnerError", handleWinnerError); 
       socket.off("bingoClaimFailed", handleBingoClaimFailed);
+      
       if (autoLeaveTimeout.current) clearTimeout(autoLeaveTimeout.current);
     };
   }, [gameId, telegramId, GameSessionId, navigate, isAudioOn]);
 
-  
+  // ✅ UPDATED: Additional socket event handlers
+  useEffect(() => {
+    const handleGameStateSync = (state) => {
+      // Handle any additional game state sync if needed
+      console.log("🔄 Game state synced:", state);
+    };
+
+    const handleYouAreWinner = (winnerData) => {
+      navigate("/winner", { state: winnerData });
+    };
+
+    socket.on("gameStateSync", handleGameStateSync);
+    socket.on("youAreWinner", handleYouAreWinner);
+
+    return () => {
+      socket.off("gameStateSync", handleGameStateSync);
+      socket.off("youAreWinner", handleYouAreWinner);
+    };
+  }, [navigate]);
+
   // ✅ New: Function to dynamically play the correct audio file
-const playAudioForNumber = (number) => {
-  if (!isAudioOn) return;
+  const playAudioForNumber = (number) => {
+    if (!isAudioOn) return;
 
-  // Use the correct, consistent path with a leading slash
-  const audio = new Audio(`/audio/audio${number}.mp3`); 
-  audio.currentTime = 0;
-  console.log("audio is triggereed 🎯🎯");
-  audio.play().catch((error) => {
-    console.error(`🔊 Failed to play audio ${number}:`, error);
-  });
-};
-
+    // Use the correct, consistent path with a leading slash
+    const audio = new Audio(`/audio/audio${number}.mp3`); 
+    audio.currentTime = 0;
+    console.log("audio is triggereed 🎯🎯");
+    audio.play().catch((error) => {
+      console.error(`🔊 Failed to play audio ${number}:`, error);
+    });
+  };
 
   // 3️⃣ Request to start game if enough players
-useEffect(() => {
-  if (
-    playerCount >= 2 &&
-    !hasEmittedGameCount &&
-    !gameStarted
-  ) {
-    console.log("✅ Emitting gameCount to server...");
-    socket.emit("gameCount", { gameId, GameSessionId });
-    setHasEmittedGameCount(true);
-  }
-}, [playerCount, gameStarted, hasEmittedGameCount, gameId, gracePlayers]);
-
+  useEffect(() => {
+    if (
+      playerCount >= 2 &&
+      !hasEmittedGameCount &&
+      !gameStarted
+    ) {
+      console.log("✅ Emitting gameCount to server...");
+      socket.emit("gameCount", { gameId, GameSessionId });
+      setHasEmittedGameCount(true);
+    }
+  }, [playerCount, gameStarted, hasEmittedGameCount, gameId, gracePlayers]);
 
   // 5️⃣ Local countdown timer
   useEffect(() => {
@@ -275,7 +370,6 @@ useEffect(() => {
       return () => clearTimeout(timer);
     }
   }, [countdown]);
-
 
   // ✅ UPDATED: Cross-board number sync - when clicking a number in one board, sync to all other boards
   const handleCartelaClick = (num, boardId) => {
@@ -369,12 +463,20 @@ useEffect(() => {
     });
   };
 
-  // ✅ NEW: Navigate to add board
+  // ✅ UPDATED: Navigate to add board with socket state preservation
   const navigateToAddBoard = () => {
     if (countdown < 10) {
       setShowAddBoardWarning(true);
       return;
     }
+
+    // ✅ ADDED: Preserve socket state before navigation
+    socket.emit("preserveSocketState", {
+      telegramId,
+      gameId,
+      GameSessionId,
+      currentPhase: 'bingoGame'
+    });
 
     navigate("/add-board", {
       state: {
@@ -387,30 +489,7 @@ useEffect(() => {
     });
   };
 
-  useEffect(() => {
-  if (!socket) return;
-
-  socket.on("gameStateSync", (state) => {
-    setDrawnNumbers(state.drawnNumbers);
-    setGameActive(state.isActive);
-    setPrize(state.prizeAmount);
-    setWinnerPattern(state.winnerPattern);
-    setBoard(state.board);
-    setBoardNumber(state.boardNumber);
-  });
-
-  socket.on("youAreWinner", (winnerData) => {
-    navigate("/winner", { state: winnerData });
-  });
-
-  return () => {
-    socket.off("gameStateSync");
-    socket.off("youAreWinner");
-  };
-}, [socket]);
-
-
-   // ✅ Load saved state on mount
+  // ✅ Load saved state on mount
   useEffect(() => {
     const savedAudioState = localStorage.getItem("isAudioOn");
     if (savedAudioState !== null) {
@@ -425,7 +504,14 @@ useEffect(() => {
 
   return (
     <div className="bg-gradient-to-b from-[#1a002b] via-[#2d003f] to-black min-h-screen flex flex-col items-center p-1 pb-3 w-full max-w-screen overflow-hidden">
-    <div className="grid grid-cols-5 sm:grid-cols-5 gap-1 w-full text-white text-center mt-2 mb-2">
+      {/* ✅ NEW: Connection status indicator */}
+      <div className={`fixed top-2 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-lg z-50 text-sm font-bold ${
+        socketConnected ? 'bg-green-500 text-white' : 'bg-red-500 text-white animate-pulse'
+      }`}>
+        {socketConnected ? '🟢 Connected' : '🔴 Reconnecting...'}
+      </div>
+
+      <div className="grid grid-cols-5 sm:grid-cols-5 gap-1 w-full text-white text-center mt-2 mb-2">
         {[
           `Players: ${gameDetails.playersCount}`,
           `Prize: ${gameDetails.winAmount}`,
@@ -436,7 +522,7 @@ useEffect(() => {
             {info}
           </button>
         ))}
-      <button
+        <button
           onClick={() => {
             if (!isAudioOn) {
               const audio = new Audio(`audio/audio1.mp3`);
@@ -460,8 +546,8 @@ useEffect(() => {
           className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-bold p-1 text-xs rounded w-full"
         >
           {`${isAudioOn ? "🔊" : "🔇"}`}
-      </button>
-    </div>
+        </button>
+      </div>
 
       <div className={`flex w-full mt-1 ${activeBoards.length > 1 ? 'gap-3' : ''}`}>
         {/* Column 1: Controls and Number Grid - FIXED HEIGHT */}
@@ -720,6 +806,14 @@ useEffect(() => {
             className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 px-14 h-10 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
             onClick={() => {
               if (gameId && telegramId) {
+                // ✅ ADDED: Preserve socket state before refresh
+                socket.emit("preserveSocketState", {
+                  telegramId,
+                  gameId,
+                  GameSessionId,
+                  currentPhase: 'bingoGame'
+                });
+                
                 socket.emit("joinGame", { gameId, telegramId, GameSessionId });
                 console.log("Forced refresh: Re-emitted joinGame to synchronize state.");
               } else {
@@ -770,7 +864,7 @@ useEffect(() => {
         </div>
       )}
 
-     {isGameEnd && (
+      {isGameEnd && (
         <div className="fixed inset-0 flex items-center justify-center bg-opacity-80 backdrop-blur-sm z-50 transition-opacity duration-300">
           <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center">
             <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">
@@ -782,11 +876,11 @@ useEffect(() => {
             <button
               className="w-1/2 bg-gradient-to-r from-green-500 to-emerald-600 px-4 py-2 text-white rounded-lg text-lg font-semibold shadow-md"
               onClick={() => {
-              socket.emit("playerLeave", { gameId: String(gameId), GameSessionId, telegramId }, () => {
-                console.log("player leave emited🎯🎯", GameSessionId );
-                navigate("/");
-              });
-            }} >
+                socket.emit("playerLeave", { gameId: String(gameId), GameSessionId, telegramId }, () => {
+                  console.log("player leave emited🎯🎯", GameSessionId );
+                  navigate("/");
+                });
+              }} >
               Leave Now
             </button>
           </div>
