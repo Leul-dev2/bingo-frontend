@@ -9,7 +9,6 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
   const urlTelegramId = searchParams.get("user");
   const urlGameId = searchParams.get("game");
   const location = useLocation();
-  const prevPathRef = useRef(null);
 
   // Store only if changed
   useEffect(() => {
@@ -37,6 +36,10 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
   const [bonusBalance, setUserBonusBalance] = useState(null);
   const [alertMessage, setAlertMessage] = useState("");
   const [socketConnected, setSocketConnected] = useState(socket.connected);
+  const [queuePosition, setQueuePosition] = useState(null);
+  const [totalInQueue, setTotalInQueue] = useState(0);
+  const [isEnteringGame, setIsEnteringGame] = useState(false);
+  const [hasJoinedQueue, setHasJoinedQueue] = useState(false);
   const numbers = Array.from({ length: 100 }, (_, i) => i + 1);
   const [response, setResponse] = useState("");
   const [count, setCount] = useState(0);
@@ -80,6 +83,57 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
     }
   };
 
+  // ✅ NEW: Socket event for queue position
+  useEffect(() => {
+    const handleQueuePosition = ({ position, totalInQueue }) => {
+      console.log(`🎯 Queue position: ${position}/${totalInQueue}`);
+      setQueuePosition(position);
+      setTotalInQueue(totalInQueue);
+      
+      if (position === 1 && totalInQueue >= 2) {
+        setAlertMessage("🎉 You're next in line! Game starting soon...");
+      }
+    };
+
+    // ✅ NEW: Socket event for entering game
+    const handleEnteringGame = ({ gameId, GameSessionId, playersInGame }) => {
+      console.log(`🚀 Entering game with session: ${GameSessionId}`);
+      setIsEnteringGame(true);
+      setAlertMessage(`🎮 Entering game with ${playersInGame - 1} other players...`);
+      
+      // Navigate to game after a short delay to show the message
+      setTimeout(() => {
+        navigate("/game", {
+          state: {
+            gameId,
+            telegramId,
+            GameSessionId,
+            cartelaId,
+            cartela,
+            playerCount: playersInGame,
+            preserveSocket: true
+          },
+        });
+      }, 2000);
+    };
+
+    // ✅ NEW: Socket event for game ending
+    const handleGameEnding = ({ gameId, GameSessionId }) => {
+      console.log("🏁 Game ending, returning to lobby...");
+      setAlertMessage("🏁 Game completed! Returning to lobby...");
+    };
+
+    socket.on("queuePosition", handleQueuePosition);
+    socket.on("enteringGame", handleEnteringGame);
+    socket.on("gameEnding", handleGameEnding);
+
+    return () => {
+      socket.off("queuePosition", handleQueuePosition);
+      socket.off("enteringGame", handleEnteringGame);
+      socket.off("gameEnding", handleGameEnding);
+    };
+  }, [navigate, telegramId, gameId, cartelaId, cartela]);
+
   // ✅ NEW: Socket connection status monitoring
   useEffect(() => {
     const handleConnect = () => {
@@ -112,7 +166,7 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
     };
   }, [telegramId, gameId]);
 
-  // ✅ UPDATED: Initial Effect to Fetch & Setup Socket with better connection handling
+  // Initial Effect to Fetch & Setup Socket
   useEffect(() => {
     if (!telegramId || !gameId) {
       console.error("Missing telegramId or gameId for game page.");
@@ -172,7 +226,6 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
         if (selectedCardData) {
           setCartela(selectedCardData.card);
           setCartelaIdInParent(numMySavedCardId);
-          // ✅ FIXED: Removed adding own card to otherSelectedCards
         } else {
           sessionStorage.removeItem("mySelectedCardId");
           setCartela([]);
@@ -421,12 +474,17 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
     return () => clearInterval(interval);
   }, [gameId]);
 
-  // ✅ UPDATED: Start Game with socket state preservation
+  // ✅ UPDATED: Start Game with queue system
   const startGame = async () => {
     if (isStarting) return;
 
     if (!socketConnected) {
       setAlertMessage("Connection lost. Please wait for reconnection.");
+      return;
+    }
+
+    if (!cartelaId) {
+      setAlertMessage("Please select a card first!");
       return;
     }
 
@@ -454,25 +512,20 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
           currentPhase: 'lobby'
         });
 
+        // Player is now in queue, set the flag
+        setHasJoinedQueue(true);
+        setAlertMessage("🎯 You've joined the queue! Waiting for your turn...");
+
         socket.emit("joinGame", {
           gameId,
           telegramId,
           GameSessionId: currentSessionId
         });
 
-        navigate("/game", {
-          state: {
-            gameId,
-            telegramId,
-            GameSessionId: currentSessionId,
-            cartelaId,
-            cartela,
-            playerCount: 1,
-            preserveSocket: true // Important flag for state recovery
-          },
-        });
+        // Don't navigate immediately - wait for enteringGame event
+        console.log("Player added to queue, waiting for game entry...");
+
       } else if (data.message && data.message.includes("already running")) {
-        // Game is already running - show error message
         setAlertMessage("🚫 Game has already started! Please wait for the next game.");
       } else {
         setAlertMessage(data.message || data.error || "Error starting the game");
@@ -485,6 +538,62 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
       setIsStarting(false);
     }
   };
+
+  // ✅ NEW: Get queue status text
+  const getQueueStatus = () => {
+    if (isEnteringGame) {
+      return "🎮 Entering Game...";
+    }
+    
+    if (queuePosition === null && hasJoinedQueue) {
+      return "⏳ Joining queue...";
+    }
+    
+    if (queuePosition === 1 && totalInQueue >= 2) {
+      return "🎉 You're next! Starting soon...";
+    }
+    
+    if (queuePosition && queuePosition <= totalInQueue) {
+      return `🎯 Position: ${queuePosition} of ${totalInQueue}`;
+    }
+    
+    if (hasJoinedQueue) {
+      return "⏳ Waiting for players...";
+    }
+    
+    return "Select a card and click Start";
+  };
+
+  // ✅ NEW: Get start button text and status
+  const getStartButtonInfo = () => {
+    if (isEnteringGame) {
+      return { text: "Entering Game...", disabled: true };
+    }
+    
+    if (!cartelaId) {
+      return { text: "Select a Card First", disabled: true };
+    }
+    
+    if (!socketConnected) {
+      return { text: "Connecting...", disabled: true };
+    }
+    
+    if (hasJoinedQueue && queuePosition && queuePosition > 1) {
+      return { text: `In Queue (${queuePosition}/${totalInQueue})`, disabled: true };
+    }
+    
+    if (hasJoinedQueue && queuePosition === 1 && totalInQueue >= 2) {
+      return { text: "Starting Soon...", disabled: true };
+    }
+    
+    if (hasJoinedQueue) {
+      return { text: "Waiting in Queue...", disabled: true };
+    }
+    
+    return { text: "Join Queue", disabled: false };
+  };
+
+  const startButtonInfo = getStartButtonInfo();
 
   return (
     <>
@@ -531,18 +640,12 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
             </span>
           </div>
 
-          {/* Game Count Card */}
-          <div className="flex flex-col justify-center items-center bg-gradient-to-br from-blue-500 via-cyan-500 to-sky-400 max-h-[24vh] shadow-lg rounded-2xl transition-transform transform hover:scale-105">
-            {gameStarted ? (
-              <button className="flex flex-col justify-center items-center text-white font-extrabold text-lg sm:text-xl transition-transform transform hover:scale-105">
-                <span className="animate-bounce">Wait 🛑</span>
-              </button>
-            ) : (
-              <button className="flex flex-col justify-center items-center text-white font-extrabold text-lg sm:text-xl transition-transform transform hover:scale-105">
-                <span>PLAY</span>
-                <span className="animate-bounce">▶️</span>
-              </button>
-            )}
+          {/* Queue Status Card */}
+          <div className="flex flex-col justify-center items-center bg-gradient-to-br from-purple-500 via-pink-500 to-red-500 max-h-[24vh] shadow-lg rounded-2xl transition-transform transform hover:scale-105">
+            <div className="flex flex-col justify-center items-center text-white font-extrabold text-lg sm:text-xl">
+              <span className="text-sm">QUEUE</span>
+              <span className="text-xs mt-1">{getQueueStatus()}</span>
+            </div>
           </div>
 
           {/* Game Choice Card */}
@@ -556,6 +659,23 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
           </div>
         </div>
 
+        {/* Queue Info Banner */}
+        {(hasJoinedQueue || isEnteringGame) && (
+          <div className="w-full max-w-lg mb-4 p-3 bg-blue-500/20 border border-blue-500 rounded-lg">
+            <div className="flex items-center justify-center space-x-2">
+              <div className="animate-pulse">🎮</div>
+              <div className="text-center">
+                <p className="font-bold text-blue-300">{getQueueStatus()}</p>
+                {queuePosition > 1 && (
+                  <p className="text-xs text-blue-200 mt-1">
+                    {totalInQueue >= 2 ? "Game in progress. You're in line for the next game!" : "Waiting for more players..."}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-10 gap-1 py-1 px-2 max-w-lg w-full text-xs">
           {numbers.map((num) => {
             const isMyCard = cartelaId === num;
@@ -567,11 +687,11 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
               <button
                 key={num}
                 onClick={() => handleNumberClick(num)}
-                disabled={isOtherCard || !socketConnected}
+                disabled={isOtherCard || !socketConnected || isEnteringGame || hasJoinedQueue}
                 className={`w-8 h-8 flex items-center justify-center rounded-md border border-gray-300 font-bold cursor-pointer transition-all duration-200 text-xs
                            ${isMyCard ? myCardBg : isOtherCard ? otherCardBg : defaultCardBg} 
-                           ${!socketConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
-                title={!socketConnected ? "Connection lost - reconnecting..." : ""}
+                           ${(!socketConnected || isEnteringGame || hasJoinedQueue) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                title={!socketConnected ? "Connection lost" : isEnteringGame ? "Entering game..." : hasJoinedQueue ? "In queue - cannot change card" : ""}
               >
                 {num}
               </button>
@@ -593,24 +713,94 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
           <div className="flex gap-2 mt-2">
             <button 
               onClick={resetGame} 
-              disabled={!socketConnected}
-              className={`${refreshBtnBg} text-white px-3 py-1 rounded-lg shadow-md text-sm ${!socketConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={!socketConnected || isEnteringGame}
+              className={`${refreshBtnBg} text-white px-3 py-1 rounded-lg shadow-md text-sm ${(!socketConnected || isEnteringGame) ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               Refresh
             </button>
             <button
               onClick={startGame}
-              disabled={!cartelaId || isStarting || !socketConnected}
+              disabled={startButtonInfo.disabled}
               className={`${
-                !cartelaId || isStarting || !socketConnected ? startBtnDisabledBg : startBtnEnabledBg
-              } text-white px-3 py-1 rounded-lg shadow-md text-sm ${!socketConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
+                startButtonInfo.disabled ? startBtnDisabledBg : startBtnEnabledBg
+              } text-white px-3 py-1 rounded-lg shadow-md text-sm ${startButtonInfo.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              {!socketConnected ? "Connecting..." : isStarting ? "Starting..." : "Start Game"}
+              {startButtonInfo.text}
             </button>
           </div>
         </div>
 
-        {/* ✅ NEW: Connection status info */}
+        {/* Queue Information */}
+        {hasJoinedQueue && (
+          <div className="mt-4 p-4 bg-gray-800/50 rounded-lg max-w-lg w-full">
+            <h3 className="text-lg font-bold text-center mb-2">Queue Information</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span>Your Position:</span>
+                <span className="font-bold">{queuePosition || 'Calculating...'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Players in Queue:</span>
+                <span className="font-bold">{totalInQueue || 'Calculating...'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Status:</span>
+                <span className={`font-bold ${
+                  isEnteringGame ? 'text-green-400' : 
+                  queuePosition === 1 ? 'text-yellow-400' : 'text-blue-400'
+                }`}>
+                  {isEnteringGame ? 'Entering Game' : 
+                   queuePosition === 1 ? 'Next in Line' : 'Waiting in Queue'}
+                </span>
+              </div>
+            </div>
+            
+            {queuePosition > 1 && (
+              <div className="mt-3 p-2 bg-yellow-500/20 rounded text-xs text-yellow-300 text-center">
+                ⏳ You're in line for the next available game. Please wait patiently...
+              </div>
+            )}
+
+            {queuePosition === 1 && totalInQueue >= 2 && (
+              <div className="mt-3 p-2 bg-green-500/20 rounded text-xs text-green-300 text-center">
+                🎉 You're next! Game will start soon...
+              </div>
+            )}
+
+            {!queuePosition && (
+              <div className="mt-3 p-2 bg-blue-500/20 rounded text-xs text-blue-300 text-center">
+                🔄 Getting your position in queue...
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* How it works info */}
+        {!hasJoinedQueue && (
+          <div className="mt-4 p-4 bg-gray-800/30 rounded-lg max-w-lg w-full">
+            <h3 className="text-lg font-bold text-center mb-2">How It Works</h3>
+            <div className="space-y-2 text-sm text-gray-300">
+              <div className="flex items-start space-x-2">
+                <span>1.</span>
+                <span>Select a bingo card from the grid above</span>
+              </div>
+              <div className="flex items-start space-x-2">
+                <span>2.</span>
+                <span>Click "Join Queue" to enter the waiting list</span>
+              </div>
+              <div className="flex items-start space-x-2">
+                <span>3.</span>
+                <span>Wait for your turn - games run one at a time</span>
+              </div>
+              <div className="flex items-start space-x-2">
+                <span>4.</span>
+                <span>When it's your turn, you'll automatically enter the game</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Connection status info */}
         {!socketConnected && (
           <div className="mt-4 p-3 bg-yellow-500/20 border border-yellow-500 rounded-lg text-yellow-300 text-sm text-center">
             <p>🔄 Reconnecting to server...</p>

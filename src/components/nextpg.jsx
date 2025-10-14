@@ -2,7 +2,21 @@ import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import socket from "../../socket"; // ✅ Shared socket instance
 
-// Top of file, after imports
+// Constants
+const BINGO_CONFIG = {
+  COLUMNS: ["B", "I", "N", "G", "O"],
+  COLORS: {
+    B: "bg-yellow-500",
+    I: "bg-green-500",
+    N: "bg-blue-500",
+    G: "bg-red-500",
+    O: "bg-purple-500",
+  },
+  COUNTDOWN_WARNING_THRESHOLD: 10,
+  AUTO_LEAVE_DELAY: 3
+};
+
+// Memoized BingoCell Component
 const BingoCell = React.memo(({ num, isFreeSpace, isSelected, onClick }) => {
   return (
     <div
@@ -26,14 +40,6 @@ const BingoGame = () => {
   const navigate = useNavigate();
   const { cartela, cartelaId, gameId, telegramId, GameSessionId, selectedBoards } = location.state || {};
 
-  const bingoColors = {
-    B: "bg-yellow-500",
-    I: "bg-green-500",
-    N: "bg-blue-500",
-    G: "bg-red-500",
-    O: "bg-purple-500",
-  };
-
   const [randomNumber, setRandomNumber] = useState([]);
   const [calledNumbers, setCalledNumbers] = useState([]);
   const [currentCall, setCurrentCall] = useState(null);
@@ -48,7 +54,6 @@ const BingoGame = () => {
   const [gracePlayers, setGracePlayers] = useState([]);
   const [isGameEnd, setIsGameEnd] = useState(false);
   const [callNumberLength, setCallNumberLength] = useState(0);
-  // ✅ New state to manage audio on/off
   const [isAudioOn, setIsAudioOn] = useState(false);
   const [audioPrimed, setAudioPrimed] = useState(false);
   const [failedBingo, setFailedBingo] = useState(null);
@@ -59,7 +64,7 @@ const BingoGame = () => {
   const saveTimeout = useRef(null);
   const autoLeaveTimeout = useRef(null);
 
-  // ✅ NEW: Multi-board states
+  // ✅ Multi-board states
   const [activeBoards, setActiveBoards] = useState([]);
   const [selectedNumbersPerBoard, setSelectedNumbersPerBoard] = useState({});
 
@@ -71,7 +76,22 @@ const BingoGame = () => {
 
   const hasJoinedRef = useRef(false);
 
-  // ✅ NEW: Initialize boards - supports both single and multi-board
+  // ✅ NEW: Game completion handler
+  const handleGameCompleted = () => {
+    console.log("🏁 Game completed, notifying server");
+    // Notify server that game completed
+    socket.emit("gameCompleted", { gameId, GameSessionId });
+  };
+
+  // ✅ NEW: End game function
+  const endGame = () => {
+    handleGameCompleted();
+    // Your existing game end logic
+    setIsGameEnd(true);
+    setWinnerFound(true);
+  };
+
+  // ✅ Initialize boards - supports both single and multi-board
   useEffect(() => {
     if (selectedBoards && selectedBoards.length > 0) {
       // Multi-board format
@@ -89,7 +109,7 @@ const BingoGame = () => {
     }
   }, [selectedBoards, cartelaId, cartela]);
 
-  // ✅ NEW: Socket state recovery when returning from AddBoard
+  // ✅ Socket state recovery when returning from AddBoard
   useEffect(() => {
     // Check if we're returning from AddBoard
     if (location.state?.fromAddBoard && telegramId && gameId && GameSessionId) {
@@ -113,7 +133,7 @@ const BingoGame = () => {
     }
   }, [location.state, gameId, telegramId, GameSessionId, navigate]);
 
-  // ✅ NEW: Auto leave countdown when game ends
+  // ✅ Auto leave countdown when game ends
   useEffect(() => {
     if (isGameEnd) {
       setAutoLeaveCountdown(3);
@@ -136,7 +156,7 @@ const BingoGame = () => {
     }
   }, [isGameEnd, gameId, GameSessionId, telegramId, navigate]);
 
-  // ✅ UPDATED: Socket connection and event listeners with state recovery
+  // ✅ UPDATED: Socket connection and event listeners with game completion
   useEffect(() => {
     let isMounted = true;
 
@@ -150,7 +170,7 @@ const BingoGame = () => {
       hasJoinedRef.current = true;
     }
 
-    // ✅ NEW: Socket connection status monitoring
+    // ✅ Socket connection status monitoring
     const handleSocketConnect = () => {
       console.log("✅ Socket.IO connected or reconnected!");
       setSocketConnected(true);
@@ -185,7 +205,7 @@ const BingoGame = () => {
       }
     };
 
-    // ✅ NEW: Socket state recovery events
+    // ✅ Socket state recovery events
     const handleSocketStateRecovered = () => {
       console.log('✅ BingoGame: Socket state recovered successfully');
     };
@@ -194,13 +214,19 @@ const BingoGame = () => {
       console.warn('⚠️ BingoGame: Socket state recovery failed:', message);
     };
 
+    // ✅ NEW: Game completion event
+    const handleGameCompletedEvent = () => {
+      console.log("🎯 Game completion confirmed by server");
+      endGame();
+    };
+
     // 2. All Game Event Listeners
     const handlePlayerCountUpdate = ({ playerCount }) => setPlayerCount(playerCount);
     const handleCountdownTick = ({ countdown }) => setCountdown(countdown);
     const handleGameStart = () => setGameStarted(true);
     const handleGameEnd = () => {
       console.log("gameEnd is called 🤪🚀⭐", isGameEnd);
-      setIsGameEnd(true);
+      endGame(); // ✅ UPDATED: Use endGame function instead of direct state set
     } 
     const handleGameReset = () => {
       console.log("🔄 Game reset received, allowing new gameCount emit");
@@ -213,6 +239,7 @@ const BingoGame = () => {
       setGameStarted(false);
       setLastCalledLabel(null);
       setIsGameEnd(false);
+      setWinnerFound(false); // ✅ Reset winner flag
       setAutoLeaveCountdown(3);
     };
     const handleDrawnNumbersHistory = ({ gameId: receivedGameId, history }) => {
@@ -259,6 +286,8 @@ const BingoGame = () => {
     };
     
     const handleWinnerConfirmed = ({ winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId, GameSessionId }) => {
+      // ✅ Notify server that game is completed when winner is confirmed
+      handleGameCompleted();
       navigate("/winnerPage", { state: { winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId, GameSessionId } });
     };
     
@@ -275,6 +304,7 @@ const BingoGame = () => {
     socket.on("reconnect", handleSocketReconnect);
     socket.on("socketStateRecovered", handleSocketStateRecovered);
     socket.on("socketStateRecoveryFailed", handleSocketStateRecoveryFailed);
+    socket.on("gameCompleted", handleGameCompletedEvent); // ✅ NEW: Game completion listener
     
     socket.on("playerCountUpdate", handlePlayerCountUpdate);
     socket.on("countdownTick", handleCountdownTick);
@@ -298,6 +328,7 @@ const BingoGame = () => {
       socket.off("reconnect", handleSocketReconnect);
       socket.off("socketStateRecovered", handleSocketStateRecovered);
       socket.off("socketStateRecoveryFailed", handleSocketStateRecoveryFailed);
+      socket.off("gameCompleted", handleGameCompletedEvent); // ✅ NEW: Cleanup
       
       socket.off("playerCountUpdate", handlePlayerCountUpdate);
       socket.off("countdownTick", handleCountdownTick);
@@ -315,7 +346,7 @@ const BingoGame = () => {
     };
   }, [gameId, telegramId, GameSessionId, navigate, isAudioOn]);
 
-  // ✅ UPDATED: Additional socket event handlers
+  // ✅ Additional socket event handlers
   useEffect(() => {
     const handleGameStateSync = (state) => {
       // Handle any additional game state sync if needed
@@ -323,6 +354,8 @@ const BingoGame = () => {
     };
 
     const handleYouAreWinner = (winnerData) => {
+      // ✅ Notify server that game is completed when user wins
+      handleGameCompleted();
       navigate("/winner", { state: winnerData });
     };
 
@@ -335,7 +368,7 @@ const BingoGame = () => {
     };
   }, [navigate]);
 
-  // ✅ New: Function to dynamically play the correct audio file
+  // ✅ Function to dynamically play the correct audio file
   const playAudioForNumber = (number) => {
     if (!isAudioOn) return;
 
@@ -348,7 +381,7 @@ const BingoGame = () => {
     });
   };
 
-  // 3️⃣ Request to start game if enough players
+  // ✅ Request to start game if enough players
   useEffect(() => {
     if (
       playerCount >= 2 &&
@@ -361,7 +394,7 @@ const BingoGame = () => {
     }
   }, [playerCount, gameStarted, hasEmittedGameCount, gameId, gracePlayers]);
 
-  // 5️⃣ Local countdown timer
+  // ✅ Local countdown timer
   useEffect(() => {
     if (countdown > 0) {
       const timer = setTimeout(() => {
@@ -385,7 +418,7 @@ const BingoGame = () => {
       }
       newSelections[boardId] = currentBoardSelections;
       
-      // 2. ✅ NEW: Sync this number to all other boards where it exists
+      // 2. ✅ Sync this number to all other boards where it exists
       activeBoards.forEach(board => {
         if (board.cartelaId !== boardId) {
           // Check if this number exists in the other board
@@ -463,14 +496,14 @@ const BingoGame = () => {
     });
   };
 
-  // ✅ UPDATED: Navigate to add board with socket state preservation
+  // ✅ Navigate to add board with socket state preservation
   const navigateToAddBoard = () => {
-    if (countdown < 10) {
+    if (countdown < BINGO_CONFIG.COUNTDOWN_WARNING_THRESHOLD) {
       setShowAddBoardWarning(true);
       return;
     }
 
-    // ✅ ADDED: Preserve socket state before navigation
+    // ✅ Preserve socket state before navigation
     socket.emit("preserveSocketState", {
       telegramId,
       gameId,
@@ -504,7 +537,7 @@ const BingoGame = () => {
 
   return (
     <div className="bg-gradient-to-b from-[#1a002b] via-[#2d003f] to-black min-h-screen flex flex-col items-center p-1 pb-3 w-full max-w-screen overflow-hidden">
-      {/* ✅ NEW: Connection status indicator */}
+      {/* ✅ Connection status indicator */}
       <div className={`fixed top-2 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-lg z-50 text-sm font-bold ${
         socketConnected ? 'bg-green-500 text-white' : 'bg-red-500 text-white animate-pulse'
       }`}>
@@ -555,13 +588,13 @@ const BingoGame = () => {
           {activeBoards.length === 1 ? (
             // Single Board: Show Number Grid only
             <div className="grid grid-cols-5 bg-[#2a0047] p-1 gap-2 rounded-lg text-xs w-[90%]">
-              {["B", "I", "N", "G", "O"].map((letter, i) => (
-                <div key={i} className={`text-white text-center text-xs font-bold rounded-full h-4 w-6 ${bingoColors[letter]}`}>
+              {BINGO_CONFIG.COLUMNS.map((letter, i) => (
+                <div key={i} className={`text-white text-center text-xs font-bold rounded-full h-4 w-6 ${BINGO_CONFIG.COLORS[letter]}`}>
                   {letter}
                 </div>
               ))}
               {[...Array(15)].map((_, rowIndex) =>
-                ["B", "I", "N", "G", "O"].map((letter, colIndex) => {
+                BINGO_CONFIG.COLUMNS.map((letter, colIndex) => {
                   const number = rowIndex + 1 + colIndex * 15;
                   const randomNumberLabel = `${letter}-${number}`;
 
@@ -618,13 +651,13 @@ const BingoGame = () => {
 
               {/* Number Grid - EXPANDED TO FILL SPACE */}
               <div className="flex-1 grid grid-cols-5 bg-[#2a0047] p-1 gap-2 rounded-lg text-xs w-full">
-                {["B", "I", "N", "G", "O"].map((letter, i) => (
-                  <div key={i} className={`text-white text-center text-xs font-bold rounded-full h-4 w-6 ${bingoColors[letter]}`}>
+                {BINGO_CONFIG.COLUMNS.map((letter, i) => (
+                  <div key={i} className={`text-white text-center text-xs font-bold rounded-full h-4 w-6 ${BINGO_CONFIG.COLORS[letter]}`}>
                     {letter}
                   </div>
                 ))}
                 {[...Array(15)].map((_, rowIndex) =>
-                  ["B", "I", "N", "G", "O"].map((letter, colIndex) => {
+                  BINGO_CONFIG.COLUMNS.map((letter, colIndex) => {
                     const number = rowIndex + 1 + colIndex * 15;
                     const randomNumberLabel = `${letter}-${number}`;
 
@@ -692,10 +725,10 @@ const BingoGame = () => {
                   <div className="bg-gradient-to-b from-purple-800 to-purple-900 p-4 rounded-lg w-full max-w-md mx-auto">
                     {/* BINGO Header - CLOSER LETTERS */}
                     <div className="grid grid-cols-5 gap-0.5 mb-2">
-                      {["B", "I", "N", "G", "O"].map((letter, i) => (
+                      {BINGO_CONFIG.COLUMNS.map((letter, i) => (
                         <div
                           key={i}
-                          className={`w-8 h-8 flex items-center justify-center font-bold text-white text-sm rounded-full ${bingoColors[letter]}`}
+                          className={`w-8 h-8 flex items-center justify-center font-bold text-white text-sm rounded-full ${BINGO_CONFIG.COLORS[letter]}`}
                         >
                           {letter}
                         </div>
@@ -730,10 +763,10 @@ const BingoGame = () => {
             <div className="flex flex-col gap-3 h-full">
               {/* Shared BINGO Header at Top - CLOSER LETTERS */}
               <div className="grid grid-cols-5 gap-0.2 mb-2 w-full max-w-md">
-                {["B", "I", "N", "G", "O"].map((letter, i) => (
+                {BINGO_CONFIG.COLUMNS.map((letter, i) => (
                   <div
                     key={i}
-                    className={`w-8 h-8 flex items-center justify-center font-bold text-white text-sm rounded-full ${bingoColors[letter]}`}
+                    className={`w-8 h-8 flex items-center justify-center font-bold text-white text-sm rounded-full ${BINGO_CONFIG.COLORS[letter]}`}
                   >
                     {letter}
                   </div>
@@ -806,7 +839,7 @@ const BingoGame = () => {
             className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 px-14 h-10 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
             onClick={() => {
               if (gameId && telegramId) {
-                // ✅ ADDED: Preserve socket state before refresh
+                // ✅ Preserve socket state before refresh
                 socket.emit("preserveSocketState", {
                   telegramId,
                   gameId,
@@ -846,13 +879,13 @@ const BingoGame = () => {
         </div>
       </div>
 
-      {/* ✅ NEW: Add Board Warning Modal */}
+      {/* ✅ Add Board Warning Modal */}
       {showAddBoardWarning && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
           <div className="bg-white p-6 rounded-lg max-w-sm mx-4">
             <h3 className="text-lg font-bold mb-2">Cannot Add Board</h3>
             <p className="text-gray-600 mb-4">
-              Countdown is too low ({countdown}s). You cannot add boards when countdown is below 10 seconds.
+              Countdown is too low ({countdown}s). You cannot add boards when countdown is below {BINGO_CONFIG.COUNTDOWN_WARNING_THRESHOLD} seconds.
             </p>
             <button
               onClick={() => setShowAddBoardWarning(false)}
