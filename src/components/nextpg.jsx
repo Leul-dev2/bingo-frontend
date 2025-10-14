@@ -2,21 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import socket from "../../socket"; // ✅ Shared socket instance
 
-// Constants
-const BINGO_CONFIG = {
-  COLUMNS: ["B", "I", "N", "G", "O"],
-  COLORS: {
-    B: "bg-yellow-500",
-    I: "bg-green-500",
-    N: "bg-blue-500",
-    G: "bg-red-500",
-    O: "bg-purple-500",
-  },
-  COUNTDOWN_WARNING_THRESHOLD: 10,
-  AUTO_LEAVE_DELAY: 3
-};
-
-// Memoized BingoCell Component
+// Top of file, after imports
 const BingoCell = React.memo(({ num, isFreeSpace, isSelected, onClick }) => {
   return (
     <div
@@ -40,6 +26,14 @@ const BingoGame = () => {
   const navigate = useNavigate();
   const { cartela, cartelaId, gameId, telegramId, GameSessionId, selectedBoards } = location.state || {};
 
+  const bingoColors = {
+    B: "bg-yellow-500",
+    I: "bg-green-500",
+    N: "bg-blue-500",
+    G: "bg-red-500",
+    O: "bg-purple-500",
+  };
+
   const [randomNumber, setRandomNumber] = useState([]);
   const [calledNumbers, setCalledNumbers] = useState([]);
   const [currentCall, setCurrentCall] = useState(null);
@@ -54,17 +48,17 @@ const BingoGame = () => {
   const [gracePlayers, setGracePlayers] = useState([]);
   const [isGameEnd, setIsGameEnd] = useState(false);
   const [callNumberLength, setCallNumberLength] = useState(0);
+  // ✅ New state to manage audio on/off
   const [isAudioOn, setIsAudioOn] = useState(false);
   const [audioPrimed, setAudioPrimed] = useState(false);
   const [failedBingo, setFailedBingo] = useState(null);
   const [lastCalledLabel, setLastCalledLabel] = useState(null);
   const [showAddBoardWarning, setShowAddBoardWarning] = useState(false);
   const [autoLeaveCountdown, setAutoLeaveCountdown] = useState(3);
-  const [socketConnected, setSocketConnected] = useState(socket.connected);
   const saveTimeout = useRef(null);
   const autoLeaveTimeout = useRef(null);
 
-  // ✅ Multi-board states
+  // ✅ NEW: Multi-board states
   const [activeBoards, setActiveBoards] = useState([]);
   const [selectedNumbersPerBoard, setSelectedNumbersPerBoard] = useState({});
 
@@ -74,24 +68,16 @@ const BingoGame = () => {
     stakeAmount: '-',
   });
 
+  // ✅ NEW: Queue integration states
+  const [isInQueue, setIsInQueue] = useState(false);
+  const [queuePosition, setQueuePosition] = useState(null);
+  const [queueLength, setQueueLength] = useState(0);
+  const [estimatedWaitTime, setEstimatedWaitTime] = useState(0);
+
   const hasJoinedRef = useRef(false);
+  const gameCountEmittedRef = useRef(false);
 
-  // ✅ NEW: Game completion handler
-  const handleGameCompleted = () => {
-    console.log("🏁 Game completed, notifying server");
-    // Notify server that game completed
-    socket.emit("gameCompleted", { gameId, GameSessionId });
-  };
-
-  // ✅ NEW: End game function
-  const endGame = () => {
-    handleGameCompleted();
-    // Your existing game end logic
-    setIsGameEnd(true);
-    setWinnerFound(true);
-  };
-
-  // ✅ Initialize boards - supports both single and multi-board
+  // ✅ NEW: Initialize boards - supports both single and multi-board
   useEffect(() => {
     if (selectedBoards && selectedBoards.length > 0) {
       // Multi-board format
@@ -109,31 +95,7 @@ const BingoGame = () => {
     }
   }, [selectedBoards, cartelaId, cartela]);
 
-  // ✅ Socket state recovery when returning from AddBoard
-  useEffect(() => {
-    // Check if we're returning from AddBoard
-    if (location.state?.fromAddBoard && telegramId && gameId && GameSessionId) {
-      console.log('🔄 BingoGame: Returning from AddBoard - recovering socket state');
-      
-      // Recover socket state
-      socket.emit("recoverSocketState", {
-        telegramId,
-        gameId,
-        GameSessionId,
-        fromPage: 'bingoGame'
-      });
-
-      // Re-join game and request current state
-      socket.emit("joinGame", { gameId, telegramId, GameSessionId });
-      
-      // Clear the flag to prevent infinite loops
-      navigate(location.pathname, { 
-        state: { ...location.state, fromAddBoard: false }
-      });
-    }
-  }, [location.state, gameId, telegramId, GameSessionId, navigate]);
-
-  // ✅ Auto leave countdown when game ends
+  // ✅ NEW: Auto leave countdown when game ends
   useEffect(() => {
     if (isGameEnd) {
       setAutoLeaveCountdown(3);
@@ -156,81 +118,40 @@ const BingoGame = () => {
     }
   }, [isGameEnd, gameId, GameSessionId, telegramId, navigate]);
 
-  // ✅ UPDATED: Socket connection and event listeners with game completion
   useEffect(() => {
-    let isMounted = true;
-
     // 1. Initial Connection and Join Game Logic
     if (!socket.connected) {
       socket.connect();
     }
-    
     if (!hasJoinedRef.current && gameId && telegramId) {
       socket.emit("joinGame", { gameId, telegramId, GameSessionId });
       hasJoinedRef.current = true;
     }
 
-    // ✅ Socket connection status monitoring
+    // 2. All Event Listeners in a Single Place
     const handleSocketConnect = () => {
       console.log("✅ Socket.IO connected or reconnected!");
-      setSocketConnected(true);
-      if (isMounted && gameId && telegramId) {
-        // Recover state after reconnection
-        socket.emit("recoverSocketState", {
-          telegramId,
-          gameId,
-          GameSessionId,
-          fromPage: 'bingoGame'
-        });
+      console.log("inside socket 🤪🚀⭐", isGameEnd);
+      if (gameId && telegramId) {
         socket.emit("joinGame", { gameId, telegramId, GameSessionId });
       }
     };
 
-    const handleSocketDisconnect = () => {
-      console.log("🔴 Socket.IO disconnected");
-      setSocketConnected(false);
-    };
-
-    const handleSocketReconnect = () => {
-      console.log("🔄 Socket.IO reconnected, recovering state");
-      setSocketConnected(true);
-      if (isMounted && gameId && telegramId) {
-        socket.emit("recoverSocketState", {
-          telegramId,
-          gameId,
-          GameSessionId,
-          fromPage: 'bingoGame'
-        });
-        socket.emit("joinGame", { gameId, telegramId, GameSessionId });
-      }
-    };
-
-    // ✅ Socket state recovery events
-    const handleSocketStateRecovered = () => {
-      console.log('✅ BingoGame: Socket state recovered successfully');
-    };
-
-    const handleSocketStateRecoveryFailed = ({ message }) => {
-      console.warn('⚠️ BingoGame: Socket state recovery failed:', message);
-    };
-
-    // ✅ NEW: Game completion event
-    const handleGameCompletedEvent = () => {
-      console.log("🎯 Game completion confirmed by server");
-      endGame();
-    };
-
-    // 2. All Game Event Listeners
     const handlePlayerCountUpdate = ({ playerCount }) => setPlayerCount(playerCount);
     const handleCountdownTick = ({ countdown }) => setCountdown(countdown);
-    const handleGameStart = () => setGameStarted(true);
+    const handleGameStart = () => {
+      setGameStarted(true);
+      setIsInQueue(false); // ✅ Exit queue when game starts
+    };
     const handleGameEnd = () => {
       console.log("gameEnd is called 🤪🚀⭐", isGameEnd);
-      endGame(); // ✅ UPDATED: Use endGame function instead of direct state set
-    } 
+      setIsGameEnd(true);
+    };
+
     const handleGameReset = () => {
       console.log("🔄 Game reset received, allowing new gameCount emit");
       setHasEmittedGameCount(false);
+      gameCountEmittedRef.current = false;
       setRandomNumber([]);
       setCalledSet(new Set());
       setSelectedNumbers(new Set());
@@ -239,9 +160,9 @@ const BingoGame = () => {
       setGameStarted(false);
       setLastCalledLabel(null);
       setIsGameEnd(false);
-      setWinnerFound(false); // ✅ Reset winner flag
       setAutoLeaveCountdown(3);
     };
+
     const handleDrawnNumbersHistory = ({ gameId: receivedGameId, history }) => {
       if (receivedGameId === gameId) {
         const numbers = history.map(item => item.number);
@@ -249,10 +170,11 @@ const BingoGame = () => {
         setRandomNumber(numbers);
         setCalledSet(labels);
         if (history.length > 0) {
-            setLastCalledLabel(history[history.length - 1].label);
+          setLastCalledLabel(history[history.length - 1].label);
         }
       }
     };
+
     const handleNumberDrawn = ({ number, label, callNumberLength }) => {
       console.log("⭐⭐ numbers drawn", number);
       setRandomNumber((prev) => [...prev, number]);
@@ -260,52 +182,84 @@ const BingoGame = () => {
       setCallNumberLength(callNumberLength);
       setLastCalledLabel(label);
 
-       // ✅ Conditionally play audio based on the isAudioOn state
+      // ✅ Conditionally play audio based on the isAudioOn state
       if (isAudioOn) {
         playAudioForNumber(number);
       }
     };
 
     const handleBingoClaimFailed = ({ message, reason, telegramId, gameId, cardId, card, lastTwoNumbers, selectedNumbers }) => {
-      navigate("/winnerFailed", { 
-        state: { 
-          message, 
-          reason, 
+      navigate("/winnerFailed", {
+        state: {
+          message,
+          reason,
           telegramId,
           gameId,
           cardId,
-          card, 
-          lastTwoNumbers, 
-          selectedNumbers 
-        } 
+          card,
+          lastTwoNumbers,
+          selectedNumbers
+        }
       });
     };
 
     const handleGameDetails = ({ winAmount, playersCount, stakeAmount }) => {
       setGameDetails({ winAmount, playersCount, stakeAmount });
     };
-    
+
     const handleWinnerConfirmed = ({ winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId, GameSessionId }) => {
-      // ✅ Notify server that game is completed when winner is confirmed
-      handleGameCompleted();
       navigate("/winnerPage", { state: { winnerName, prizeAmount, board, winnerPattern, boardNumber, playerCount, telegramId, gameId, GameSessionId } });
     };
-    
+
     const handleWinnerError = () => {
       socket.emit("playerLeave", { gameId: String(gameId), GameSessionId, telegramId }, () => {
+        // This callback runs after the server receives the "playerLeave" event
         console.log("player leave emited🎯🎯", GameSessionId);
         navigate("/");
       });
     };
 
-    // Set up all event listeners
+    // ✅ NEW: Queue event handlers
+    const handleQueuePosition = (data) => {
+      setQueuePosition(data.position);
+      setQueueLength(data.totalInQueue);
+      setEstimatedWaitTime(data.estimatedWaitTime || 0);
+      setIsInQueue(true);
+      console.log(`🎯 Queue position: ${data.position}/${data.totalInQueue}, wait: ${data.estimatedWaitTime}ms`);
+    };
+
+    const handleQueueJoined = (data) => {
+      setQueuePosition(data.position);
+      setQueueLength(data.totalInQueue);
+      setEstimatedWaitTime(data.estimatedWaitTime || 0);
+      setIsInQueue(true);
+      console.log("✅ Joined queue:", data);
+    };
+
+    const handleQueueLeft = (data) => {
+      setIsInQueue(false);
+      setQueuePosition(null);
+      setQueueLength(0);
+      setEstimatedWaitTime(0);
+      console.log("🚪 Left queue:", data);
+    };
+
+    const handleEnteringGame = (data) => {
+      console.log("🎮 Entering game from queue:", data);
+      setIsInQueue(false);
+      setQueuePosition(null);
+      setQueueLength(0);
+      setEstimatedWaitTime(0);
+      setGameStarted(true);
+    };
+
+    const handleQueueError = (data) => {
+      console.error("❌ Queue error:", data);
+      setIsInQueue(false);
+    };
+
+    // Socket event listeners
     socket.on("connect", handleSocketConnect);
-    socket.on("disconnect", handleSocketDisconnect);
-    socket.on("reconnect", handleSocketReconnect);
-    socket.on("socketStateRecovered", handleSocketStateRecovered);
-    socket.on("socketStateRecoveryFailed", handleSocketStateRecoveryFailed);
-    socket.on("gameCompleted", handleGameCompletedEvent); // ✅ NEW: Game completion listener
-    
     socket.on("playerCountUpdate", handlePlayerCountUpdate);
     socket.on("countdownTick", handleCountdownTick);
     socket.on("gameStart", handleGameStart);
@@ -318,18 +272,16 @@ const BingoGame = () => {
     socket.on("winnerError", handleWinnerError);
     socket.on("bingoClaimFailed", handleBingoClaimFailed);
 
+    // ✅ NEW: Queue event listeners
+    socket.on("queuePosition", handleQueuePosition);
+    socket.on("queueJoined", handleQueueJoined);
+    socket.on("queueLeft", handleQueueLeft);
+    socket.on("enteringGame", handleEnteringGame);
+    socket.on("queueError", handleQueueError);
+
     // 3. Cleanup Function
     return () => {
-      isMounted = false;
-      
-      // Remove all event listeners
       socket.off("connect", handleSocketConnect);
-      socket.off("disconnect", handleSocketDisconnect);
-      socket.off("reconnect", handleSocketReconnect);
-      socket.off("socketStateRecovered", handleSocketStateRecovered);
-      socket.off("socketStateRecoveryFailed", handleSocketStateRecoveryFailed);
-      socket.off("gameCompleted", handleGameCompletedEvent); // ✅ NEW: Cleanup
-      
       socket.off("playerCountUpdate", handlePlayerCountUpdate);
       socket.off("countdownTick", handleCountdownTick);
       socket.off("gameStart", handleGameStart);
@@ -339,41 +291,26 @@ const BingoGame = () => {
       socket.off("numberDrawn", handleNumberDrawn);
       socket.off("gameDetails", handleGameDetails);
       socket.off("winnerConfirmed", handleWinnerConfirmed);
-      socket.off("winnerError", handleWinnerError); 
+      socket.off("winnerError", handleWinnerError);
       socket.off("bingoClaimFailed", handleBingoClaimFailed);
-      
+
+      // ✅ NEW: Clean up queue listeners
+      socket.off("queuePosition", handleQueuePosition);
+      socket.off("queueJoined", handleQueueJoined);
+      socket.off("queueLeft", handleQueueLeft);
+      socket.off("enteringGame", handleEnteringGame);
+      socket.off("queueError", handleQueueError);
+
       if (autoLeaveTimeout.current) clearTimeout(autoLeaveTimeout.current);
     };
   }, [gameId, telegramId, GameSessionId, navigate, isAudioOn]);
 
-  // ✅ Additional socket event handlers
-  useEffect(() => {
-    const handleGameStateSync = (state) => {
-      // Handle any additional game state sync if needed
-      console.log("🔄 Game state synced:", state);
-    };
-
-    const handleYouAreWinner = (winnerData) => {
-      // ✅ Notify server that game is completed when user wins
-      handleGameCompleted();
-      navigate("/winner", { state: winnerData });
-    };
-
-    socket.on("gameStateSync", handleGameStateSync);
-    socket.on("youAreWinner", handleYouAreWinner);
-
-    return () => {
-      socket.off("gameStateSync", handleGameStateSync);
-      socket.off("youAreWinner", handleYouAreWinner);
-    };
-  }, [navigate]);
-
-  // ✅ Function to dynamically play the correct audio file
+  // ✅ New: Function to dynamically play the correct audio file
   const playAudioForNumber = (number) => {
     if (!isAudioOn) return;
 
     // Use the correct, consistent path with a leading slash
-    const audio = new Audio(`/audio/audio${number}.mp3`); 
+    const audio = new Audio(`/audio/audio${number}.mp3`);
     audio.currentTime = 0;
     console.log("audio is triggereed 🎯🎯");
     audio.play().catch((error) => {
@@ -381,20 +318,22 @@ const BingoGame = () => {
     });
   };
 
-  // ✅ Request to start game if enough players
+  // ✅ UPDATED: Request to start game if enough players - with queue consideration
   useEffect(() => {
     if (
       playerCount >= 2 &&
-      !hasEmittedGameCount &&
-      !gameStarted
+      !gameCountEmittedRef.current &&
+      !gameStarted &&
+      !isInQueue // ✅ Don't start game count if we're in queue
     ) {
       console.log("✅ Emitting gameCount to server...");
       socket.emit("gameCount", { gameId, GameSessionId });
+      gameCountEmittedRef.current = true;
       setHasEmittedGameCount(true);
     }
-  }, [playerCount, gameStarted, hasEmittedGameCount, gameId, gracePlayers]);
+  }, [playerCount, gameStarted, gameId, GameSessionId, isInQueue]);
 
-  // ✅ Local countdown timer
+  // 5️⃣ Local countdown timer
   useEffect(() => {
     if (countdown > 0) {
       const timer = setTimeout(() => {
@@ -408,7 +347,7 @@ const BingoGame = () => {
   const handleCartelaClick = (num, boardId) => {
     setSelectedNumbersPerBoard(prev => {
       const newSelections = { ...prev };
-      
+
       // 1. Update the clicked board
       const currentBoardSelections = new Set(prev[boardId] || []);
       if (currentBoardSelections.has(num)) {
@@ -417,8 +356,8 @@ const BingoGame = () => {
         currentBoardSelections.add(num);
       }
       newSelections[boardId] = currentBoardSelections;
-      
-      // 2. ✅ Sync this number to all other boards where it exists
+
+      // 2. ✅ NEW: Sync this number to all other boards where it exists
       activeBoards.forEach(board => {
         if (board.cartelaId !== boardId) {
           // Check if this number exists in the other board
@@ -436,7 +375,7 @@ const BingoGame = () => {
           }
         }
       });
-      
+
       return newSelections;
     });
 
@@ -466,7 +405,7 @@ const BingoGame = () => {
   const checkForWin = (boardId) => {
     let selectedSet;
     let boardCartelaId;
-    
+
     if (activeBoards.length === 1) {
       // Single board
       selectedSet = selectedNumbers;
@@ -484,7 +423,7 @@ const BingoGame = () => {
       telegramId,
       gameId,
       GameSessionId,
-      cartelaId: boardCartelaId, 
+      cartelaId: boardCartelaId,
       selectedNumbers: selectedArray,
     });
 
@@ -496,20 +435,12 @@ const BingoGame = () => {
     });
   };
 
-  // ✅ Navigate to add board with socket state preservation
+  // ✅ NEW: Navigate to add board
   const navigateToAddBoard = () => {
-    if (countdown < BINGO_CONFIG.COUNTDOWN_WARNING_THRESHOLD) {
+    if (countdown < 10) {
       setShowAddBoardWarning(true);
       return;
     }
-
-    // ✅ Preserve socket state before navigation
-    socket.emit("preserveSocketState", {
-      telegramId,
-      gameId,
-      GameSessionId,
-      currentPhase: 'bingoGame'
-    });
 
     navigate("/add-board", {
       state: {
@@ -521,6 +452,35 @@ const BingoGame = () => {
       }
     });
   };
+
+  // ✅ NEW: Leave queue function
+  const leaveQueue = () => {
+    if (socket && gameId && telegramId) {
+      socket.emit("leaveQueue", { gameId, telegramId });
+    }
+  };
+
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on("gameStateSync", (state) => {
+      setRandomNumber(state.drawnNumbers || []);
+      setGameStarted(state.isActive || false);
+      setGameDetails(prev => ({ ...prev, winAmount: state.prizeAmount || prev.winAmount }));
+      // setWinnerPattern(state.winnerPattern);
+      // setBoard(state.board);
+      // setBoardNumber(state.boardNumber);
+    });
+
+    socket.on("youAreWinner", (winnerData) => {
+      navigate("/winner", { state: winnerData });
+    });
+
+    return () => {
+      socket.off("gameStateSync");
+      socket.off("youAreWinner");
+    };
+  }, [socket]);
 
   // ✅ Load saved state on mount
   useEffect(() => {
@@ -535,14 +495,62 @@ const BingoGame = () => {
     localStorage.setItem("isAudioOn", isAudioOn);
   }, [isAudioOn]);
 
+  // ✅ NEW: Format wait time for display
+  const formatWaitTime = (seconds) => {
+    if (seconds < 60) {
+      return `${seconds} sec`;
+    } else {
+      const minutes = Math.ceil(seconds / 60);
+      return `${minutes} min`;
+    }
+  };
+
+  // ✅ NEW: Render queue status component
+  const renderQueueStatus = () => {
+    if (!isInQueue) return null;
+
+    return (
+      <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-40 bg-yellow-600 text-white p-4 rounded-lg shadow-lg max-w-sm w-full mx-4">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="font-bold text-lg">🎯 In Queue</h3>
+          <button
+            onClick={leaveQueue}
+            className="text-white hover:text-gray-200 text-sm bg-red-600 hover:bg-red-700 px-2 py-1 rounded"
+          >
+            Leave
+          </button>
+        </div>
+
+        <div className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span>Position:</span>
+            <span className="font-bold">{queuePosition} / {queueLength}</span>
+          </div>
+
+          <div className="flex justify-between">
+            <span>Estimated Wait:</span>
+            <span className="font-bold">{formatWaitTime(estimatedWaitTime)}</span>
+          </div>
+
+          <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
+            <div
+              className="bg-green-500 h-2 rounded-full transition-all duration-500"
+              style={{ width: `${Math.max(5, (queuePosition / Math.max(queueLength, 1)) * 100)}%` }}
+            ></div>
+          </div>
+
+          <p className="text-xs text-center mt-2 opacity-80">
+            {queuePosition <= 2 ? "Game starting soon..." : "Waiting for players..."}
+          </p>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="bg-gradient-to-b from-[#1a002b] via-[#2d003f] to-black min-h-screen flex flex-col items-center p-1 pb-3 w-full max-w-screen overflow-hidden">
-      {/* ✅ Connection status indicator */}
-      <div className={`fixed top-2 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-lg z-50 text-sm font-bold ${
-        socketConnected ? 'bg-green-500 text-white' : 'bg-red-500 text-white animate-pulse'
-      }`}>
-        {socketConnected ? '🟢 Connected' : '🔴 Reconnecting...'}
-      </div>
+      {/* ✅ Queue Status Display */}
+      {renderQueueStatus()}
 
       <div className="grid grid-cols-5 sm:grid-cols-5 gap-1 w-full text-white text-center mt-2 mb-2">
         {[
@@ -558,7 +566,7 @@ const BingoGame = () => {
         <button
           onClick={() => {
             if (!isAudioOn) {
-              const audio = new Audio(`audio/audio1.mp3`);
+              const audio = new Audio(`/audio/audio1.mp3`);
               audio.volume = 0;
               audio
                 .play()
@@ -582,19 +590,31 @@ const BingoGame = () => {
         </button>
       </div>
 
+      {/* ✅ NEW: Queue Information Banner */}
+      {isInQueue && (
+        <div className="w-full bg-yellow-600 text-white p-2 text-center mb-2 rounded">
+          <p className="text-sm font-semibold">
+            🎯 You are in queue! Position: {queuePosition} of {queueLength}
+          </p>
+          <p className="text-xs opacity-80">
+            Estimated wait: {formatWaitTime(estimatedWaitTime)} - Game will start automatically
+          </p>
+        </div>
+      )}
+
       <div className={`flex w-full mt-1 ${activeBoards.length > 1 ? 'gap-3' : ''}`}>
         {/* Column 1: Controls and Number Grid - FIXED HEIGHT */}
         <div className="w-[45%] flex flex-col">
           {activeBoards.length === 1 ? (
             // Single Board: Show Number Grid only
             <div className="grid grid-cols-5 bg-[#2a0047] p-1 gap-2 rounded-lg text-xs w-[90%]">
-              {BINGO_CONFIG.COLUMNS.map((letter, i) => (
-                <div key={i} className={`text-white text-center text-xs font-bold rounded-full h-4 w-6 ${BINGO_CONFIG.COLORS[letter]}`}>
+              {["B", "I", "N", "G", "O"].map((letter, i) => (
+                <div key={i} className={`text-white text-center text-xs font-bold rounded-full h-4 w-6 ${bingoColors[letter]}`}>
                   {letter}
                 </div>
               ))}
               {[...Array(15)].map((_, rowIndex) =>
-                BINGO_CONFIG.COLUMNS.map((letter, colIndex) => {
+                ["B", "I", "N", "G", "O"].map((letter, colIndex) => {
                   const number = rowIndex + 1 + colIndex * 15;
                   const randomNumberLabel = `${letter}-${number}`;
 
@@ -602,7 +622,7 @@ const BingoGame = () => {
                     <div
                       key={randomNumberLabel}
                       className={`text-center rounded ${
-                       calledSet.has(randomNumberLabel)
+                        calledSet.has(randomNumberLabel)
                           ? "bg-gradient-to-b from-yellow-400 to-orange-500 text-black"
                           : "bg-gray-800 text-gray-400 font-bold"
                       }`}
@@ -651,13 +671,13 @@ const BingoGame = () => {
 
               {/* Number Grid - EXPANDED TO FILL SPACE */}
               <div className="flex-1 grid grid-cols-5 bg-[#2a0047] p-1 gap-2 rounded-lg text-xs w-full">
-                {BINGO_CONFIG.COLUMNS.map((letter, i) => (
-                  <div key={i} className={`text-white text-center text-xs font-bold rounded-full h-4 w-6 ${BINGO_CONFIG.COLORS[letter]}`}>
+                {["B", "I", "N", "G", "O"].map((letter, i) => (
+                  <div key={i} className={`text-white text-center text-xs font-bold rounded-full h-4 w-6 ${bingoColors[letter]}`}>
                     {letter}
                   </div>
                 ))}
                 {[...Array(15)].map((_, rowIndex) =>
-                  BINGO_CONFIG.COLUMNS.map((letter, colIndex) => {
+                  ["B", "I", "N", "G", "O"].map((letter, colIndex) => {
                     const number = rowIndex + 1 + colIndex * 15;
                     const randomNumberLabel = `${letter}-${number}`;
 
@@ -665,7 +685,7 @@ const BingoGame = () => {
                       <div
                         key={randomNumberLabel}
                         className={`text-center rounded ${
-                         calledSet.has(randomNumberLabel)
+                          calledSet.has(randomNumberLabel)
                             ? "bg-gradient-to-b from-yellow-400 to-orange-500 text-black"
                             : "bg-gray-800 text-gray-400 font-bold"
                         }`}
@@ -725,10 +745,10 @@ const BingoGame = () => {
                   <div className="bg-gradient-to-b from-purple-800 to-purple-900 p-4 rounded-lg w-full max-w-md mx-auto">
                     {/* BINGO Header - CLOSER LETTERS */}
                     <div className="grid grid-cols-5 gap-0.5 mb-2">
-                      {BINGO_CONFIG.COLUMNS.map((letter, i) => (
+                      {["B", "I", "N", "G", "O"].map((letter, i) => (
                         <div
                           key={i}
-                          className={`w-8 h-8 flex items-center justify-center font-bold text-white text-sm rounded-full ${BINGO_CONFIG.COLORS[letter]}`}
+                          className={`w-8 h-8 flex items-center justify-center font-bold text-white text-sm rounded-full ${bingoColors[letter]}`}
                         >
                           {letter}
                         </div>
@@ -763,10 +783,10 @@ const BingoGame = () => {
             <div className="flex flex-col gap-3 h-full">
               {/* Shared BINGO Header at Top - CLOSER LETTERS */}
               <div className="grid grid-cols-5 gap-0.2 mb-2 w-full max-w-md">
-                {BINGO_CONFIG.COLUMNS.map((letter, i) => (
+                {["B", "I", "N", "G", "O"].map((letter, i) => (
                   <div
                     key={i}
-                    className={`w-8 h-8 flex items-center justify-center font-bold text-white text-sm rounded-full ${BINGO_CONFIG.COLORS[letter]}`}
+                    className={`w-8 h-8 flex items-center justify-center font-bold text-white text-sm rounded-full ${bingoColors[letter]}`}
                   >
                     {letter}
                   </div>
@@ -777,7 +797,7 @@ const BingoGame = () => {
               <div className="flex-1 flex flex-col gap-3">
                 {activeBoards.map((board, boardIndex) => {
                   const isSelected = (selectedNumbersPerBoard[board.cartelaId] || new Set());
-                  
+
                   return (
                     <div key={board.cartelaId} className="bg-gradient-to-b from-purple-800 to-purple-900 p-3 rounded-lg w-full flex-1">
                       {/* Board Header */}
@@ -806,7 +826,7 @@ const BingoGame = () => {
                       </div>
 
                       {/* Bingo Button integrated with board */}
-                      <button 
+                      <button
                         onClick={() => checkForWin(board.cartelaId)}
                         className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 px-2 py-1 text-white rounded-4xl text-xs font-bold shadow-lg transition-all duration-200 mt-2"
                       >
@@ -825,7 +845,7 @@ const BingoGame = () => {
       <div className="w-full flex flex-col items-center gap-3 mt-3">
         {/* Single Board BINGO Button at bottom */}
         {activeBoards.length === 1 && (
-          <button 
+          <button
             onClick={() => checkForWin(activeBoards[0].cartelaId)}
             className="w-full max-w-md bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 px-4 py-3 text-white rounded-4xl text-lg font-bold shadow-lg transition-all duration-200"
           >
@@ -839,14 +859,6 @@ const BingoGame = () => {
             className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 px-14 h-10 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
             onClick={() => {
               if (gameId && telegramId) {
-                // ✅ Preserve socket state before refresh
-                socket.emit("preserveSocketState", {
-                  telegramId,
-                  gameId,
-                  GameSessionId,
-                  currentPhase: 'bingoGame'
-                });
-                
                 socket.emit("joinGame", { gameId, telegramId, GameSessionId });
                 console.log("Forced refresh: Re-emitted joinGame to synchronize state.");
               } else {
@@ -859,14 +871,19 @@ const BingoGame = () => {
           </button>
           <button
             onClick={() => {
-              socket.emit("playerLeave", { gameId: String(gameId), GameSessionId, telegramId }, () => {
-                console.log("player leave emited🎯🎯", GameSessionId );
-                navigate("/");
-              });
+              // ✅ Leave queue if in queue, otherwise leave game
+              if (isInQueue) {
+                leaveQueue();
+              } else {
+                socket.emit("playerLeave", { gameId: String(gameId), GameSessionId, telegramId }, () => {
+                  console.log("player leave emited🎯🎯", GameSessionId);
+                  navigate("/");
+                });
+              }
             }}
             className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 px-14 h-10 text-white rounded-full text-sm font-semibold shadow-md transition-all duration-200"
           >
-            Leave
+            {isInQueue ? "Leave Queue" : "Leave"}
           </button>
           {activeBoards.length === 1 && (
             <button
@@ -879,13 +896,13 @@ const BingoGame = () => {
         </div>
       </div>
 
-      {/* ✅ Add Board Warning Modal */}
+      {/* ✅ NEW: Add Board Warning Modal */}
       {showAddBoardWarning && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
           <div className="bg-white p-6 rounded-lg max-w-sm mx-4">
             <h3 className="text-lg font-bold mb-2">Cannot Add Board</h3>
             <p className="text-gray-600 mb-4">
-              Countdown is too low ({countdown}s). You cannot add boards when countdown is below {BINGO_CONFIG.COUNTDOWN_WARNING_THRESHOLD} seconds.
+              Countdown is too low ({countdown}s). You cannot add boards when countdown is below 10 seconds.
             </p>
             <button
               onClick={() => setShowAddBoardWarning(false)}
@@ -910,7 +927,7 @@ const BingoGame = () => {
               className="w-1/2 bg-gradient-to-r from-green-500 to-emerald-600 px-4 py-2 text-white rounded-lg text-lg font-semibold shadow-md"
               onClick={() => {
                 socket.emit("playerLeave", { gameId: String(gameId), GameSessionId, telegramId }, () => {
-                  console.log("player leave emited🎯🎯", GameSessionId );
+                  console.log("player leave emited🎯🎯", GameSessionId);
                   navigate("/");
                 });
               }} >
