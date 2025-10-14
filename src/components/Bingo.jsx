@@ -1,151 +1,327 @@
 import bingoCards from "../assets/bingoCards.json";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useLocation } from "react-router-dom";
 
-function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherSelectedCards, setOtherSelectedCards, emitLockRef }) {
-  // URL parameters and localStorage management
+// ==================== CONSTANTS & CONFIGURATION ====================
+const CONFIG = {
+  API: {
+    BASE_URL: "https://bingo-backend-8929.onrender.com/api",
+    ENDPOINTS: {
+      USER_DATA: "/users/getUser",
+      GAME_STATUS: "/games/:gameId/status",
+      START_GAME: "/games/start"
+    },
+    TIMEOUT: 10000,
+    POLLING_INTERVAL: 3000
+  },
+  GAME: {
+    TOTAL_CARDS: 100,
+    CARD_GRID_SIZE: 5
+  },
+  STORAGE: {
+    TELEGRAM_ID: "telegramId",
+    GAME_CHOICE: "gameChoice",
+    SELECTED_CARD: "mySelectedCardId"
+  }
+};
+
+// ==================== UTILITY FUNCTIONS ====================
+const logger = {
+  info: (message, data = {}) => {
+    console.log(JSON.stringify({
+      level: 'info',
+      message,
+      timestamp: new Date().toISOString(),
+      ...data
+    }));
+  },
+  error: (message, error = null, data = {}) => {
+    console.error(JSON.stringify({
+      level: 'error',
+      message,
+      error: error?.message,
+      stack: error?.stack,
+      timestamp: new Date().toISOString(),
+      ...data
+    }));
+  },
+  warn: (message, data = {}) => {
+    console.warn(JSON.stringify({
+      level: 'warn',
+      message,
+      timestamp: new Date().toISOString(),
+      ...data
+    }));
+  }
+};
+
+const debounce = (func, wait) => {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+};
+
+const safeParseInt = (value, fallback = null) => {
+  if (value === null || value === undefined) return fallback;
+  const parsed = parseInt(value, 10);
+  return isNaN(parsed) ? fallback : parsed;
+};
+
+// ==================== CUSTOM HOOKS ====================
+const useLocalStorage = (key, initialValue) => {
+  const [storedValue, setStoredValue] = useState(() => {
+    try {
+      const item = window.localStorage.getItem(key);
+      return item ? JSON.parse(item) : initialValue;
+    } catch (error) {
+      logger.error('Error reading from localStorage', error, { key });
+      return initialValue;
+    }
+  });
+
+  const setValue = useCallback((value) => {
+    try {
+      setStoredValue(value);
+      window.localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+      logger.error('Error writing to localStorage', error, { key });
+    }
+  }, [key]);
+
+  return [storedValue, setValue];
+};
+
+const useApiPolling = (url, interval = CONFIG.API.POLLING_INTERVAL) => {
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const result = await response.json();
+        
+        if (isMounted) {
+          setData(result);
+          setError(null);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError(err.message);
+          logger.error('API polling error', err, { url });
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchData(); // Initial fetch
+
+    const intervalId = setInterval(fetchData, interval);
+
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
+  }, [url, interval]);
+
+  return { data, error, isLoading };
+};
+
+// ==================== MAIN COMPONENT ====================
+function Bingo({
+  isBlackToggleOn,
+  setCartelaIdInParent,
+  cartelaId,
+  socket,
+  otherSelectedCards,
+  setOtherSelectedCards,
+  emitLockRef
+}) {
+  // ==================== STATE & REFS ====================
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  
   const urlTelegramId = searchParams.get("user");
   const urlGameId = searchParams.get("game");
-  const location = useLocation();
-  const prevPathRef = useRef(null);
-
-  // Store only if changed
-  useEffect(() => {
-    const storedTelegramId = localStorage.getItem("telegramId");
-    const storedGameId = localStorage.getItem("gameChoice");
-
-    if (urlTelegramId && urlTelegramId !== storedTelegramId) {
-      localStorage.setItem("telegramId", urlTelegramId);
-    }
-
-    if (urlGameId && urlGameId !== storedGameId) {
-      localStorage.setItem("gameChoice", urlGameId);
-    }
-  }, [urlTelegramId, urlGameId]);
-
-  // Use URL value if available, otherwise fallback to localStorage
-  const telegramId = urlTelegramId || localStorage.getItem("telegramId");
-  const gameId = urlGameId || localStorage.getItem("gameChoice");
-
-  // State management
-  const navigate = useNavigate();
+  
+  const [telegramId, setTelegramId] = useLocalStorage(CONFIG.STORAGE.TELEGRAM_ID, "");
+  const [gameId, setGameId] = useLocalStorage(CONFIG.STORAGE.GAME_CHOICE, "");
+  
   const [cartela, setCartela] = useState([]);
   const [gameStatus, setGameStatus] = useState(false);
   const [userBalance, setUserBalance] = useState(null);
   const [bonusBalance, setUserBonusBalance] = useState(null);
   const [alertMessage, setAlertMessage] = useState("");
-  const numbers = Array.from({ length: 100 }, (_, i) => i + 1);
-  const [response, setResponse] = useState("");
-  const [count, setCount] = useState(0);
   const [playerCount, setPlayerCount] = useState(0);
   const [gameStarted, setGameStarted] = useState(false);
   const [countdown, setCountdown] = useState(null);
   const [isStarting, setIsStarting] = useState(false);
+  
   const hasInitialSyncRun = useRef(false);
   const lastRequestIdRef = useRef(0);
+  const prevPathRef = useRef(null);
+  const alertTimeoutRef = useRef(null);
 
-  // ✅ NEW: Queue state management
-  const [queuePosition, setQueuePosition] = useState(null);
-  const [queueLength, setQueueLength] = useState(0);
-  const [estimatedWaitTime, setEstimatedWaitTime] = useState(0);
-  const [isInQueue, setIsInQueue] = useState(false);
-  const [activeGameInfo, setActiveGameInfo] = useState(null);
+  // ==================== MEMOIZED VALUES ====================
+  const numbers = useMemo(() => 
+    Array.from({ length: CONFIG.GAME.TOTAL_CARDS }, (_, i) => i + 1), 
+    []
+  );
 
-  // Theme variables
-  const bgGradient = isBlackToggleOn
-    ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900'
-    : 'bg-gradient-to-br from-violet-300 via-purple-400 to-indigo-500'
-
-  const alertBg = isBlackToggleOn ? 'bg-red-900' : 'bg-red-100';
-  const alertText = isBlackToggleOn ? 'text-red-300' : 'text-red-700';
-  const alertBorder = isBlackToggleOn ? 'border-red-700' : 'border-red-500';
-
-  const myCardBg = isBlackToggleOn ? 'bg-green-600 text-white' : 'bg-green-500 text-white';
-  const otherCardBg = isBlackToggleOn ? 'bg-yellow-600 text-black' : 'bg-yellow-400 text-black';
-  const defaultCardBg = isBlackToggleOn ? 'bg-gray-700 text-white' : 'bg-purple-100 text-black';
-
-  const cellBg = isBlackToggleOn ? 'bg-gray-800 text-white' : 'bg-purple-100 text-black';
-
-  const refreshBtnBg = isBlackToggleOn ? 'bg-blue-700' : 'bg-blue-500';
-  const startBtnEnabledBg = isBlackToggleOn ? 'bg-orange-600 hover:bg-orange-700' : 'bg-orange-500 hover:bg-orange-600';
-  const startBtnDisabledBg = 'bg-gray-600 cursor-not-allowed';
-
-  // ✅ NEW: Queue status colors
-  const queueActiveBg = isBlackToggleOn ? 'bg-purple-800' : 'bg-purple-500';
-  const queueWaitingBg = isBlackToggleOn ? 'bg-yellow-800' : 'bg-yellow-500';
-
-  // Fetch User Balance from REST
-  const fetchUserData = async (id) => {
-    try {
-      const res = await fetch(`https://bingo-backend-8929.onrender.com/api/users/getUser?telegramId=${telegramId}`);
-      if (!res.ok) throw new Error("User not found");
-      const data = await res.json();
-      setUserBalance(data.balance);
-      setUserBonusBalance(data.bonus_balance);
-    } catch (err) {
-      console.error(err);
-      setAlertMessage("Error fetching user data.");
+  const theme = useMemo(() => ({
+    bgGradient: isBlackToggleOn
+      ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900'
+      : 'bg-gradient-to-br from-violet-300 via-purple-400 to-indigo-500',
+    
+    alert: {
+      bg: isBlackToggleOn ? 'bg-red-900' : 'bg-red-100',
+      text: isBlackToggleOn ? 'text-red-300' : 'text-red-700',
+      border: isBlackToggleOn ? 'border-red-700' : 'border-red-500'
+    },
+    
+    cards: {
+      myCard: isBlackToggleOn ? 'bg-green-600 text-white' : 'bg-green-500 text-white',
+      otherCard: isBlackToggleOn ? 'bg-yellow-600 text-black' : 'bg-yellow-400 text-black',
+      defaultCard: isBlackToggleOn ? 'bg-gray-700 text-white' : 'bg-purple-100 text-black'
+    },
+    
+    cell: {
+      bg: isBlackToggleOn ? 'bg-gray-800 text-white' : 'bg-purple-100 text-black'
+    },
+    
+    buttons: {
+      refresh: isBlackToggleOn ? 'bg-blue-700' : 'bg-blue-500',
+      startEnabled: isBlackToggleOn ? 'bg-orange-600 hover:bg-orange-700' : 'bg-orange-500 hover:bg-orange-600',
+      startDisabled: 'bg-gray-600 cursor-not-allowed'
     }
-  };
+  }), [isBlackToggleOn]);
 
-  // ✅ NEW: Format wait time for display
-  const formatWaitTime = (seconds) => {
-    if (seconds < 60) {
-      return `${seconds} sec`;
-    } else {
-      const minutes = Math.ceil(seconds / 60);
-      return `${minutes} min`;
-    }
-  };
+  // ==================== EFFECTS ====================
 
-  // ✅ NEW: Leave queue function
-  const leaveQueue = () => {
-    if (socket && gameId && telegramId) {
-      socket.emit("leaveQueue", { gameId, telegramId });
-      setIsInQueue(false);
-      setQueuePosition(null);
-      setQueueLength(0);
-      setEstimatedWaitTime(0);
-      setAlertMessage("You have left the queue");
-    }
-  };
+  // Sync URL parameters with localStorage
+  useEffect(() => {
+    const updateFromUrlParams = () => {
+      if (urlTelegramId && urlTelegramId !== telegramId) {
+        setTelegramId(urlTelegramId);
+        logger.info('Telegram ID updated from URL', { telegramId: urlTelegramId });
+      }
 
-  // ✅ NEW: Get queue info
-  const getQueueInfo = () => {
-    if (socket && gameId) {
-      socket.emit("getQueueInfo", { gameId });
-    }
-  };
+      if (urlGameId && urlGameId !== gameId) {
+        setGameId(urlGameId);
+        logger.info('Game ID updated from URL', { gameId: urlGameId });
+      }
+    };
 
-  // Initial Effect to Fetch & Setup Socket
+    updateFromUrlParams();
+  }, [urlTelegramId, urlGameId, telegramId, gameId, setTelegramId, setGameId]);
+
+  // Validate required parameters
   useEffect(() => {
     if (!telegramId || !gameId) {
-      console.error("Missing telegramId or gameId for game page.");
+      logger.warn('Missing required parameters, redirecting to home', {
+        telegramId: !!telegramId,
+        gameId: !!gameId
+      });
       navigate('/');
       return;
     }
+  }, [telegramId, gameId, navigate]);
 
-    const handleCardSelections = (cards) => {
-      const reformatted = {};
+  // Fetch user data
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!telegramId) return;
 
-      if (lastRequestIdRef.current > 0) {
-        return;
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT);
+
+        const res = await fetch(
+          `${CONFIG.API.BASE_URL}${CONFIG.API.ENDPOINTS.USER_DATA}?telegramId=${telegramId}`,
+          { signal: controller.signal }
+        );
+
+        clearTimeout(timeoutId);
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
+
+        const data = await res.json();
+        setUserBalance(data.balance);
+        setUserBonusBalance(data.bonus_balance);
+        
+        logger.info('User data fetched successfully', {
+          telegramId,
+          balance: data.balance,
+          bonusBalance: data.bonus_balance
+        });
+
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          logger.error('Error fetching user data', err, { telegramId });
+          setAlertMessage("Error fetching user data. Please try again.");
+        }
       }
+    };
+
+    fetchUserData();
+  }, [telegramId]);
+
+  // Game status polling
+  const gameStatusUrl = `${CONFIG.API.BASE_URL}${CONFIG.API.ENDPOINTS.GAME_STATUS.replace(':gameId', gameId)}`;
+  const { data: gameStatusData, error: statusError } = useApiPolling(
+    gameId ? gameStatusUrl : null,
+    CONFIG.API.POLLING_INTERVAL
+  );
+
+  useEffect(() => {
+    if (gameStatusData) {
+      const isActive = gameStatusData.isActive;
+      setIsStarting(isActive);
+      setGameStarted(isActive);
       
+      if (statusError) {
+        logger.warn('Game status polling error', { gameId, error: statusError });
+      }
+    }
+  }, [gameStatusData, statusError, gameId]);
+
+  // Socket event handlers
+  useEffect(() => {
+    if (!socket || !telegramId || !gameId) return;
+
+    const handleCardSelections = debounce((cards) => {
+      if (lastRequestIdRef.current > 0) return;
+
+      const reformatted = {};
       for (const [cardId, tId] of Object.entries(cards)) {
-        // ✅ FIXED: Only add cards from OTHER players to otherSelectedCards
         if (tId !== telegramId) {
-          reformatted[tId] = parseInt(cardId);
+          reformatted[tId] = safeParseInt(cardId);
         }
       }
 
       setOtherSelectedCards(reformatted);
-    };
+    }, 100);
 
     const handleCardReleased = ({ telegramId: releasedTelegramId, cardId }) => {
-      setOtherSelectedCards((prev) => {
+      setOtherSelectedCards(prev => {
         const newState = { ...prev };
         if (newState[releasedTelegramId] === cardId) {
           delete newState[releasedTelegramId];
@@ -157,206 +333,177 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
     const handleInitialCardStates = (data) => {
       const { takenCards } = data;
 
-      if (lastRequestIdRef.current > 0) {
-        return;
-      }
+      if (lastRequestIdRef.current > 0) return;
 
+      // Process other players' cards
       const newOtherSelectedCardsMap = {};
       for (const cardId in takenCards) {
         const takenByTelegramId = takenCards[cardId].takenBy;
-        // ✅ FIXED: Only add cards from OTHER players
         if (takenByTelegramId !== telegramId) {
-          newOtherSelectedCardsMap[takenByTelegramId] = Number(cardId);
+          newOtherSelectedCardsMap[takenByTelegramId] = safeParseInt(cardId);
         }
       }
       setOtherSelectedCards(newOtherSelectedCardsMap);
 
-      // Restore User's Own Card
-      const mySavedCardId = sessionStorage.getItem("mySelectedCardId");
-      if (mySavedCardId && !isNaN(Number(mySavedCardId))) {
-        const numMySavedCardId = Number(mySavedCardId);
+      // Restore user's own card
+      const mySavedCardId = sessionStorage.getItem(CONFIG.STORAGE.SELECTED_CARD);
+      if (mySavedCardId) {
+        const numMySavedCardId = safeParseInt(mySavedCardId);
         const selectedCardData = bingoCards.find(card => card.id === numMySavedCardId);
+        
         if (selectedCardData) {
           setCartela(selectedCardData.card);
           setCartelaIdInParent(numMySavedCardId);
         } else {
-          sessionStorage.removeItem("mySelectedCardId");
-          setCartela([]);
-          setCartelaIdInParent(null);
+          sessionStorage.removeItem(CONFIG.STORAGE.SELECTED_CARD);
+          resetCardState();
         }
       } else {
-        setCartela([]);
-        setCartelaIdInParent(null);
+        resetCardState();
       }
 
       hasInitialSyncRun.current = true;
     };
 
-    // ✅ NEW: Queue event handlers
-    const handleQueuePosition = (data) => {
-      setQueuePosition(data.position);
-      setQueueLength(data.totalInQueue);
-      setEstimatedWaitTime(data.estimatedWaitTime || 0);
-      setIsInQueue(true);
-      console.log(`🎯 Queue position: ${data.position}/${data.totalInQueue}, wait: ${data.estimatedWaitTime}ms`);
-    };
+    const handleCardConfirmed = (data) => {
+      if (data.requestId !== lastRequestIdRef.current) return;
 
-    const handleQueueJoined = (data) => {
-      setQueuePosition(data.position);
-      setQueueLength(data.totalInQueue);
-      setEstimatedWaitTime(data.estimatedWaitTime || 0);
-      setIsInQueue(true);
-      setAlertMessage(`Joined queue! Position: ${data.position}`);
-    };
+      const confirmedCardId = safeParseInt(data.cardId);
+      setCartelaIdInParent(confirmedCardId);
+      setCartela(data.card);
+      sessionStorage.setItem(CONFIG.STORAGE.SELECTED_CARD, data.cardId.toString());
+      setGameStatus("Ready to Start");
+      lastRequestIdRef.current = 0;
+      emitLockRef.current = false;
 
-    const handleQueueLeft = (data) => {
-      setIsInQueue(false);
-      setQueuePosition(null);
-      setQueueLength(0);
-      setEstimatedWaitTime(0);
-      setAlertMessage(data.message || "Left queue");
-    };
-
-    const handleQueueInfo = (data) => {
-      console.log("Queue info:", data);
-      // Update queue display information
-    };
-
-    const handleEnteringGame = (data) => {
-      console.log("🎮 Entering game from queue:", data);
-      setIsInQueue(false);
-      setQueuePosition(null);
-      setQueueLength(0);
-      setEstimatedWaitTime(0);
-      
-      // Navigate to game page with the provided session ID
-      navigate("/game", {
-        state: {
-          gameId: data.gameId,
-          telegramId,
-          GameSessionId: data.GameSessionId,
-          cartelaId,
-          cartela,
-          playerCount: data.playersInGame,
-          stakeAmount: data.stakeAmount
-        },
+      logger.info('Card selection confirmed', {
+        telegramId,
+        cardId: confirmedCardId
       });
     };
 
-    const handleQueueError = (data) => {
-      setAlertMessage(data.message || "Queue error occurred");
-      setIsInQueue(false);
+    const handleCardUnavailable = ({ cardId }) => {
+      showAlert(`🚫 Card ${cardId} is already taken by another player.`);
+      resetCardState();
+    };
+
+    const handleCardError = ({ message }) => {
+      showAlert(message || "Card selection failed.");
+      resetCardState();
+      lastRequestIdRef.current = 0;
+      emitLockRef.current = false;
+    };
+
+    const handleGameEvents = {
+      userconnected: (res) => logger.info('User connected', { telegramId: res.telegramId }),
+      balanceUpdated: (newBalance) => setUserBalance(newBalance),
+      gameStatusUpdate: (status) => setGameStatus(status),
+      gameid: (data) => setPlayerCount(data.numberOfPlayers),
+      error: (err) => {
+        logger.error('Socket error', null, { error: err });
+        showAlert(err.message);
+      },
+      cardsReset: ({ gameId: resetGameId }) => {
+        if (resetGameId === gameId) {
+          resetAllCardStates();
+        }
+      },
+      gameStart: () => setGameStarted(true),
+      gameFinished: () => setGameStarted(false),
+      gameEnded: () => {
+        setGameStarted(false);
+        setIsStarting(false);
+        setAlertMessage("");
+        sessionStorage.removeItem(CONFIG.STORAGE.SELECTED_CARD);
+      }
     };
 
     const performInitialGameSync = () => {
-      if (socket.connected && telegramId && gameId) {
+      if (socket.connected && telegramId && gameId && !hasInitialSyncRun.current) {
         socket.emit("userJoinedGame", { telegramId, gameId });
+        logger.info('Initial game sync performed', { telegramId, gameId });
       }
     };
-
-    // Socket event listeners
-    socket.on("initialCardStates", handleInitialCardStates);
-    socket.on("userconnected", (res) => { setResponse(res.telegramId); });
-    socket.on("balanceUpdated", (newBalance) => { setUserBalance(newBalance); });
-    socket.on("gameStatusUpdate", (status) => { 
-      setGameStatus(status);
-    });
-    socket.on("currentCardSelections", handleCardSelections);
-    socket.on("cardConfirmed", (data) => {
-      // Ignore stale confirmations
-      if (data.requestId !== lastRequestIdRef.current) {
-        return;
-      }
-
-      const confirmedCardId = Number(data.cardId);
-      setCartelaIdInParent(confirmedCardId);
-      setCartela(data.card);
-      sessionStorage.setItem("mySelectedCardId", data.cardId);
-      setGameStatus("Ready to Start");
-      lastRequestIdRef.current = 0;
-    });
-
-    socket.on("cardUnavailable", ({ cardId }) => {
-      setAlertMessage(`🚫 Card ${cardId} is already taken by another player.`);
-      setCartela([]);
-      setCartelaIdInParent(null);
-      sessionStorage.removeItem("mySelectedCardId");
-    });
-
-    socket.on("cardError", ({ message }) => {
-      setAlertMessage(message || "Card selection failed.");
-      setCartela([]);
-      setCartelaIdInParent(null);
-      sessionStorage.removeItem("mySelectedCardId");
-      lastRequestIdRef.current = 0;
-    });
-
-    socket.on("cardReleased", handleCardReleased);
-    socket.on("gameid", (data) => { setCount(data.numberOfPlayers); });
-    socket.on("error", (err) => {
-      console.error(err);
-      setAlertMessage(err.message);
-    });
-    socket.on("cardsReset", ({ gameId: resetGameId }) => {
-      if (resetGameId === gameId) {
-        setOtherSelectedCards({});
-        setCartela([]);
-        setCartelaIdInParent(null);
-        sessionStorage.removeItem("mySelectedCardId");
-        hasInitialSyncRun.current = false;
-      }
-    });
-
-    // ✅ NEW: Queue event listeners
-    socket.on("queuePosition", handleQueuePosition);
-    socket.on("queueJoined", handleQueueJoined);
-    socket.on("queueLeft", handleQueueLeft);
-    socket.on("queueInfo", handleQueueInfo);
-    socket.on("enteringGame", handleEnteringGame);
-    socket.on("queueError", handleQueueError);
 
     const handleConnectForSync = () => {
-      if (!hasInitialSyncRun.current) {
-        performInitialGameSync();
+      performInitialGameSync();
+    };
+
+    // Register event listeners
+    const socketEventHandlers = {
+      "initialCardStates": handleInitialCardStates,
+      "currentCardSelections": handleCardSelections,
+      "cardConfirmed": handleCardConfirmed,
+      "cardUnavailable": handleCardUnavailable,
+      "cardError": handleCardError,
+      "cardReleased": handleCardReleased,
+      "connect": handleConnectForSync,
+      "disconnect": () => {
+        hasInitialSyncRun.current = false;
+        logger.info('Socket disconnected');
       }
     };
-    
-    socket.on("connect", handleConnectForSync);
-    socket.on("disconnect", () => {
-      hasInitialSyncRun.current = false;
+
+    // Add all game event handlers
+    Object.entries(handleGameEvents).forEach(([event, handler]) => {
+      socket.on(event, handler);
     });
 
-    performInitialGameSync();
-    fetchUserData(telegramId);
+    // Add socket event handlers
+    Object.entries(socketEventHandlers).forEach(([event, handler]) => {
+      socket.on(event, handler);
+    });
+
+    // Perform initial sync if needed
+    if (socket.connected) {
+      performInitialGameSync();
+    }
 
     return () => {
-      socket.off("userconnected");
-      socket.off("initialCardStates", handleInitialCardStates);
-      socket.off("balanceUpdated");
-      socket.off("gameStatusUpdate");
-      socket.off("currentCardSelections", handleCardSelections);
-      socket.off("cardConfirmed");
-      socket.off("cardUnavailable");
-      socket.off("cardError");
-      socket.off("cardReleased", handleCardReleased);
-      socket.off("gameid");
-      socket.off("error");
-      socket.off("cardsReset");
-      socket.off("connect", handleConnectForSync);
-      
-      // ✅ NEW: Clean up queue listeners
-      socket.off("queuePosition", handleQueuePosition);
-      socket.off("queueJoined", handleQueueJoined);
-      socket.off("queueLeft", handleQueueLeft);
-      socket.off("queueInfo", handleQueueInfo);
-      socket.off("enteringGame", handleEnteringGame);
-      socket.off("queueError", handleQueueError);
-      
-      hasInitialSyncRun.current = false;
-    };
-  }, [telegramId, gameId, bingoCards, navigate, socket]); 
+      // Cleanup game event handlers
+      Object.keys(handleGameEvents).forEach(event => {
+        socket.off(event);
+      });
 
-  const handleLocalCartelaIdChange = (newCartelaId) => {
+      // Cleanup socket event handlers
+      Object.keys(socketEventHandlers).forEach(event => {
+        socket.off(event);
+      });
+
+      hasInitialSyncRun.current = false;
+      
+      if (alertTimeoutRef.current) {
+        clearTimeout(alertTimeoutRef.current);
+      }
+    };
+  }, [socket, telegramId, gameId, setOtherSelectedCards, setCartelaIdInParent, emitLockRef]);
+
+  // ==================== EVENT HANDLERS ====================
+  const showAlert = useCallback((message, duration = 5000) => {
+    setAlertMessage(message);
+    
+    if (alertTimeoutRef.current) {
+      clearTimeout(alertTimeoutRef.current);
+    }
+    
+    alertTimeoutRef.current = setTimeout(() => {
+      setAlertMessage("");
+    }, duration);
+  }, []);
+
+  const resetCardState = useCallback(() => {
+    setCartela([]);
+    setCartelaIdInParent(null);
+    sessionStorage.removeItem(CONFIG.STORAGE.SELECTED_CARD);
+  }, [setCartelaIdInParent]);
+
+  const resetAllCardStates = useCallback(() => {
+    setOtherSelectedCards({});
+    resetCardState();
+    hasInitialSyncRun.current = false;
+  }, [setOtherSelectedCards, resetCardState]);
+
+  const handleLocalCartelaIdChange = useCallback((newCartelaId) => {
     const selectedCard = bingoCards.find(card => card.id === newCartelaId);
     if (selectedCard) {
       setCartela(selectedCard.card);
@@ -364,15 +511,11 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
         setCartelaIdInParent(newCartelaId);
       }
     } else {
-      setCartela([]);
-      if (setCartelaIdInParent) {
-        setCartelaIdInParent(null);
-      }
+      resetCardState();
     }
-  };
+  }, [setCartelaIdInParent, resetCardState]);
 
-  // Select a bingo card
-  const handleNumberClick = (number) => {
+  const handleNumberClick = useCallback((number) => {
     if (emitLockRef.current && number === cartelaId) return;
     if (emitLockRef.current && number !== cartelaId) {
       emitLockRef.current = false;
@@ -380,7 +523,7 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
 
     const selectedCard = bingoCards.find(card => card.id === number);
     if (!selectedCard) {
-      console.error("Card not found for ID:", number);
+      logger.error('Card not found', { cardId: number });
       handleLocalCartelaIdChange(null);
       return;
     }
@@ -391,7 +534,6 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
 
     // Optimistic UI update
     handleLocalCartelaIdChange(number);
-    setCartela(selectedCard.card);
     setGameStatus("Ready to Start");
 
     socket.emit("cardSelected", {
@@ -401,290 +543,252 @@ function Bingo({isBlackToggleOn, setCartelaIdInParent, cartelaId, socket, otherS
       card: selectedCard.card,
       requestId
     });
-  };
 
-  useEffect(() => {
-    socket.on("gameStart", () => {
-      setGameStarted(true);
+    logger.info('Card selection initiated', {
+      telegramId,
+      gameId,
+      cardId: number,
+      requestId
     });
+  }, [telegramId, gameId, cartelaId, emitLockRef, handleLocalCartelaIdChange, socket]);
 
-    return () => {
-      socket.off("gameStart");
-    };
-  }, []);
-
-  useEffect(() => {
-    socket.on("gameFinished", () => {
-      setGameStarted(false);
-    });
-
-    return () => {
-      socket.off("gameFinished");
-    };
-  }, []);
-
-  const resetGame = () => {
+  const resetGame = useCallback(() => {
+    logger.info('Game reset initiated');
     window.location.reload();
-  };
-
-  useEffect(() => {
-    socket.on("gameEnded", () => {
-      setGameStarted(false);
-      setIsStarting(false);
-      setAlertMessage("");
-      sessionStorage.removeItem("mySelectedCardId");
-    });
-
-    return () => socket.off("gameEnded");
   }, []);
 
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch(`https://bingo-backend-8929.onrender.com/api/games/${gameId}/status`);
-        const data = await res.json();
-
-        if (!data.isActive) {
-          setIsStarting(false);
-          setGameStarted(false);
-        } else {
-          setIsStarting(true);
-          setGameStarted(true);
-        }
-      } catch (error) {
-        console.error("Status polling failed:", error);
-      }
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [gameId]);
-
-  // 🟢 UPDATED: Start Game with Queue Integration
-  const startGame = async () => {
-    if (isStarting || isInQueue) return;
+  const startGame = useCallback(async () => {
+    if (isStarting || !cartelaId) return;
 
     setIsStarting(true);
+    setAlertMessage("");
 
     try {
-      const response = await fetch("https://bingo-backend-8929.onrender.com/api/games/start", {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT);
+
+      const response = await fetch(`${CONFIG.API.BASE_URL}${CONFIG.API.ENDPOINTS.START_GAME}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ gameId, telegramId, cardId: cartelaId }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       const data = await response.json();
 
       if (response.ok && data.success) {
         const { GameSessionId: currentSessionId } = data;
 
-        // ✅ Player is automatically added to queue via userJoinedGame event
-        // The queue management happens automatically in the socket backend
-        setAlertMessage("Joined game queue! Waiting for players...");
+        socket.emit("joinGame", {
+          gameId,
+          telegramId,
+          GameSessionId: currentSessionId
+        });
 
-        // The actual game joining will happen via the "enteringGame" socket event
-        // when the queue system starts a game with this player
+        logger.info('Game started successfully', {
+          gameId,
+          telegramId,
+          GameSessionId: currentSessionId,
+          cartelaId
+        });
 
+        navigate("/game", {
+          state: {
+            gameId,
+            telegramId,
+            GameSessionId: currentSessionId,
+            cartelaId,
+            cartela,
+            playerCount: 1,
+          },
+          replace: true
+        });
       } else if (data.message && data.message.includes("already running")) {
-        // Game is already running - show error message
-        setAlertMessage("🚫 Game has already started! Please wait for the next game.");
+        showAlert("🚫 Game has already started! Please wait for the next game.");
       } else {
-        setAlertMessage(data.message || data.error || "Error starting the game");
-        console.error("Game start error:", data.error);
+        showAlert(data.message || data.error || "Error starting the game");
+        logger.error('Game start API error', null, {
+          gameId,
+          telegramId,
+          error: data.error
+        });
       }
     } catch (error) {
-      setAlertMessage("Error connecting to the backend");
-      console.error("Connection error:", error);
+      if (error.name === 'AbortError') {
+        showAlert("Request timeout. Please check your connection and try again.");
+      } else {
+        showAlert("Error connecting to the backend");
+      }
+      logger.error('Game start connection error', error, {
+        gameId,
+        telegramId
+      });
     } finally {
       setIsStarting(false);
     }
-  };
+  }, [isStarting, cartelaId, gameId, telegramId, cartela, socket, navigate, showAlert]);
 
-  // ✅ NEW: Render queue status component
-  const renderQueueStatus = () => {
-    if (!isInQueue) return null;
+  // ==================== RENDER FUNCTIONS ====================
+  const renderAlert = () => {
+    if (!alertMessage) return null;
 
     return (
-      <div className={`fixed top-20 left-1/2 transform -translate-x-1/2 z-40 ${queueWaitingBg} text-white p-4 rounded-lg shadow-lg max-w-sm w-full mx-4`}>
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="font-bold text-lg">🎯 In Queue</h3>
+      <div className="fixed top-0 left-0 w-full flex justify-center z-50 animate-fade-in">
+        <div className={`flex items-center max-w-sm w-full p-3 m-2 ${theme.alert.bg} ${theme.alert.border} border-l-4 ${theme.alert.text} rounded-md shadow-lg`}>
+          <svg className={`w-5 h-5 mr-2 ${theme.alert.text}`} fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M18 10c0 4.418-3.582 8-8 8s-8-3.582-8-8 3.582-8 8-8 8 3.582 8 8zM9 7a1 1 0 012 0v3a1 1 0 01-2 0V7zm1 6a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" />
+          </svg>
+          <span className="flex-1 text-sm">{alertMessage}</span>
           <button 
-            onClick={leaveQueue}
-            className="text-white hover:text-gray-200 text-sm bg-red-600 hover:bg-red-700 px-2 py-1 rounded"
+            className="text-gray-500 hover:text-gray-700 transition-colors"
+            onClick={() => setAlertMessage("")}
+            aria-label="Dismiss alert"
           >
-            Leave
+            ✕
           </button>
-        </div>
-        
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span>Position:</span>
-            <span className="font-bold">{queuePosition} / {queueLength}</span>
-          </div>
-          
-          <div className="flex justify-between">
-            <span>Estimated Wait:</span>
-            <span className="font-bold">{formatWaitTime(estimatedWaitTime)}</span>
-          </div>
-          
-          <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
-            <div 
-              className="bg-green-500 h-2 rounded-full transition-all duration-500"
-              style={{ width: `${Math.max(5, (queuePosition / Math.max(queueLength, 1)) * 100)}%` }}
-            ></div>
-          </div>
-          
-          <p className="text-xs text-center mt-2 opacity-80">
-            {queuePosition <= 2 ? "Game starting soon..." : "Waiting for players..."}
-          </p>
         </div>
       </div>
     );
   };
 
-  return (
-    <>
-      <div className={`flex flex-col items-center p-3 pb-20 min-h-screen ${bgGradient} text-white w-full overflow-hidden`}>
-        {alertMessage && (
-          <div className="fixed top-0 left-0 w-full flex justify-center z-50">
-            <div className={`flex items-center max-w-sm w-full p-3 m-2 ${alertBg} ${alertBorder} border-l-4 ${alertText} rounded-md shadow-lg`}>
-              <svg className={`w-5 h-5 mr-2 ${alertText}`} fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10c0 4.418-3.582 8-8 8s-8-3.582-8-8 3.582-8 8-8 8 3.582 8 8zM9 7a1 1 0 012 0v3a1 1 0 01-2 0V7zm1 6a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" />
-              </svg>
-              <span className="flex-1 text-sm">{alertMessage}</span>
-              <button className="text-gray-500 hover:text-gray-700" onClick={() => setAlertMessage("")}>
-                ✕
-              </button>
-            </div>
-          </div>
-        )}
+  const renderBalanceCards = () => (
+    <div className="grid grid-cols-4 sm:grid-cols-4 gap-2 w-full max-w-xl text-white text-center mb-2">
+      {/* Balance Card */}
+      <div className="flex flex-col justify-center bg-[#3D74B6] max-h-[24vh] rounded-2xl shadow-lg transition-transform transform hover:scale-105">
+        <p className="text-sm sm:text-base font-semibold tracking-wide opacity-90">
+          Balance
+        </p>
+        <span className="text-md sm:text-md font-extrabold block">
+          {userBalance !== null ? `${userBalance} ብር` : "Loading..."}
+        </span>
+      </div>
 
-        {/* ✅ Queue Status Display */}
-        {renderQueueStatus()}
+      {/* Bonus Balance Card */}
+      <div className="flex flex-col justify-center bg-[#51B33B] max-h-[24vh] rounded-2xl shadow-lg transition-transform transform hover:scale-105">
+        <p className="text-sm sm:text-base font-semibold tracking-wide opacity-90">
+          Bonus
+        </p>
+        <span className="text-md sm:text-md font-extrabold block">
+          {bonusBalance !== null ? `${bonusBalance} ብር` : "Loading..."}
+        </span>
+      </div>
 
-        <div className="grid grid-cols-4 sm:grid-cols-4 gap-2 w-full max-w-xl text-white text-center mb-2">
-          {/* Balance Card */}
-          <div className="flex flex-col justify-center bg-[#3D74B6] max-h-[24vh] rounded-2xl shadow-lg transition-transform transform hover:scale-105">
-            <p className="text-sm sm:text-base font-semibold tracking-wide opacity-90">
-              Balance
-            </p>
-            <span className="text-md sm:text-md font-extrabold block">
-              {userBalance !== null ? `${userBalance} ብር` : "Loading..."}
-            </span>
-          </div>
-
-          {/* Bonus Balance Card */}
-          <div className="flex flex-col justify-center bg-[#51B33B] max-h-[24vh] rounded-2xl shadow-lg transition-transform transform hover:scale-105">
-            <p className="text-sm sm:text-base font-semibold tracking-wide opacity-90">
-              Bonus
-            </p>
-            <span className="text-md sm:text-md font-extrabold block">
-              {bonusBalance !== null ? `${bonusBalance} ብር` : "Loading..."}
-            </span>
-          </div>
-
-          {/* Game Count Card - UPDATED for queue status */}
-          <div className={`flex flex-col justify-center items-center max-h-[24vh] shadow-lg rounded-2xl transition-transform transform hover:scale-105 ${
-            isInQueue ? queueActiveBg : gameStarted ? 'bg-red-600' : 'bg-gradient-to-br from-blue-500 via-cyan-500 to-sky-400'
-          }`}>
-            {isInQueue ? (
-              <button className="flex flex-col justify-center items-center text-white font-extrabold text-lg sm:text-xl transition-transform transform hover:scale-105">
-                <span>Queue</span>
-                <span className="animate-pulse">⏳</span>
-              </button>
-            ) : gameStarted ? (
-              <button className="flex flex-col justify-center items-center text-white font-extrabold text-lg sm:text-xl transition-transform transform hover:scale-105">
-                <span>Wait 🛑</span>
-              </button>
-            ) : (
-              <button className="flex flex-col justify-center items-center text-white font-extrabold text-lg sm:text-xl transition-transform transform hover:scale-105">
-                <span>PLAY</span>
-                <span className="animate-bounce">▶️</span>
-              </button>
-            )}
-          </div>
-
-          {/* Game Choice Card */}
-          <div className="flex flex-col justify-center bg-[#FFD93D] max-h-[24vh] rounded-2xl shadow-lg transition-transform transform hover:scale-105">
-            <p className="text-sm sm:text-base font-semibold tracking-wide opacity-90">
-              ባለ
-            </p>
-            <span className="text-lg sm:text-xl font-extrabold block">
-              {gameId}
-            </span>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-10 gap-1 py-1 px-2 max-w-lg w-full text-xs">
-          {numbers.map((num) => {
-            const isMyCard = cartelaId === num;
-            const isOtherCard = Object.entries(otherSelectedCards).some(
-              ([id, card]) => Number(card) === num
-            );
-
-            return (
-              <button
-                key={num}
-                onClick={() => handleNumberClick(num)}
-                disabled={isOtherCard || isInQueue}
-                className={`w-8 h-8 flex items-center justify-center rounded-md border border-gray-300 font-bold cursor-pointer transition-all duration-200 text-xs
-                           ${isMyCard ? myCardBg : isOtherCard ? otherCardBg : defaultCardBg}
-                           ${isInQueue ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                {num}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="flex gap-3 items-center mt-2">
-          {cartela.length > 0 && (
-            <div className="grid grid-cols-5 gap-1 p-1 bg-transparent text-white">
-              {cartela.flat().map((num, index) => (
-                <div key={index} className={`w-6 h-6 flex items-center justify-center border border-white rounded-lg text-xs font-bold ${cellBg}`}>
-                  {num}
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="flex gap-2 mt-2">
-            <button 
-              onClick={resetGame} 
-              className={`${refreshBtnBg} text-white px-3 py-1 rounded-lg shadow-md text-sm`}
-            >
-              Refresh
-            </button>
-            <button
-              onClick={isInQueue ? leaveQueue : startGame}
-              disabled={(!cartelaId || isStarting) && !isInQueue}
-              className={`${
-                isInQueue 
-                  ? 'bg-red-600 hover:bg-red-700' 
-                  : !cartelaId || isStarting 
-                    ? startBtnDisabledBg 
-                    : startBtnEnabledBg
-              } text-white px-3 py-1 rounded-lg shadow-md text-sm`}
-            >
-              {isInQueue ? "Leave Queue" : isStarting ? "Starting..." : "Start Game"}
-            </button>
-          </div>
-        </div>
-
-        {/* ✅ Queue Information Display */}
-        {isInQueue && (
-          <div className="mt-4 p-3 bg-black bg-opacity-30 rounded-lg max-w-sm w-full">
-            <div className="text-center">
-              <p className="text-sm opacity-80">Waiting for players to join...</p>
-              <p className="text-xs mt-1 opacity-60">
-                You will automatically enter the game when ready
-              </p>
-            </div>
-          </div>
+      {/* Game Status Card */}
+      <div className="flex flex-col justify-center items-center bg-gradient-to-br from-blue-500 via-cyan-500 to-sky-400 max-h-[24vh] shadow-lg rounded-2xl transition-transform transform hover:scale-105">
+        {gameStarted ? (
+          <button className="flex flex-col justify-center items-center text-white font-extrabold text-lg sm:text-xl transition-transform transform hover:scale-105">
+            <span className="animate-bounce">Wait 🛑</span>
+          </button>
+        ) : (
+          <button className="flex flex-col justify-center items-center text-white font-extrabold text-lg sm:text-xl transition-transform transform hover:scale-105">
+            <span>PLAY</span>
+            <span className="animate-bounce">▶️</span>
+          </button>
         )}
       </div>
-    </>
+
+      {/* Game Choice Card */}
+      <div className="flex flex-col justify-center bg-[#FFD93D] max-h-[24vh] rounded-2xl shadow-lg transition-transform transform hover:scale-105">
+        <p className="text-sm sm:text-base font-semibold tracking-wide opacity-90">
+          ባለ
+        </p>
+        <span className="text-lg sm:text-xl font-extrabold block">
+          {gameId}
+        </span>
+      </div>
+    </div>
+  );
+
+  const renderCardGrid = () => (
+    <div className="grid grid-cols-10 gap-1 py-1 px-2 max-w-lg w-full text-xs">
+      {numbers.map((num) => {
+        const isMyCard = cartelaId === num;
+        const isOtherCard = Object.values(otherSelectedCards).includes(num);
+
+        return (
+          <button
+            key={num}
+            onClick={() => handleNumberClick(num)}
+            disabled={isOtherCard || gameStarted}
+            className={`w-8 h-8 flex items-center justify-center rounded-md border border-gray-300 font-bold transition-all duration-200 text-xs
+                       ${isMyCard ? theme.cards.myCard : 
+                         isOtherCard ? theme.cards.otherCard : 
+                         theme.cards.defaultCard}
+                       ${isOtherCard || gameStarted ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:scale-110'}`}
+            aria-label={`Select card ${num}${isMyCard ? ' (selected)' : ''}${isOtherCard ? ' (taken)' : ''}`}
+          >
+            {num}
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  const renderSelectedCard = () => {
+    if (cartela.length === 0) return null;
+
+    return (
+      <div className="grid grid-cols-5 gap-1 p-1 bg-transparent text-white">
+        {cartela.flat().map((num, index) => (
+          <div 
+            key={index} 
+            className={`w-6 h-6 flex items-center justify-center border border-white rounded-lg text-xs font-bold ${theme.cell.bg}`}
+          >
+            {num}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderActionButtons = () => (
+    <div className="flex gap-2 mt-2">
+      <button 
+        onClick={resetGame} 
+        className={`${theme.buttons.refresh} text-white px-3 py-1 rounded-lg shadow-md text-sm transition-all hover:scale-105 active:scale-95`}
+        aria-label="Refresh game"
+      >
+        Refresh
+      </button>
+      <button
+        onClick={startGame}
+        disabled={!cartelaId || isStarting || gameStarted}
+        className={`${
+          !cartelaId || isStarting || gameStarted ? theme.buttons.startDisabled : theme.buttons.startEnabled
+        } text-white px-3 py-1 rounded-lg shadow-md text-sm transition-all hover:scale-105 active:scale-95`}
+        aria-label={!cartelaId ? "Select a card to start game" : "Start game"}
+      >
+        {isStarting ? "Starting..." : "Start Game"}
+      </button>
+    </div>
+  );
+
+  // ==================== MAIN RENDER ====================
+  if (!telegramId || !gameId) {
+    return (
+      <div className={`flex items-center justify-center min-h-screen ${theme.bgGradient}`}>
+        <div className="text-white text-center">
+          <p>Loading game...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`flex flex-col items-center p-3 pb-20 min-h-screen ${theme.bgGradient} text-white w-full overflow-hidden`}>
+      {renderAlert()}
+      {renderBalanceCards()}
+      {renderCardGrid()}
+      
+      <div className="flex gap-3 items-center mt-2">
+        {renderSelectedCard()}
+        {renderActionButtons()}
+      </div>
+    </div>
   );
 }
 
