@@ -36,7 +36,15 @@ const AppContent = ({ isBlackToggleOn, setIsBlackToggleOn, socket }) => {
     urlGameId || localStorage.getItem("gameChoice")
   );
 
-  const [selectedCartelaId, setSelectedCartelaId] = useState(null);
+  // -------------------------------------------------------------------
+  // ⬇️ HERE ARE THE FIRST TWO FIXES ⬇️
+  // -------------------------------------------------------------------
+
+  // FIX 1: Rename state and initialize as an empty array [] for multi-card support
+  const [selectedCartelaIds, setSelectedCartelaIds] = useState([]); 
+  
+  // -------------------------------------------------------------------
+  
   const [otherSelectedCards, setOtherSelectedCards] = useState({});
   const emitLockRef = useRef(false);
 
@@ -46,8 +54,10 @@ const AppContent = ({ isBlackToggleOn, setIsBlackToggleOn, socket }) => {
     
     // ⭐ FIX: Only clear the main selected card if a game start is signaled (cardIdToClear is null)
     if (cardIdToClear === null) {
-        setSelectedCartelaId(null);
-        sessionStorage.removeItem("mySelectedCardId");
+        // FIX 2: This setter now expects an array, so set it to []
+        setSelectedCartelaIds([]); // <-- FIX
+        sessionStorage.removeItem("mySelectedCardId"); // You should change this key too
+        sessionStorage.removeItem("mySelectedCardIds"); // Good to clear both
         console.log("Game started, clearing your card selection.");
     }
     
@@ -128,7 +138,8 @@ const AppContent = ({ isBlackToggleOn, setIsBlackToggleOn, socket }) => {
         path="/game"
         element={
           <BingoGame
-            selectedCartelaId={selectedCartelaId}
+            // FIX 3: Pass the array state variable
+            selectedCartelaIds={selectedCartelaIds} // <-- FIX (prop name might need changing in BingoGame too)
             telegramId={telegramId}
             gameId={gameId}
             otherSelectedCards={otherSelectedCards}
@@ -137,7 +148,9 @@ const AppContent = ({ isBlackToggleOn, setIsBlackToggleOn, socket }) => {
           />
         }
       />
-      <Route path="/add-board" element={<AddBoard />} /> {/* ✅ Add this route */}
+      <Route path="/add-board" element={<AddBoard
+             socket={socket}
+      />} /> {/* ✅ Add this route */}
       <Route path="/winnerPage" element={<WinnerPage />} />
       <Route path="/winnerFailed" element={<WinnerFailed />} />
       <Route path="/PaymentForm" element={<PaymentForm />} />
@@ -154,8 +167,9 @@ const AppContent = ({ isBlackToggleOn, setIsBlackToggleOn, socket }) => {
             socket={socket}
             gameId={gameId}
             telegramId={telegramId}
-            cartelaId={selectedCartelaId}
-            setCartelaIdInParent={setSelectedCartelaId}
+            // FIX 4: Pass the array state variable
+            cartelaIds={selectedCartelaIds} // <-- FIX (prop name might need changing in Layout too)
+            setCartelaIdInParent={setSelectedCartelaIds} // Pass the correct setter
             onClearClientCardState={clearClientCardState}
           />
         }
@@ -165,8 +179,9 @@ const AppContent = ({ isBlackToggleOn, setIsBlackToggleOn, socket }) => {
           element={
             <Bingo
               isBlackToggleOn={isBlackToggleOn}
-              setCartelaIdInParent={setSelectedCartelaId}
-              cartelaId={selectedCartelaId}
+              // FIX 5: Pass the correct setter and the state with the correct prop name
+              setCartelaIdInParent={setSelectedCartelaIds} // <-- FIX
+              cartelaIds={selectedCartelaIds} // <-- FIX
               socket={socket}
               otherSelectedCards={otherSelectedCards}
               setOtherSelectedCards={setOtherSelectedCards}

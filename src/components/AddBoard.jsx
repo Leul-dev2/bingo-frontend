@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import bingoCards from "../assets/bingoCards2.json";
 import socket from "../../socket";
 
-const AddBoard = () => {
+const AddBoard = ({socket}) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { 

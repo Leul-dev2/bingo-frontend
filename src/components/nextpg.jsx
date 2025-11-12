@@ -371,7 +371,7 @@ useEffect(() => {
 
   // ✅ NEW: Navigate to add board
   const navigateToAddBoard = () => {
-    if (countdown < 10) {
+    if (countdown < 5) {
       setShowAddBoardWarning(true);
       return;
     }
@@ -382,7 +382,7 @@ useEffect(() => {
         gameId,
         GameSessionId,
         existingBoards: activeBoards,
-        countdown
+        countdown,
       }
     });
   };
